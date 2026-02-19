@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -87,12 +87,12 @@ async def get_audit(
     return await _get_partner_audit(audit_id, partner, db, load_claims=True)
 
 
-@router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_audit(
     audit_id: UUID,
     partner: Partner = Depends(get_current_partner),
     db: AsyncSession = Depends(get_db),
-) -> None:
+):
     """Supprimer un audit (uniquement si draft)."""
     audit = await _get_partner_audit(audit_id, partner, db)
     if audit.status != "draft":
@@ -174,7 +174,7 @@ async def analyze_audit(
         conforming_claims=audit.conforming_claims,
         non_conforming_claims=audit.non_conforming_claims,
         at_risk_claims=audit.at_risk_claims,
-        global_score=float(audit.global_score) if audit.global_score else None,
+        global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
         claims=audit.claims,
     )
@@ -214,7 +214,7 @@ async def get_audit_results(
         conforming_claims=audit.conforming_claims,
         non_conforming_claims=audit.non_conforming_claims,
         at_risk_claims=audit.at_risk_claims,
-        global_score=float(audit.global_score) if audit.global_score else None,
+        global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
         claims=audit.claims,
     )

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -80,8 +80,14 @@ async def create_claim(
     claim = Claim(audit_id=audit.id, **data.model_dump())
     db.add(claim)
     await db.commit()
-    await db.refresh(claim)
-    return claim
+
+    # Recharger avec results pour la sérialisation
+    result = await db.execute(
+        select(Claim)
+        .where(Claim.id == claim.id)
+        .options(selectinload(Claim.results))
+    )
+    return result.scalar_one()
 
 
 @router.get(
@@ -134,12 +140,12 @@ async def update_claim(
     return claim
 
 
-@router.delete("/api/claims/{claim_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/api/claims/{claim_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_claim(
     claim_id: UUID,
     partner: Partner = Depends(get_current_partner),
     db: AsyncSession = Depends(get_db),
-) -> None:
+):
     """Supprimer une claim."""
     claim = await _get_partner_claim(claim_id, partner, db)
 

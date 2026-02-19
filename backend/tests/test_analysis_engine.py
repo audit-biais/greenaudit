@@ -38,10 +38,7 @@ def _make_claim(**kwargs) -> Claim:
         "product_name": None,
     }
     defaults.update(kwargs)
-    claim = Claim.__new__(Claim)
-    for k, v in defaults.items():
-        object.__setattr__(claim, k, v)
-    return claim
+    return Claim(**defaults)
 
 
 # ===================================================================
@@ -275,12 +272,11 @@ class TestAnalyzeClaim:
     def test_non_conforme_claim(self):
         """Claim générique + pas de preuve → non_conforme."""
         claim = _make_claim(
-            claim_text="Produit 100% naturel",
+            claim_text="Produit naturel",
             has_proof=False,
         )
         results, verdict = analyze_claim(claim)
         assert verdict == "non_conforme"
-        # Au moins specificity et justification sont non_conforme
         nc_criteria = [r.criterion for r in results if r.verdict == "non_conforme"]
         assert "specificity" in nc_criteria
         assert "justification" in nc_criteria

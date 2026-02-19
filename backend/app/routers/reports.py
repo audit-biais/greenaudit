@@ -144,7 +144,7 @@ async def shared_audit_results(
         conforming_claims=audit.conforming_claims,
         non_conforming_claims=audit.non_conforming_claims,
         at_risk_claims=audit.at_risk_claims,
-        global_score=float(audit.global_score) if audit.global_score else None,
+        global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
         claims=audit.claims,
     )

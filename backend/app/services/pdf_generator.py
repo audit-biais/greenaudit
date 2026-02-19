@@ -10,8 +10,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from weasyprint import HTML
-
 from app.config import settings
 from app.models.audit import Audit
 from app.models.partner import Partner
@@ -472,6 +470,8 @@ def generate_audit_pdf(audit: Audit, partner: Partner) -> str:
 
     filename = f"greenaudit_{audit.id}.pdf"
     filepath = storage_path / filename
+
+    from weasyprint import HTML  # lazy import — nécessite les libs système (Pango, GLib)
 
     HTML(string=html_content).write_pdf(str(filepath))
 
