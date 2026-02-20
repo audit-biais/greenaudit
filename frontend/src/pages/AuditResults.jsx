@@ -67,8 +67,18 @@ export default function AuditResults() {
     }
   };
 
-  const handleDownload = () => {
-    window.open(`/api/audits/${auditId}/report/download`, '_blank');
+  const handleDownload = async () => {
+    try {
+      const res = await api.get(`/audits/${auditId}/report/download`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rapport_greenaudit_${results.company_name}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Erreur lors du téléchargement du PDF');
+    }
   };
 
   if (loading) {

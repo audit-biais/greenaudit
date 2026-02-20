@@ -66,7 +66,7 @@ const STEPS = [
 // ---------------------------------------------------------------------------
 
 export default function ClaimForm() {
-  const { audit_id } = useParams();
+  const { auditId: audit_id } = useParams();
   const navigate = useNavigate();
 
   // Audit info
@@ -98,7 +98,7 @@ export default function ClaimForm() {
     try {
       const res = await api.get(`/audits/${audit_id}`);
       setAudit(res.data);
-    } catch {
+    } catch (err) {
       setError("Impossible de charger les informations de l'audit.");
     } finally {
       setLoadingAudit(false);
@@ -109,7 +109,7 @@ export default function ClaimForm() {
     try {
       const res = await api.get(`/audits/${audit_id}/claims`);
       setClaims(res.data);
-    } catch {
+    } catch (err) {
       setError('Impossible de charger les allegations.');
     } finally {
       setLoadingClaims(false);
@@ -199,7 +199,7 @@ export default function ClaimForm() {
       }
       closeForm();
       await fetchClaims();
-    } catch {
+    } catch (err) {
       setError(
         editingClaimId
           ? "Erreur lors de la modification de l'allegation."
@@ -216,7 +216,7 @@ export default function ClaimForm() {
     try {
       await api.delete(`/claims/${claimId}`);
       await fetchClaims();
-    } catch {
+    } catch (err) {
       setError("Erreur lors de la suppression de l'allegation.");
     }
   };
@@ -235,7 +235,7 @@ export default function ClaimForm() {
     try {
       await api.post(`/audits/${audit_id}/analyze`);
       navigate(`/audits/${audit_id}/results`);
-    } catch {
+    } catch (err) {
       setError("Erreur lors du lancement de l'analyse.");
     } finally {
       setAnalyzing(false);
@@ -266,7 +266,7 @@ export default function ClaimForm() {
 
   if (loadingAudit || loadingClaims) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-[#1B5E20] border-t-transparent" />
           <p className="mt-4 text-gray-600">Chargement...</p>
@@ -280,46 +280,35 @@ export default function ClaimForm() {
   // -----------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6">
       {/* ----------------------------------------------------------------- */}
-      {/* Header bar                                                        */}
+      {/* Header                                                            */}
       {/* ----------------------------------------------------------------- */}
-      <header className="bg-[#1B5E20] text-white shadow-lg">
-        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="mb-3 inline-flex items-center text-sm text-green-200 hover:text-white transition-colors"
-          >
-            <svg className="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Retour
-          </button>
+      <div className="bg-[#1B5E20] text-white shadow-lg rounded-xl p-6">
+        <button
+          onClick={() => navigate('/')}
+          className="mb-3 inline-flex items-center text-sm text-green-200 hover:text-white transition-colors"
+        >
+          <svg className="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>Retour</span>
+        </button>
 
-          {audit ? (
-            <>
-              <h1 className="text-2xl font-bold">
-                Audit : {audit.company_name}
-              </h1>
-              <div className="mt-2 flex flex-wrap gap-4 text-sm text-green-100">
-                <span>Secteur : {audit.sector}</span>
-                {audit.website_url && <span>Site : {audit.website_url}</span>}
-                <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium">
-                  {audit.status === 'draft'
-                    ? 'Brouillon'
-                    : audit.status === 'in_progress'
-                      ? 'En cours'
-                      : 'Termine'}
-                </span>
-              </div>
-            </>
-          ) : (
-            <h1 className="text-2xl font-bold">Audit introuvable</h1>
-          )}
-        </div>
-      </header>
+        {audit && (
+          <div>
+            <h1 className="text-2xl font-bold">
+              {"Audit : " + audit.company_name}
+            </h1>
+            <div className="mt-2 flex flex-wrap gap-4 text-sm text-green-100">
+              <span>{"Secteur : " + audit.sector}</span>
+              {audit.website_url && <span>{"Site : " + audit.website_url}</span>}
+            </div>
+          </div>
+        )}
+      </div>
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <div>
         {/* --------------------------------------------------------------- */}
         {/* Error banner                                                    */}
         {/* --------------------------------------------------------------- */}
@@ -910,7 +899,7 @@ export default function ClaimForm() {
             </button>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

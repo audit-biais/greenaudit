@@ -11,7 +11,7 @@ const STATUS_STYLES = {
 const STATUS_LABELS = {
   draft: 'Brouillon',
   in_progress: 'En cours',
-  completed: 'Termin\u00e9',
+  completed: 'Terminé',
 };
 
 const RISK_STYLES = {
@@ -23,8 +23,8 @@ const RISK_STYLES = {
 
 const RISK_LABELS = {
   faible: 'Faible',
-  modere: 'Mod\u00e9r\u00e9',
-  eleve: '\u00c9lev\u00e9',
+  modere: 'Modéré',
+  eleve: 'Élevé',
   critique: 'Critique',
 };
 
@@ -55,7 +55,7 @@ export default function Dashboard() {
       const response = await api.get('/audits');
       setAudits(response.data);
     } catch (err) {
-      setError('Impossible de charger les audits. Veuillez r\u00e9essayer.');
+      setError('Impossible de charger les audits. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -78,23 +78,22 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-gray-500 text-lg">Chargement des audits...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: '#1B5E20' }}>
               Tableau de bord
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              G\u00e9rez vos audits anti-greenwashing
+              Gérez vos audits anti-greenwashing
             </p>
           </div>
           <button
@@ -118,11 +117,9 @@ export default function Dashboard() {
             </svg>
             Nouvel audit
           </button>
-        </div>
-      </header>
+      </div>
 
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         {/* Error banner */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center justify-between">
@@ -157,7 +154,7 @@ export default function Dashboard() {
               Aucun audit pour le moment
             </h2>
             <p className="mt-2 text-sm text-gray-500">
-              Cr\u00e9ez votre premier audit pour commencer l'analyse anti-greenwashing.
+              Créez votre premier audit pour commencer l'analyse anti-greenwashing.
             </p>
             <button
               onClick={() => navigate('/audits/new')}
@@ -178,7 +175,7 @@ export default function Dashboard() {
                   clipRule="evenodd"
                 />
               </svg>
-              Cr\u00e9er un audit
+              Créer un audit
             </button>
           </div>
         ) : (
@@ -243,7 +240,7 @@ export default function Dashboard() {
                 <div className="mt-5 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-500 uppercase tracking-wide">
-                      All\u00e9gations
+                      Allégations
                     </p>
                     <p className="mt-1 text-lg font-semibold text-gray-900">
                       {audit.total_claims ?? 0}
@@ -277,13 +274,13 @@ export default function Dashboard() {
 
                 {/* Date */}
                 <p className="mt-4 text-xs text-gray-400">
-                  Cr\u00e9\u00e9 le {formatDate(audit.created_at)}
+                  Créé le {formatDate(audit.created_at)}
                 </p>
               </div>
             ))}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

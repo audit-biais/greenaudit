@@ -1,14 +1,28 @@
 """
-Génération du rapport PDF white-label via WeasyPrint.
-
-Produit un HTML complet avec CSS intégré, puis le convertit en PDF.
+Génération du rapport PDF white-label via ReportLab (pure Python, pas de dépendance système).
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    BaseDocTemplate,
+    Frame,
+    NextPageTemplate,
+    PageBreak,
+    PageTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from app.config import settings
 from app.models.audit import Audit
@@ -19,11 +33,11 @@ from app.models.partner import Partner
 # Helpers
 # ---------------------------------------------------------------------------
 
-RISK_COLORS: Dict[str, str] = {
-    "faible": "#2E7D32",
-    "modere": "#F9A825",
-    "eleve": "#E65100",
-    "critique": "#B71C1C",
+RISK_COLORS: Dict[str, colors.Color] = {
+    "faible": colors.HexColor("#2E7D32"),
+    "modere": colors.HexColor("#F9A825"),
+    "eleve": colors.HexColor("#E65100"),
+    "critique": colors.HexColor("#B71C1C"),
 }
 
 VERDICT_LABELS: Dict[str, str] = {
@@ -31,13 +45,6 @@ VERDICT_LABELS: Dict[str, str] = {
     "non_conforme": "Non conforme",
     "risque": "Risque",
     "non_applicable": "N/A",
-}
-
-VERDICT_COLORS: Dict[str, str] = {
-    "conforme": "#2E7D32",
-    "non_conforme": "#B71C1C",
-    "risque": "#E65100",
-    "non_applicable": "#757575",
 }
 
 CRITERION_LABELS: Dict[str, str] = {
@@ -49,6 +56,11 @@ CRITERION_LABELS: Dict[str, str] = {
     "justification": "Justification / Preuves",
 }
 
+CRITERION_ORDER = [
+    "specificity", "compensation", "labels",
+    "proportionality", "future_commitment", "justification",
+]
+
 SUPPORT_LABELS: Dict[str, str] = {
     "web": "Site web",
     "packaging": "Packaging",
@@ -57,31 +69,12 @@ SUPPORT_LABELS: Dict[str, str] = {
     "autre": "Autre",
 }
 
-PRIORITY_ORDER = ["critique", "eleve", "modere", "faible"]
 
-
-def _risk_color(level: Optional[str]) -> str:
-    return RISK_COLORS.get(level or "", "#757575")
-
-
-def _verdict_badge(verdict: str) -> str:
-    color = VERDICT_COLORS.get(verdict, "#757575")
-    label = VERDICT_LABELS.get(verdict, verdict)
-    return (
-        f'<span style="background:{color};color:#fff;padding:2px 8px;'
-        f'border-radius:4px;font-size:0.85em;">{label}</span>'
-    )
-
-
-def _escape(text: Optional[str]) -> str:
-    if not text:
-        return ""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+def _hex(color_str: Optional[str], fallback: str = "#1B5E20") -> colors.Color:
+    try:
+        return colors.HexColor(color_str or fallback)
+    except Exception:
+        return colors.HexColor(fallback)
 
 
 def _format_date(dt: Optional[datetime]) -> str:
@@ -90,248 +83,259 @@ def _format_date(dt: Optional[datetime]) -> str:
     return dt.strftime("%d/%m/%Y")
 
 
+def _summary_phrase(risk_level: Optional[str]) -> str:
+    phrases = {
+        "faible": "La majorité des allégations sont conformes.",
+        "modere": "Plusieurs allégations nécessitent des corrections.",
+        "eleve": "Un nombre significatif d'allégations sont non conformes. Actions correctives urgentes recommandées.",
+        "critique": "Situation critique. La majorité des allégations exposent l'entreprise à des sanctions.",
+    }
+    return phrases.get(risk_level or "", phrases["critique"])
+
+
 # ---------------------------------------------------------------------------
-# Sections HTML
+# Styles
 # ---------------------------------------------------------------------------
 
-def _css(partner: Partner) -> str:
-    primary = partner.brand_primary_color or "#1B5E20"
-    secondary = partner.brand_secondary_color or "#2E7D32"
-    return f"""
-    @page {{
-        size: A4;
-        margin: 30mm 20mm 30mm 20mm;
-        @top-center {{
-            content: element(page-header);
-        }}
-        @bottom-center {{
-            content: element(page-footer);
-        }}
-    }}
-    @page :first {{
-        @top-center {{ content: none; }}
-        @bottom-center {{ content: none; }}
-    }}
-    .page-header {{
-        position: running(page-header);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid {primary};
-        padding-bottom: 4px;
-        font-size: 8px;
-        color: #999;
-    }}
-    .page-header img {{ max-height: 24px; }}
-    .page-footer {{
-        position: running(page-footer);
-        text-align: center;
-        font-size: 8px;
-        color: #999;
-        border-top: 1px solid #ddd;
-        padding-top: 4px;
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-size: 11px;
-        color: #333;
-        line-height: 1.5;
-    }}
-    h1 {{ color: {primary}; font-size: 22px; margin-top: 0; }}
-    h2 {{ color: {primary}; font-size: 16px; border-bottom: 2px solid {secondary}; padding-bottom: 4px; }}
-    h3 {{ color: {secondary}; font-size: 13px; }}
-    .cover {{ page-break-after: always; text-align: center; padding-top: 80px; }}
-    .cover .score {{ font-size: 64px; font-weight: bold; margin: 30px 0 10px; }}
-    .cover .risk {{ font-size: 20px; padding: 6px 20px; border-radius: 8px; color: #fff; display: inline-block; }}
-    table {{ width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10.5px; }}
-    th, td {{ border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }}
-    th {{ background: {primary}; color: #fff; font-weight: 600; }}
-    .section {{ page-break-inside: avoid; margin-bottom: 20px; }}
-    .claim-box {{ border: 1px solid #ccc; border-radius: 6px; padding: 12px; margin-bottom: 16px; page-break-inside: avoid; }}
-    .claim-text {{ background: #f5f5f5; padding: 8px; border-left: 4px solid {secondary}; margin: 8px 0; font-style: italic; }}
-    .summary-grid {{ display: flex; gap: 16px; margin: 16px 0; }}
-    .summary-card {{ flex: 1; text-align: center; padding: 12px; border-radius: 8px; background: #f5f5f5; }}
-    .summary-card .number {{ font-size: 28px; font-weight: bold; }}
-    .footer {{ font-size: 9px; color: #777; border-top: 1px solid #ddd; padding-top: 6px; margin-top: 30px; }}
-    .header-bar {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid {primary}; }}
-    .header-bar img {{ max-height: 40px; }}
-    .priority-critique {{ border-left: 4px solid #B71C1C; }}
-    .priority-eleve {{ border-left: 4px solid #E65100; }}
-    .priority-modere {{ border-left: 4px solid #F9A825; }}
-    .priority-faible {{ border-left: 4px solid #2E7D32; }}
-    """
+def _build_styles(primary: colors.Color, secondary: colors.Color):
+    ss = getSampleStyleSheet()
+    styles = {
+        "title": ParagraphStyle("title", parent=ss["Title"], fontSize=22, textColor=primary, spaceAfter=6),
+        "h1": ParagraphStyle("h1", parent=ss["Heading1"], fontSize=16, textColor=primary, spaceAfter=8, spaceBefore=16),
+        "h2": ParagraphStyle("h2", parent=ss["Heading2"], fontSize=13, textColor=secondary, spaceAfter=6, spaceBefore=12),
+        "body": ParagraphStyle("body", parent=ss["Normal"], fontSize=10, leading=14, spaceAfter=4),
+        "small": ParagraphStyle("small", parent=ss["Normal"], fontSize=8, textColor=colors.gray, spaceAfter=2),
+        "italic": ParagraphStyle("italic", parent=ss["Normal"], fontSize=10, leading=14, textColor=colors.HexColor("#555555"), spaceAfter=4),
+        "bold": ParagraphStyle("bold", parent=ss["Normal"], fontSize=10, leading=14, spaceAfter=4),
+        "cover_score": ParagraphStyle("cover_score", parent=ss["Title"], fontSize=48, alignment=1, spaceAfter=4),
+        "cover_center": ParagraphStyle("cover_center", parent=ss["Normal"], fontSize=14, alignment=1, spaceAfter=4),
+        "cover_small": ParagraphStyle("cover_small", parent=ss["Normal"], fontSize=10, alignment=1, textColor=colors.gray, spaceAfter=4),
+        "disclaimer": ParagraphStyle("disclaimer", parent=ss["Normal"], fontSize=8, textColor=colors.gray, leading=11),
+    }
+    return styles
 
 
-def _cover_page(audit: Audit, partner: Partner) -> str:
-    risk_color = _risk_color(audit.risk_level)
-    logo_html = ""
-    if partner.logo_url:
-        logo_html = f'<img src="{_escape(partner.logo_url)}" style="max-height:80px;margin-bottom:20px;" />'
-    return f"""
-    <div class="cover">
-        {logo_html}
-        <h1>Rapport d'audit anti-greenwashing</h1>
-        <p style="font-size:18px;color:#555;">Directive EmpCo (EU 2024/825)</p>
-        <hr style="margin:20px auto;width:60%;" />
-        <p style="font-size:16px;"><strong>{_escape(audit.company_name)}</strong></p>
-        <p>Secteur : {_escape(audit.sector)}</p>
-        <div class="score" style="color:{risk_color};">{audit.global_score}/100</div>
-        <div class="risk" style="background:{risk_color};">
-            Risque {audit.risk_level or '—'}
-        </div>
-        <p style="margin-top:40px;color:#999;">
-            Audit réalisé le {_format_date(audit.completed_at)}<br/>
-            par {_escape(partner.company_name)}
-        </p>
-    </div>
-    """
+# ---------------------------------------------------------------------------
+# Page templates avec header/footer
+# ---------------------------------------------------------------------------
+
+def _build_doc(filepath: str, partner: Partner) -> BaseDocTemplate:
+    primary = _hex(partner.brand_primary_color)
+    company = partner.company_name or ""
+    email = partner.email or ""
+    phone = partner.contact_phone or ""
+
+    def _header_footer(canvas, doc):
+        canvas.saveState()
+        # Header : nom du partenaire
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.gray)
+        canvas.drawString(20 * mm, A4[1] - 12 * mm, company)
+        # Ligne sous le header
+        canvas.setStrokeColor(primary)
+        canvas.setLineWidth(0.5)
+        canvas.line(20 * mm, A4[1] - 14 * mm, A4[0] - 20 * mm, A4[1] - 14 * mm)
+        # Footer
+        footer_parts = [p for p in [company, phone, email] if p]
+        footer_text = " — ".join(footer_parts)
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(colors.gray)
+        canvas.drawCentredString(A4[0] / 2, 12 * mm, footer_text)
+        canvas.drawRightString(A4[0] - 20 * mm, 12 * mm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    def _cover_footer(canvas, doc):
+        pass  # Pas de header/footer sur la page de garde
+
+    frame = Frame(20 * mm, 20 * mm, A4[0] - 40 * mm, A4[1] - 40 * mm, id="main")
+    cover_frame = Frame(20 * mm, 20 * mm, A4[0] - 40 * mm, A4[1] - 40 * mm, id="cover")
+
+    doc = BaseDocTemplate(
+        filepath,
+        pagesize=A4,
+        pageTemplates=[
+            PageTemplate(id="cover", frames=[cover_frame], onPage=_cover_footer),
+            PageTemplate(id="content", frames=[frame], onPage=_header_footer),
+        ],
+    )
+    return doc
 
 
-def _executive_summary(audit: Audit) -> str:
+# ---------------------------------------------------------------------------
+# Sections
+# ---------------------------------------------------------------------------
+
+def _cover_elements(audit: Audit, partner: Partner, styles: dict) -> list:
+    primary = _hex(partner.brand_primary_color)
+    risk_color = RISK_COLORS.get(audit.risk_level or "", colors.gray)
+    elements = []
+    elements.append(Spacer(1, 60 * mm))
+    elements.append(Paragraph("Rapport d'audit anti-greenwashing", styles["title"]))
+    elements.append(Paragraph("Directive EmpCo (EU 2024/825)", styles["cover_center"]))
+    elements.append(Spacer(1, 10 * mm))
+    elements.append(Paragraph(f"<b>{audit.company_name}</b>", styles["cover_center"]))
+    elements.append(Paragraph(f"Secteur : {audit.sector}", styles["cover_center"]))
+    elements.append(Spacer(1, 10 * mm))
+
+    score_style = ParagraphStyle("score", parent=styles["cover_score"], textColor=risk_color, fontSize=40, spaceAfter=12)
+    elements.append(Paragraph(f"{audit.global_score}/100", score_style))
+    elements.append(Spacer(1, 6 * mm))
+
+    risk_text = f"Risque {audit.risk_level or '—'}"
+    risk_style = ParagraphStyle("risk", parent=styles["cover_center"], textColor=risk_color, fontSize=16, spaceAfter=8)
+    elements.append(Paragraph(f"<b>{risk_text}</b>", risk_style))
+    elements.append(Spacer(1, 25 * mm))
+    elements.append(Paragraph(
+        f"Audit réalisé le {_format_date(audit.completed_at)} par {partner.company_name}",
+        styles["cover_small"],
+    ))
+    elements.append(NextPageTemplate("content"))
+    elements.append(PageBreak())
+    return elements
+
+
+def _summary_elements(audit: Audit, styles: dict) -> list:
+    elements = []
+    elements.append(Paragraph("1. Synthèse exécutive", styles["h1"]))
+
     total = audit.total_claims or 1
-    conf_pct = round((audit.conforming_claims / total) * 100)
-    nc_pct = round((audit.non_conforming_claims / total) * 100)
-    risk_pct = round((audit.at_risk_claims / total) * 100)
-
-    return f"""
-    <h2>1. Synthèse exécutive</h2>
-    <div class="summary-grid">
-        <div class="summary-card">
-            <div class="number">{audit.total_claims}</div>
-            <div>Allégations analysées</div>
-        </div>
-        <div class="summary-card">
-            <div class="number" style="color:#2E7D32;">{audit.conforming_claims}</div>
-            <div>Conformes ({conf_pct}%)</div>
-        </div>
-        <div class="summary-card">
-            <div class="number" style="color:#E65100;">{audit.at_risk_claims}</div>
-            <div>À risque ({risk_pct}%)</div>
-        </div>
-        <div class="summary-card">
-            <div class="number" style="color:#B71C1C;">{audit.non_conforming_claims}</div>
-            <div>Non conformes ({nc_pct}%)</div>
-        </div>
-    </div>
-    <p>
-        L'entreprise <strong>{_escape(audit.company_name)}</strong> présente un niveau de risque
-        <strong style="color:{_risk_color(audit.risk_level)};">{audit.risk_level}</strong>
-        avec un score global de <strong>{audit.global_score}/100</strong>.
-        {_summary_phrase(audit)}
-    </p>
-    """
+    data = [
+        ["Allégations", "Conformes", "À risque", "Non conformes"],
+        [
+            str(audit.total_claims),
+            f"{audit.conforming_claims} ({round(audit.conforming_claims / total * 100)}%)",
+            f"{audit.at_risk_claims} ({round(audit.at_risk_claims / total * 100)}%)",
+            f"{audit.non_conforming_claims} ({round(audit.non_conforming_claims / total * 100)}%)",
+        ],
+    ]
+    page_width = A4[0] - 40 * mm
+    t = Table(data, colWidths=[page_width / 4] * 4)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1B5E20")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 4 * mm))
+    elements.append(Paragraph(
+        f"Score global : <b>{audit.global_score}/100</b> — Risque <b>{audit.risk_level}</b>. "
+        f"{_summary_phrase(audit.risk_level)}",
+        styles["body"],
+    ))
+    return elements
 
 
-def _summary_phrase(audit: Audit) -> str:
-    if audit.risk_level == "faible":
-        return "La majorité des allégations sont conformes. Quelques ajustements mineurs peuvent être envisagés."
-    elif audit.risk_level == "modere":
-        return "Plusieurs allégations nécessitent des corrections pour assurer la conformité à la directive EmpCo."
-    elif audit.risk_level == "eleve":
-        return "Un nombre significatif d'allégations sont non conformes. Des actions correctives urgentes sont recommandées."
-    else:
-        return "La situation est critique. La majorité des allégations environnementales sont non conformes et exposent l'entreprise à des sanctions."
+def _claims_detail_elements(claims: list, styles: dict) -> list:
+    elements = []
+    elements.append(Paragraph("2. Détail des allégations", styles["h1"]))
 
-
-def _claim_detail_section(claims: list) -> str:
-    html = '<h2>2. Détail des allégations</h2>'
     for i, claim in enumerate(claims, 1):
+        verdict = VERDICT_LABELS.get(claim.overall_verdict or "", "—")
         support = SUPPORT_LABELS.get(claim.support_type, claim.support_type)
-        scope_label = "Entreprise" if claim.scope == "entreprise" else "Produit"
-        if claim.product_name:
-            scope_label += f" — {_escape(claim.product_name)}"
+        scope = "Entreprise" if claim.scope == "entreprise" else "Produit"
 
-        html += f"""
-        <div class="claim-box">
-            <h3>Allégation #{i} {_verdict_badge(claim.overall_verdict or 'non_applicable')}</h3>
-            <div class="claim-text">« {_escape(claim.claim_text)} »</div>
-            <p><strong>Support :</strong> {support} | <strong>Portée :</strong> {scope_label}</p>
-            <table>
-                <tr>
-                    <th style="width:22%;">Critère</th>
-                    <th style="width:13%;">Verdict</th>
-                    <th>Explication</th>
-                    <th style="width:25%;">Recommandation</th>
-                </tr>
-        """
-        for result in sorted(claim.results, key=lambda r: _criterion_sort_key(r.criterion)):
-            criterion_label = CRITERION_LABELS.get(result.criterion, result.criterion)
-            rec = _escape(result.recommendation) if result.recommendation else "—"
-            html += f"""
-                <tr>
-                    <td>{criterion_label}</td>
-                    <td>{_verdict_badge(result.verdict)}</td>
-                    <td>{_escape(result.explanation)}</td>
-                    <td>{rec}</td>
-                </tr>
-            """
-        html += "</table></div>"
-    return html
+        elements.append(Paragraph(f"Allégation #{i} — {verdict}", styles["h2"]))
+        elements.append(Paragraph(f"<i>« {claim.claim_text} »</i>", styles["italic"]))
+        elements.append(Paragraph(f"Support : {support} | Portée : {scope}", styles["small"]))
+        elements.append(Spacer(1, 2 * mm))
+
+        # Tableau des 6 critères
+        data = [[
+            Paragraph("<b>Critère</b>", styles["small"]),
+            Paragraph("<b>Verdict</b>", styles["small"]),
+            Paragraph("<b>Explication</b>", styles["small"]),
+            Paragraph("<b>Recommandation</b>", styles["small"]),
+        ]]
+        sorted_results = sorted(
+            claim.results,
+            key=lambda r: CRITERION_ORDER.index(r.criterion) if r.criterion in CRITERION_ORDER else 99,
+        )
+        for r in sorted_results:
+            data.append([
+                Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
+                Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), styles["small"]),
+                Paragraph(r.explanation or "", styles["small"]),
+                Paragraph(r.recommendation or "—", styles["small"]),
+            ])
+
+        page_width = A4[0] - 40 * mm
+        col_widths = [page_width * 0.17, page_width * 0.13, page_width * 0.40, page_width * 0.30]
+        t = Table(data, colWidths=col_widths, repeatRows=1)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1B5E20")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTSIZE", (0, 0), (-1, 0), 9),
+            ("FONTSIZE", (0, 1), (-1, -1), 8),
+            ("ALIGN", (0, 0), (-1, 0), "LEFT"),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(t)
+        elements.append(Spacer(1, 6 * mm))
+
+    return elements
 
 
-def _criterion_sort_key(criterion: str) -> int:
-    order = ["specificity", "compensation", "labels", "proportionality", "future_commitment", "justification"]
-    try:
-        return order.index(criterion)
-    except ValueError:
-        return 99
+def _correction_plan_elements(claims: list, styles: dict) -> list:
+    elements = []
+    elements.append(Paragraph("3. Plan de correction priorisé", styles["h1"]))
 
-
-def _correction_plan(claims: list) -> str:
-    """Plan de correction priorisé par urgence."""
-    actions: List[Dict[str, str]] = []
-
+    actions = []
     for claim in claims:
         if claim.overall_verdict == "conforme":
             continue
-        for result in claim.results:
-            if result.verdict in ("non_conforme", "risque") and result.recommendation:
-                priority = "critique" if result.verdict == "non_conforme" else "eleve"
-                actions.append({
-                    "priority": priority,
-                    "claim_text": claim.claim_text[:80],
-                    "criterion": CRITERION_LABELS.get(result.criterion, result.criterion),
-                    "action": result.recommendation,
-                    "reference": result.regulation_reference or "",
-                })
+        for r in claim.results:
+            if r.verdict in ("non_conforme", "risque") and r.recommendation:
+                priority = "Critique" if r.verdict == "non_conforme" else "Élevé"
+                actions.append((priority, claim.claim_text[:60] + "…", CRITERION_LABELS.get(r.criterion, r.criterion), r.recommendation))
 
     if not actions:
-        return "<h2>3. Plan de correction</h2><p>Aucune action corrective nécessaire.</p>"
+        elements.append(Paragraph("Aucune action corrective nécessaire.", styles["body"]))
+        return elements
 
-    # Trier par priorité
-    actions.sort(key=lambda a: PRIORITY_ORDER.index(a["priority"]) if a["priority"] in PRIORITY_ORDER else 99)
+    # Trier critique en premier
+    actions.sort(key=lambda a: 0 if a[0] == "Critique" else 1)
 
-    html = "<h2>3. Plan de correction priorisé</h2>"
-    html += """
-    <table>
-        <tr>
-            <th style="width:10%;">Priorité</th>
-            <th style="width:20%;">Allégation</th>
-            <th style="width:15%;">Critère</th>
-            <th>Action corrective</th>
-        </tr>
-    """
+    data = [[
+        Paragraph("<b>Priorité</b>", styles["small"]),
+        Paragraph("<b>Allégation</b>", styles["small"]),
+        Paragraph("<b>Critère</b>", styles["small"]),
+        Paragraph("<b>Action corrective</b>", styles["small"]),
+    ]]
     for a in actions:
-        badge_color = RISK_COLORS.get(a["priority"], "#757575")
-        html += f"""
-        <tr class="priority-{a['priority']}">
-            <td><span style="background:{badge_color};color:#fff;padding:2px 6px;border-radius:3px;font-size:0.85em;">
-                {a['priority'].capitalize()}</span></td>
-            <td>{_escape(a['claim_text'])}…</td>
-            <td>{a['criterion']}</td>
-            <td>{_escape(a['action'])}</td>
-        </tr>
-        """
-    html += "</table>"
-    return html
+        data.append([
+            Paragraph(a[0], styles["small"]),
+            Paragraph(a[1], styles["small"]),
+            Paragraph(a[2], styles["small"]),
+            Paragraph(a[3], styles["small"]),
+        ])
+
+    page_width = A4[0] - 40 * mm
+    t = Table(data, colWidths=[page_width * 0.12, page_width * 0.25, page_width * 0.18, page_width * 0.45], repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1B5E20")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(t)
+    return elements
 
 
-def _labels_checklist(claims: list) -> str:
-    """Checklist des labels : à retirer vs à conserver."""
-    to_remove: List[str] = []
-    to_keep: List[str] = []
-
+def _labels_checklist_elements(claims: list, styles: dict) -> list:
+    to_remove = []
+    to_keep = []
     for claim in claims:
         if not claim.has_label:
             continue
@@ -342,69 +346,60 @@ def _labels_checklist(claims: list) -> str:
             to_remove.append(name)
 
     if not to_remove and not to_keep:
-        return ""
+        return []
 
-    html = "<h2>4. Checklist labels</h2>"
+    elements = []
+    elements.append(Paragraph("4. Checklist labels", styles["h1"]))
     if to_remove:
-        html += "<h3>Labels à retirer (auto-décernés)</h3><ul>"
+        elements.append(Paragraph("Labels à retirer (auto-décernés) :", styles["body"]))
         for name in to_remove:
-            html += f"<li style='color:#B71C1C;'>{_escape(name)}</li>"
-        html += "</ul>"
+            elements.append(Paragraph(f"  • {name}", styles["body"]))
     if to_keep:
-        html += "<h3>Labels conformes à conserver</h3><ul>"
+        elements.append(Paragraph("Labels conformes à conserver :", styles["body"]))
         for name in to_keep:
-            html += f"<li style='color:#2E7D32;'>{_escape(name)}</li>"
-        html += "</ul>"
-    return html
+            elements.append(Paragraph(f"  • {name}", styles["body"]))
+    return elements
 
 
-def _regulatory_references() -> str:
-    return """
-    <h2>5. Références réglementaires</h2>
-    <table>
-        <tr><th>Texte</th><th>Référence</th><th>Objet</th></tr>
-        <tr>
-            <td>Directive EmpCo</td>
-            <td>EU 2024/825</td>
-            <td>Interdiction des allégations environnementales trompeuses, labels auto-décernés,
-                claims de neutralité carbone par compensation</td>
-        </tr>
-        <tr>
-            <td>Loi AGEC</td>
-            <td>Loi n° 2020-105</td>
-            <td>Interdiction des mentions « biodégradable » et « respectueux de l'environnement »
-                sur les produits (Art. 13)</td>
-        </tr>
-        <tr>
-            <td>Guide ADEME 2025</td>
-            <td>Recommandations claims environnementales</td>
-            <td>Bonnes pratiques de communication environnementale,
-                méthodologie de justification des allégations</td>
-        </tr>
-        <tr>
-            <td>Code de la consommation</td>
-            <td>Art. L121-1 et suivants</td>
-            <td>Pratiques commerciales trompeuses, sanctions applicables</td>
-        </tr>
-    </table>
-    """
+def _references_elements(styles: dict) -> list:
+    elements = []
+    elements.append(Paragraph("5. Références réglementaires", styles["h1"]))
+    page_width = A4[0] - 40 * mm
+    data = [
+        [Paragraph("<b>Texte</b>", styles["small"]), Paragraph("<b>Référence</b>", styles["small"]), Paragraph("<b>Objet</b>", styles["small"])],
+        [Paragraph("Directive EmpCo", styles["small"]), Paragraph("EU 2024/825", styles["small"]), Paragraph("Interdiction allégations trompeuses, labels auto-décernés, neutralité carbone par compensation", styles["small"])],
+        [Paragraph("Loi AGEC", styles["small"]), Paragraph("Loi n° 2020-105", styles["small"]), Paragraph("Interdiction mentions « biodégradable » et « respectueux de l'environnement » (Art. 13)", styles["small"])],
+        [Paragraph("Guide ADEME 2025", styles["small"]), Paragraph("Recommandations", styles["small"]), Paragraph("Bonnes pratiques de communication environnementale", styles["small"])],
+        [Paragraph("Code de la consommation", styles["small"]), Paragraph("Art. L121-1+", styles["small"]), Paragraph("Pratiques commerciales trompeuses", styles["small"])],
+    ]
+    t = Table(data, colWidths=[page_width * 0.20, page_width * 0.20, page_width * 0.60], repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1B5E20")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(t)
+    return elements
 
 
-def _disclaimer(partner: Partner) -> str:
-    return f"""
-    <div class="footer" style="margin-top:40px;">
-        <h2>Avertissement</h2>
-        <p>Ce rapport est un outil d'aide à la conformité et ne constitue pas un conseil juridique.
-        Il est recommandé de consulter un avocat spécialisé pour toute question relative à la
-        conformité réglementaire de vos communications environnementales.</p>
-        <p style="margin-top:12px;">
-            <strong>{_escape(partner.company_name)}</strong><br/>
-            {_escape(partner.contact_name) or ''}
-            {(' — ' + _escape(partner.contact_phone)) if partner.contact_phone else ''}<br/>
-            {_escape(partner.email)}
-        </p>
-    </div>
-    """
+def _disclaimer_elements(partner: Partner, styles: dict) -> list:
+    elements = []
+    elements.append(Spacer(1, 10 * mm))
+    elements.append(Paragraph("Avertissement", styles["h1"]))
+    elements.append(Paragraph(
+        "Ce rapport est un outil d'aide à la conformité et ne constitue pas un conseil juridique. "
+        "Il est recommandé de consulter un avocat spécialisé pour toute question relative à la "
+        "conformité réglementaire de vos communications environnementales.",
+        styles["disclaimer"],
+    ))
+    contact_parts = [p for p in [partner.company_name, partner.contact_name, partner.contact_phone, partner.email] if p]
+    elements.append(Spacer(1, 4 * mm))
+    elements.append(Paragraph(" — ".join(contact_parts), styles["disclaimer"]))
+    return elements
 
 
 # ---------------------------------------------------------------------------
@@ -415,64 +410,32 @@ def generate_audit_pdf(audit: Audit, partner: Partner) -> str:
     """
     Génère le rapport PDF complet et le sauvegarde sur disque.
 
-    Args:
-        audit: Audit avec claims et claim_results chargés (eager loaded)
-        partner: Partner avec infos branding
-
     Returns:
-        Chemin relatif du fichier PDF généré
+        Nom du fichier PDF généré.
     """
     claims = sorted(audit.claims, key=lambda c: c.created_at)
-
-    # Header et footer running pour chaque page (sauf la première)
-    logo_header = ""
-    if partner.logo_url:
-        logo_header = f'<img src="{_escape(partner.logo_url)}" />'
-    running_header = f"""
-    <div class="page-header">
-        <span>{logo_header}</span>
-        <span>{_escape(partner.company_name)}</span>
-    </div>
-    """
-    running_footer = f"""
-    <div class="page-footer">
-        {_escape(partner.company_name)}
-        {(' — ' + _escape(partner.contact_phone)) if partner.contact_phone else ''}
-        {(' — ' + _escape(partner.email)) if partner.email else ''}
-        &nbsp;|&nbsp; Page <span class="page-number"></span>
-    </div>
-    """
-
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8" />
-        <style>{_css(partner)}</style>
-    </head>
-    <body>
-        {running_header}
-        {running_footer}
-        {_cover_page(audit, partner)}
-        {_executive_summary(audit)}
-        {_claim_detail_section(claims)}
-        {_correction_plan(claims)}
-        {_labels_checklist(claims)}
-        {_regulatory_references()}
-        {_disclaimer(partner)}
-    </body>
-    </html>
-    """
+    primary = _hex(partner.brand_primary_color)
+    secondary = _hex(partner.brand_secondary_color, "#2E7D32")
+    styles = _build_styles(primary, secondary)
 
     # Créer le dossier de stockage
     storage_path = Path(settings.PDF_STORAGE_PATH)
     storage_path.mkdir(parents=True, exist_ok=True)
 
     filename = f"greenaudit_{audit.id}.pdf"
-    filepath = storage_path / filename
+    filepath = str(storage_path / filename)
 
-    from weasyprint import HTML  # lazy import — nécessite les libs système (Pango, GLib)
+    doc = _build_doc(filepath, partner)
 
-    HTML(string=html_content).write_pdf(str(filepath))
+    elements = []
+    elements.extend(_cover_elements(audit, partner, styles))
+    elements.extend(_summary_elements(audit, styles))
+    elements.extend(_claims_detail_elements(claims, styles))
+    elements.extend(_correction_plan_elements(claims, styles))
+    elements.extend(_labels_checklist_elements(claims, styles))
+    elements.extend(_references_elements(styles))
+    elements.extend(_disclaimer_elements(partner, styles))
+
+    doc.build(elements)
 
     return filename

@@ -4,7 +4,7 @@ import api from '../api/client';
 
 const SECTORS = [
   { value: 'e-commerce', label: 'E-commerce' },
-  { value: 'cosmetiques', label: 'Cosm\u00e9tiques' },
+  { value: 'cosmetiques', label: 'Cosmétiques' },
   { value: 'alimentaire', label: 'Alimentaire' },
   { value: 'textile', label: 'Textile' },
   { value: 'services', label: 'Services' },
@@ -37,7 +37,7 @@ export default function NewAudit() {
       return;
     }
     if (!form.sector) {
-      setError('Veuillez s\u00e9lectionner un secteur.');
+      setError('Veuillez sélectionner un secteur.');
       return;
     }
 
@@ -52,7 +52,7 @@ export default function NewAudit() {
       navigate(`/audits/${response.data.id}`);
     } catch (err) {
       const message =
-        err.response?.data?.detail || "Impossible de cr\u00e9er l'audit. Veuillez r\u00e9essayer.";
+        err.response?.data?.detail || "Impossible de créer l'audit. Veuillez réessayer.";
       setError(message);
     } finally {
       setSubmitting(false);
@@ -60,21 +60,17 @@ export default function NewAudit() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-2xl font-bold" style={{ color: '#1B5E20' }}>
-            Nouvel audit
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Renseignez les informations de l'entreprise \u00e0 auditer
-          </p>
-        </div>
-      </header>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: '#1B5E20' }}>
+          Nouvel audit
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Renseignez les informations de l'entreprise à auditer
+        </p>
+      </div>
 
-      {/* Form */}
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center justify-between">
             <span>{error}</span>
@@ -120,7 +116,7 @@ export default function NewAudit() {
               htmlFor="sector"
               className="block text-sm font-medium text-gray-700 mb-1.5"
             >
-              Secteur d'activit\u00e9 <span className="text-red-500">*</span>
+              Secteur d'activité <span className="text-red-500">*</span>
             </label>
             <select
               id="sector"
@@ -133,7 +129,7 @@ export default function NewAudit() {
               onBlur={(e) => (e.target.style.boxShadow = 'none')}
             >
               <option value="" disabled>
-                S\u00e9lectionnez un secteur
+                Sélectionnez un secteur
               </option>
               {SECTORS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -207,11 +203,11 @@ export default function NewAudit() {
                 if (!submitting) e.currentTarget.style.backgroundColor = '#1B5E20';
               }}
             >
-              {submitting ? 'Cr\u00e9ation en cours...' : "Cr\u00e9er l'audit"}
+              {submitting ? 'Création en cours...' : "Créer l'audit"}
             </button>
           </div>
         </form>
-      </main>
+      </div>
     </div>
   );
 }
