@@ -47,7 +47,7 @@ export default function Login() {
       } else {
         await login(email, password);
       }
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       const detail = err.response?.data?.detail;
       if (typeof detail === 'string') {

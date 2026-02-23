@@ -217,7 +217,9 @@ export default function ClaimForm() {
       await api.delete(`/claims/${claimId}`);
       await fetchClaims();
     } catch (err) {
-      setError("Erreur lors de la suppression de l'allegation.");
+      setError(
+        err.response?.data?.detail || "Erreur lors de la suppression de l'allegation."
+      );
     }
   };
 
@@ -286,7 +288,7 @@ export default function ClaimForm() {
       {/* ----------------------------------------------------------------- */}
       <div className="bg-[#1B5E20] text-white shadow-lg rounded-xl p-6">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
           className="mb-3 inline-flex items-center text-sm text-green-200 hover:text-white transition-colors"
         >
           <svg className="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -336,7 +338,7 @@ export default function ClaimForm() {
           <div className="flex gap-3">
             <button
               onClick={openNewForm}
-              disabled={showForm}
+              disabled={showForm || audit?.status === 'completed'}
               className="inline-flex items-center rounded-lg bg-[#1B5E20] px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#2E7D32] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -825,36 +827,42 @@ export default function ClaimForm() {
 
                     {/* Actions */}
                     <div className="flex flex-shrink-0 gap-1">
-                      <button
-                        onClick={() => openEditForm(claim)}
-                        disabled={showForm}
-                        title="Modifier"
-                        className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-[#1B5E20] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(claim.id)}
-                        disabled={showForm}
-                        title="Supprimer"
-                        className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
+                      {audit?.status === 'completed' ? (
+                        <span className="self-center text-xs text-gray-400 italic">Audit terminé</span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => openEditForm(claim)}
+                            disabled={showForm}
+                            title="Modifier"
+                            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-[#1B5E20] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(claim.id)}
+                            disabled={showForm}
+                            title="Supprimer"
+                            className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,8 +1,9 @@
 import { Component } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from './api/auth';
+import { AuthProvider, useAuth } from './api/auth';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NewAudit from './pages/NewAudit';
@@ -47,13 +48,25 @@ function ProtectedPage({ children }) {
   );
 }
 
+function HomeRoute() {
+  const { partner, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-gray-400">Chargement...</div>
+    </div>
+  );
+  if (partner) return <Navigate to="/dashboard" replace />;
+  return <Landing />;
+}
+
 function AppRoutes() {
   const location = useLocation();
 
   return (
     <Routes key={location.pathname}>
+      <Route path="/" element={<HomeRoute />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+      <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
       <Route path="/audits/new" element={<ProtectedPage><NewAudit /></ProtectedPage>} />
       <Route path="/audits/:auditId" element={<ProtectedPage><ClaimForm /></ProtectedPage>} />
       <Route path="/audits/:auditId/claims" element={<ProtectedPage><ClaimForm /></ProtectedPage>} />
