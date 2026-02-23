@@ -48,12 +48,31 @@ export default function AuditResults() {
   const [reportInfo, setReportInfo] = useState(null);
   const [error, setError] = useState('');
 
+  // Monitoring state
+  // null = chargement, false = non configuré, object = configuré
+  const [monitoring, setMonitoring] = useState(null);
+  const [monitoringLoading, setMonitoringLoading] = useState(false);
+  const [monitoringError, setMonitoringError] = useState('');
+
   useEffect(() => {
     api.get(`/audits/${auditId}/results`)
       .then((res) => setResults(res.data))
       .catch((err) => setError(err.response?.data?.detail || 'Erreur lors du chargement'))
       .finally(() => setLoading(false));
   }, [auditId]);
+
+  // Charger l'état du monitoring quand l'audit est completé
+  useEffect(() => {
+    if (results?.status === 'completed') {
+      api.get(`/audits/${auditId}/monitoring`)
+        .then((res) => setMonitoring(res.data))
+        .catch((err) => {
+          if (err.response?.status === 404) {
+            setMonitoring(false);
+          }
+        });
+    }
+  }, [results, auditId]);
 
   const handleGeneratePdf = async () => {
     setGenerating(true);
@@ -78,6 +97,43 @@ export default function AuditResults() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       setError('Erreur lors du téléchargement du PDF');
+    }
+  };
+
+  const handleEnableMonitoring = async () => {
+    setMonitoringLoading(true);
+    setMonitoringError('');
+    try {
+      const res = await api.post(`/audits/${auditId}/monitoring`, { frequency_days: 7 });
+      setMonitoring(res.data);
+    } catch (err) {
+      setMonitoringError(err.response?.data?.detail || "Erreur lors de l'activation");
+    } finally {
+      setMonitoringLoading(false);
+    }
+  };
+
+  const handleDisableMonitoring = async () => {
+    try {
+      await api.delete(`/audits/${auditId}/monitoring`);
+      setMonitoring((prev) => ({ ...prev, is_active: false }));
+    } catch (err) {
+      setMonitoringError(err.response?.data?.detail || 'Erreur');
+    }
+  };
+
+  const handleMarkRead = async (alertId) => {
+    try {
+      await api.patch(`/monitoring/alerts/${alertId}/read`);
+      setMonitoring((prev) => ({
+        ...prev,
+        unread_alerts_count: Math.max(0, prev.unread_alerts_count - 1),
+        alerts: prev.alerts.map((a) =>
+          a.id === alertId ? { ...a, is_read: true } : a
+        ),
+      }));
+    } catch {
+      // silently fail
     }
   };
 
@@ -163,6 +219,123 @@ export default function AuditResults() {
               {window.location.origin}/api/audits/{auditId}/share/{reportInfo.share_token}
             </code>
           </p>
+        </div>
+      )}
+
+      {/* Monitoring continu */}
+      {results.status === 'completed' && (
+        <div className="bg-white rounded-xl shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-1">Monitoring continu</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Détecte automatiquement les nouvelles allégations environnementales sur le site chaque semaine.
+          </p>
+
+          {/* Chargement initial */}
+          {monitoring === null && (
+            <p className="text-sm text-gray-400">Chargement du statut...</p>
+          )}
+
+          {/* Pas configuré */}
+          {monitoring === false && (
+            <div>
+              {!results.website_url && (
+                <p className="text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg mb-3">
+                  Cet audit n'a pas d'URL de site web. Modifiez l'audit pour en ajouter une.
+                </p>
+              )}
+              {monitoringError && (
+                <p className="text-sm text-red-600 mb-3">{monitoringError}</p>
+              )}
+              <button
+                onClick={handleEnableMonitoring}
+                disabled={monitoringLoading || !results.website_url}
+                className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 text-sm"
+              >
+                {monitoringLoading ? 'Activation...' : 'Activer le monitoring'}
+              </button>
+            </div>
+          )}
+
+          {/* Configuré */}
+          {monitoring && typeof monitoring === 'object' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                      monitoring.is_active
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {monitoring.is_active ? 'Actif' : 'Inactif'}
+                  </span>
+                  {monitoring.unread_alerts_count > 0 && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      {monitoring.unread_alerts_count} nouvelle
+                      {monitoring.unread_alerts_count > 1 ? 's' : ''} alerte
+                      {monitoring.unread_alerts_count > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={monitoring.is_active ? handleDisableMonitoring : handleEnableMonitoring}
+                  className="text-sm text-gray-400 hover:text-gray-600 underline"
+                >
+                  {monitoring.is_active ? 'Désactiver' : 'Réactiver'}
+                </button>
+              </div>
+
+              {monitoring.last_checked_at && (
+                <p className="text-xs text-gray-400 mb-4">
+                  Dernier check :{' '}
+                  {new Date(monitoring.last_checked_at).toLocaleString('fr-FR')}
+                  {monitoring.next_check_at && (
+                    <> · Prochain : {new Date(monitoring.next_check_at).toLocaleDateString('fr-FR')}</>
+                  )}
+                </p>
+              )}
+
+              {monitoringError && (
+                <p className="text-sm text-red-600 mb-3">{monitoringError}</p>
+              )}
+
+              {monitoring.alerts.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  Aucune nouvelle allégation détectée pour l'instant.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {monitoring.alerts.map((alert) => (
+                    <div
+                      key={alert.id}
+                      className={`p-3 rounded-lg border ${
+                        alert.is_read
+                          ? 'bg-gray-50 border-gray-100'
+                          : 'bg-amber-50 border-amber-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm text-gray-700 flex-1">{alert.claim_text}</p>
+                        {!alert.is_read && (
+                          <button
+                            onClick={() => handleMarkRead(alert.id)}
+                            className="shrink-0 text-xs text-amber-700 hover:text-amber-900 font-medium whitespace-nowrap"
+                          >
+                            Marquer lu
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Détectée le{' '}
+                        {new Date(alert.detected_at).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

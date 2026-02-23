@@ -14,6 +14,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.claim import Claim
+    from app.models.monitoring_config import MonitoringConfig
     from app.models.partner import Partner
 
 
@@ -60,4 +61,7 @@ class Audit(Base):
     partner: Mapped[Partner] = relationship(back_populates="audits")
     claims: Mapped[List[Claim]] = relationship(
         back_populates="audit", cascade="all, delete-orphan"
+    )
+    monitoring_config: Mapped[Optional[MonitoringConfig]] = relationship(
+        back_populates="audit", cascade="all, delete-orphan", uselist=False
     )

@@ -39,6 +39,7 @@ class AuditResultsResponse(BaseModel):
     audit_id: UUID
     company_name: str
     status: str
+    website_url: Optional[str] = None
     total_claims: int
     conforming_claims: int
     non_conforming_claims: int
