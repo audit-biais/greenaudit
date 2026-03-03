@@ -16,7 +16,12 @@ if settings.DATABASE_URL.startswith("sqlite"):
     from sqlalchemy.dialects.postgresql import UUID as PG_UUID
     PG_UUID.impl = String(36)
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False)
+# Railway fournit postgresql:// mais asyncpg a besoin de postgresql+asyncpg://
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+engine = create_async_engine(db_url, echo=False)
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
