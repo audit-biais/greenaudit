@@ -7,7 +7,6 @@ from typing import List, Optional
 from uuid import UUID
 
 import httpx
-from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -20,22 +19,22 @@ from app.models.monitoring_config import MonitoringConfig
 
 logger = logging.getLogger(__name__)
 
-# Pages RSE/durabilité courantes à essayer en plus de la page d'accueil
+# Pages RSE/durabilité à scraper via Jina
 _RSE_PATHS = [
     "",
-    "/developpement-durable",
     "/rse",
+    "/developpement-durable",
     "/engagement",
     "/sustainability",
     "/environnement",
-    "/responsabilite",
 ]
 
 
 async def scrape_website(url: str) -> str:
     """
-    Scrape la page d'accueil + pages RSE/durabilité d'un site.
-    Retourne le texte brut concaténé, limité à 8 000 caractères.
+    Scrape la page d'accueil + pages RSE via Jina Reader.
+    Jina exécute le JS et retourne du texte propre — fonctionne sur les sites React/Next.js/Shopify.
+    Retourne le texte concaténé, limité à 8 000 caractères.
     """
     if not url.startswith(("http://", "https://")):
         url = f"https://{url}"
@@ -44,35 +43,24 @@ async def scrape_website(url: str) -> str:
     collected_text = ""
 
     async with httpx.AsyncClient(
-        timeout=10.0,
+        timeout=20.0,
         follow_redirects=True,
-        headers={"User-Agent": "Mozilla/5.0 (compatible; GreenAuditBot/1.0)"},
+        headers={
+            "Accept": "text/plain",
+            "X-Return-Format": "text",
+        },
     ) as client:
         for path in _RSE_PATHS:
-            target = f"{base_url}{path}"
+            target = f"https://r.jina.ai/{base_url}{path}"
             try:
                 response = await client.get(target)
                 if response.status_code != 200:
                     continue
-
-                soup = BeautifulSoup(response.text, "html.parser")
-
-                # Meta description
-                meta = soup.find("meta", attrs={"name": "description"})
-                if meta and meta.get("content"):
-                    collected_text += meta["content"] + "\n"
-
-                # Titres et paragraphes
-                for tag in soup.find_all(["h1", "h2", "h3", "p", "li"]):
-                    text = tag.get_text(strip=True)
-                    if text:
-                        collected_text += text + "\n"
-
+                collected_text += response.text + "\n"
                 if len(collected_text) >= 8000:
                     break
-
             except Exception as exc:
-                logger.debug(f"Impossible de scraper {target}: {exc}")
+                logger.debug(f"Impossible de scraper {base_url}{path} via Jina: {exc}")
                 continue
 
     return collected_text[:8000]
