@@ -18,18 +18,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 24
 
-    # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
-
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors(cls, v):
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except json.JSONDecodeError:
-                return [s.strip() for s in v.split(",") if s.strip()]
-        return v
+    # CORS — stocké comme string, parsé dans main.py
+    CORS_ORIGINS: str = "http://localhost:5173"
 
     # Stockage PDF
     PDF_STORAGE_PATH: str = "./reports"
