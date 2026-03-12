@@ -469,7 +469,7 @@ class AlertBoxFlowable(Flowable):
         c.setFont("Helvetica-Bold", 9)
         c.setFillColor(colors.HexColor("#991B1B"))
         n_issues = len(self.issues)
-        c.drawString(30, self.height - 20, f"Allegation a risque maximal — {n_issues} problemes detectes")
+        c.drawString(30, self.height - 20, f"Allégation à risque maximal — {n_issues} problèmes détectés")
         c.restoreState()
 
         # Texte de la claim (tronqué)
