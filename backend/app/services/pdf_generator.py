@@ -887,7 +887,9 @@ def _financial_risk_elements(audit: Audit, styles: dict) -> list:
     )])
     box_data.append([Spacer(1, 2 * mm)])
     box_data.append([Paragraph(
-        "<i>Ces montants sont indicatifs et basés sur le cadre légal français en vigueur. "
+        "<i>Note : Les sanctions sont déterminées par chaque État membre conformément "
+        "à l'article 13 de la directive 2005/29/CE. Les montants ci-dessus correspondent "
+        "au cadre légal français en vigueur à la date d'audit. "
         "Consultez un avocat pour une évaluation précise.</i>",
         ParagraphStyle("warn_disclaimer", parent=styles["small"], fontSize=7, textColor=colors.HexColor("#92400E"), leading=10),
     )])
