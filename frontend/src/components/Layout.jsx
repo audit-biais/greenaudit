@@ -3,6 +3,7 @@ import { useAuth } from '../api/auth';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard' },
+  { path: '/scan', label: 'Analyse' },
   { path: '/settings', label: 'Paramètres' },
 ];
 
