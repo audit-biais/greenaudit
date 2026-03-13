@@ -4,17 +4,56 @@ const STEPS = [
   {
     number: '01',
     title: 'Saisissez les allégations',
-    desc: "Entrez les claims environnementales de votre client (site web, packaging, publicité). Le formulaire guidé prend 10 à 20 minutes.",
+    desc: "Entrez les allégations environnementales de votre client telles qu'elles apparaissent sur son site web, packaging ou publicité. Le formulaire guidé prend 10 à 20 minutes.",
   },
   {
     number: '02',
     title: 'Analyse automatique',
-    desc: "Notre moteur applique les 6 critères de la directive EmpCo sur chaque allégation : claims génériques, neutralité carbone, labels, preuves...",
+    desc: "Notre moteur vérifie chaque allégation contre les 6 interdictions de l'Annexe I de la directive (UE) 2024/825 : claims génériques, neutralité carbone, labels non certifiés, proportionnalité, engagements futurs, preuves.",
   },
   {
     number: '03',
     title: 'Rapport PDF à votre marque',
-    desc: "Téléchargez un rapport professionnel avec votre logo et vos couleurs. Partagez le lien client en lecture seule directement depuis la plateforme.",
+    desc: "Téléchargez un rapport professionnel avec votre logo et vos couleurs : verdict par allégation, articles violés, recommandations de correction et plan d'action priorisé.",
+  },
+];
+
+const RULES = [
+  {
+    article: 'Annexe I, 4 bis',
+    title: 'Allégations génériques',
+    desc: '"Écologique", "durable", "respectueux de l\'environnement"... Sans preuve de performance environnementale excellente reconnue, ces termes sont interdits.',
+    verdict: 'Interdit',
+  },
+  {
+    article: 'Annexe I, 4 quater',
+    title: 'Neutralité carbone par compensation',
+    desc: 'Affirmer qu\'un produit a un impact neutre, réduit ou positif sur les émissions de GES sur la base de la compensation carbone est interdit en toutes circonstances.',
+    verdict: 'Interdit',
+  },
+  {
+    article: 'Annexe I, 2 bis',
+    title: 'Labels non certifiés',
+    desc: 'Afficher un label de développement durable qui n\'est pas fondé sur un système de certification par un tiers indépendant ou établi par une autorité publique est interdit.',
+    verdict: 'Interdit',
+  },
+  {
+    article: 'Annexe I, 4 ter',
+    title: 'Proportionnalité',
+    desc: 'Présenter une allégation concernant l\'ensemble du produit ou de l\'entreprise alors qu\'elle ne concerne qu\'un aspect spécifique est interdit.',
+    verdict: 'Interdit',
+  },
+  {
+    article: 'Art. 6 §2, Dir. 2005/29/CE',
+    title: 'Engagements futurs',
+    desc: 'Les allégations de performance future (transition vers le "net zero", etc.) doivent être étayées par des engagements clairs, un calendrier précis et un suivi indépendant vérifiable.',
+    verdict: 'Encadré',
+  },
+  {
+    article: 'Art. 6 §1, Dir. 2005/29/CE',
+    title: 'Preuve et traçabilité',
+    desc: 'Toute allégation environnementale doit être vérifiable. Sans preuve documentée (certification tierce, données mesurables), l\'allégation est considérée trompeuse.',
+    verdict: 'Encadré',
   },
 ];
 
@@ -43,8 +82,8 @@ const WHY = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
       </svg>
     ),
-    title: 'Conformité EmpCo garantie',
-    desc: "Chaque verdict s'appuie sur les articles exacts de la directive EU 2024/825 et les guidelines ADEME 2025.",
+    title: 'Références réglementaires exactes',
+    desc: "Chaque verdict cite l'article précis de la directive (UE) 2024/825 et de la directive 2005/29/CE modifiée. Défendable juridiquement.",
   },
   {
     icon: (
@@ -110,17 +149,17 @@ export default function Landing() {
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Deadline réglementaire : 27 septembre 2026
+            Transposition obligatoire avant le 27 septembre 2026
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
-            Auditez la conformité<br />
-            anti-greenwashing<br />
-            <span className="text-green-200">de vos clients.</span>
+            Directive (UE) 2024/825<br />
+            <span className="text-green-200">Vos clients sont-ils conformes ?</span>
           </h1>
           <p className="text-lg sm:text-xl text-green-100 max-w-2xl mx-auto mb-10 leading-relaxed">
-            La directive EmpCo (EU 2024/825) entre en vigueur le 27 septembre 2026.{' '}
-            <span translate="no">GreenAudit</span> analyse automatiquement les allégations environnementales et génère
-            un rapport PDF professionnel, à votre marque, en quelques minutes.
+            La directive EmpCo interdit les allégations environnementales trompeuses et
+            les labels de développement durable non certifiés.{' '}
+            <span translate="no">GreenAudit</span> analyse automatiquement chaque allégation
+            contre les 6 interdictions de l'Annexe I et génère un rapport PDF conforme, à votre marque.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
@@ -140,23 +179,56 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Stats urgence                                                        */}
+      {/* Stats urgence                                                       */}
       {/* ------------------------------------------------------------------ */}
       <section className="border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
             <div>
-              <p className="text-4xl font-extrabold" style={{ color: '#1B5E20' }}>27 sept.</p>
-              <p className="mt-1 text-sm text-gray-500">Deadline réglementaire 2026</p>
+              <p className="text-4xl font-extrabold" style={{ color: '#1B5E20' }}>27 sept. 2026</p>
+              <p className="mt-1 text-sm text-gray-500">Transposition dans les droits nationaux des 27 États membres</p>
             </div>
             <div>
               <p className="text-4xl font-extrabold" style={{ color: '#1B5E20' }}>6</p>
-              <p className="mt-1 text-sm text-gray-500">Critères EmpCo analysés par allégation</p>
+              <p className="mt-1 text-sm text-gray-500">Interdictions de l'Annexe I vérifiées par allégation</p>
             </div>
             <div>
               <p className="text-4xl font-extrabold" style={{ color: '#1B5E20' }}>x10</p>
               <p className="mt-1 text-sm text-gray-500">Moins cher qu'un audit manuel (2 000€ vs 20 000€)</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Ce que la directive interdit                                        */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl font-extrabold text-gray-900">Ce que la directive interdit</h2>
+            <p className="mt-3 text-gray-500 max-w-2xl mx-auto">
+              La directive (UE) 2024/825 modifie la directive 2005/29/CE sur les pratiques commerciales déloyales.
+              Elle ajoute 4 interdictions absolues à l'Annexe I et renforce 2 exigences existantes.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {RULES.map((rule) => (
+              <div key={rule.article} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono text-gray-400">{rule.article}</span>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                    rule.verdict === 'Interdit'
+                      ? 'bg-red-50 text-red-700'
+                      : 'bg-amber-50 text-amber-700'
+                  }`}>
+                    {rule.verdict}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-gray-900 mb-2">{rule.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{rule.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -248,10 +320,10 @@ export default function Landing() {
       <section className="py-20 bg-gray-50 border-t border-gray-100">
         <div className="max-w-2xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-extrabold text-gray-900 mb-4">
-            Prêt à proposer l'audit à vos clients ?
+            La directive entre en vigueur dans quelques mois.
           </h2>
           <p className="text-gray-500 mb-8">
-            Créez votre compte partenaire gratuitement et lancez votre premier audit aujourd'hui.
+            Vos clients ne sont probablement pas conformes. Proposez-leur l'audit avant qu'il ne soit trop tard.
           </p>
           <button
             onClick={() => navigate('/login')}
@@ -288,7 +360,7 @@ export default function Landing() {
             <span className="text-sm font-semibold" style={{ color: '#1B5E20' }} translate="no">GreenAudit</span>
           </div>
           <p className="text-xs text-gray-400 text-center">
-            Conformité Directive EmpCo (EU 2024/825) &mdash; Deadline 27 septembre 2026
+            Conformité Directive (UE) 2024/825 modifiant les directives 2005/29/CE et 2011/83/UE &mdash; Transposition avant le 27 septembre 2026
           </p>
         </div>
       </footer>
