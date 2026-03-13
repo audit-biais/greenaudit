@@ -6,7 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -26,13 +26,14 @@ class ContactForm(BaseModel):
 @router.post("")
 async def send_contact(form: ContactForm):
     """Reçoit le formulaire de contact et envoie un email de notification."""
+    logger.info(f"Contact reçu: {form.name} <{form.email}> ({form.company}) — {form.message[:100]}")
+
     smtp_user = os.environ.get("SMTP_USER")
     smtp_password = os.environ.get("SMTP_PASSWORD")
 
     if not smtp_user or not smtp_password:
-        logger.warning("SMTP non configuré — message contact reçu mais non envoyé par email")
-        logger.info(f"Contact: {form.name} <{form.email}> ({form.company}) — {form.message[:100]}")
-        return {"status": "received", "detail": "Message enregistré (email non configuré)"}
+        logger.warning("SMTP non configuré — email non envoyé")
+        return {"status": "received"}
 
     try:
         msg = MIMEMultipart()
@@ -52,7 +53,7 @@ Message :
 """
         msg.attach(MIMEText(body, "plain", "utf-8"))
 
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
             server.starttls()
             server.login(smtp_user, smtp_password)
             server.send_message(msg)
@@ -62,4 +63,4 @@ Message :
 
     except Exception as e:
         logger.error(f"Erreur envoi email contact: {e}")
-        raise HTTPException(status_code=500, detail="Erreur lors de l'envoi du message")
+        return {"status": "received", "detail": "Message enregistré mais email non envoyé"}
