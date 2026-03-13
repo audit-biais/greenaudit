@@ -109,6 +109,19 @@ def _summary_phrase(risk_level: Optional[str]) -> str:
     return phrases.get(risk_level or "", phrases["critique"])
 
 
+RISK_LABELS: Dict[str, str] = {
+    "faible": "faible",
+    "modere": "modéré",
+    "eleve": "élevé",
+    "critique": "critique",
+}
+
+
+def _risk_label(risk_level: Optional[str]) -> str:
+    """Retourne le niveau de risque avec accents."""
+    return RISK_LABELS.get(risk_level or "", risk_level or "—")
+
+
 def _score_color(score: float) -> colors.Color:
     """Retourne la couleur correspondant au score."""
     if score <= 25:
@@ -585,7 +598,7 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict) -> list:
 
     # Niveau de risque texte
     risk_color = RISK_COLORS.get(audit.risk_level or "", colors.gray)
-    risk_text = f"Risque {audit.risk_level or '—'}"
+    risk_text = f"Risque {_risk_label(audit.risk_level)}"
     risk_style = ParagraphStyle("risk", parent=styles["cover_center"], textColor=risk_color, fontSize=14, spaceAfter=6)
     elements.append(Paragraph(f"<b>{risk_text}</b>", risk_style))
     elements.append(Spacer(1, 6 * mm))
@@ -640,7 +653,7 @@ def _summary_elements(audit: Audit, styles: dict) -> list:
     elements.append(t)
     elements.append(Spacer(1, 4 * mm))
     elements.append(Paragraph(
-        f"Score global : <b>{audit.global_score}/100</b> — Risque <b>{audit.risk_level}</b>. "
+        f"Score global : <b>{audit.global_score}/100</b> — Risque <b>{_risk_label(audit.risk_level)}</b>. "
         f"{_summary_phrase(audit.risk_level)}",
         styles["body"],
     ))

@@ -190,7 +190,7 @@ def rule_compensation(claim: Claim) -> ClaimResult:
         recommendation=(
             "Supprimer toute référence à la neutralité carbone ou à la compensation. "
             "Communiquer plutôt sur les réductions d'émissions concrètes et mesurables "
-            "de l'entreprise (ex : « -25 % d'émissions CO₂ entre 2022 et 2025 »)."
+            "de l'entreprise (ex : « -25 % d'émissions CO2 entre 2022 et 2025 »)."
         ),
         regulation_reference=(
             "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
