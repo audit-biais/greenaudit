@@ -27,9 +27,10 @@ export default function Contact() {
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
+          title: 'GreenAudit - Demande de devis',
           from_name: form.name,
           from_email: form.email,
-          company: form.company,
+          entreprise: form.company,
           message: form.message,
         },
         EMAILJS_PUBLIC_KEY,
