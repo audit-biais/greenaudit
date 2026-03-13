@@ -66,6 +66,7 @@ function AppRoutes() {
   return (
     <Routes key={location.pathname}>
       <Route path="/" element={<HomeRoute />} />
+      <Route path="/landing" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
       <Route path="/audits/new" element={<ProtectedPage><NewAudit /></ProtectedPage>} />
