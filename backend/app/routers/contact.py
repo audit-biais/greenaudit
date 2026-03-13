@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ RECIPIENT_EMAIL = "optimaflow.pro@gmail.com"
 
 class ContactForm(BaseModel):
     name: str
-    email: EmailStr
+    email: str
     company: str
     message: str
 
