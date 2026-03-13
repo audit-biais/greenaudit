@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/client';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://greenaudit-production.up.railway.app/api';
 
 export default function Contact() {
   const navigate = useNavigate();
@@ -18,7 +19,12 @@ export default function Contact() {
     setLoading(true);
     setError('');
     try {
-      await api.post('/contact', form);
+      const res = await fetch(`${API_URL}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error('Erreur serveur');
       setSent(true);
     } catch (err) {
       setError("Une erreur est survenue. Réessayez ou envoyez un email directement à optimaflow.pro@gmail.com");
