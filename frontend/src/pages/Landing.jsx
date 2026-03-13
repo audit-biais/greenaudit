@@ -283,32 +283,27 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* ROI                                                                 */}
+      {/* Contact / Devis                                                     */}
       {/* ------------------------------------------------------------------ */}
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="rounded-2xl p-10 text-center" style={{ background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)' }}>
-            <h2 className="text-3xl font-extrabold text-white mb-4">Un modèle économique simple</h2>
+            <h2 className="text-3xl font-extrabold text-white mb-4">Un tarif adapté à votre volume</h2>
             <p className="text-green-100 text-lg mb-10 max-w-xl mx-auto">
-              Achetez l'accès à <span translate="no">GreenAudit</span>. Revendez l'audit à votre marque.
+              Chaque partenaire a des besoins différents. Contactez-nous pour un devis personnalisé
+              selon votre nombre de clients et votre secteur d'activité.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl mx-auto">
-              <div className="bg-white/15 rounded-xl p-5 backdrop-blur-sm">
-                <p className="text-3xl font-extrabold text-white">250-500€</p>
-                <p className="text-green-200 text-sm mt-1">Votre coût d'accès</p>
-              </div>
-              <div className="flex items-center justify-center">
-                <svg className="h-8 w-8 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </div>
-              <div className="bg-white/15 rounded-xl p-5 backdrop-blur-sm">
-                <p className="text-3xl font-extrabold text-white">2 000-5 000€</p>
-                <p className="text-green-200 text-sm mt-1">Votre prix de revente</p>
-              </div>
-            </div>
-            <p className="text-green-200 text-xs mt-8">
-              Un audit manuel facturé par un cabinet juridique coûte entre 10 000 et 20 000€.
+            <a
+              href="mailto:contact@greenaudit.app"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold text-[#1B5E20] bg-white shadow-lg hover:bg-gray-50 transition-colors"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Demander un devis
+            </a>
+            <p className="text-green-200 text-sm mt-6">
+              Réponse sous 24h &mdash; contact@greenaudit.app
             </p>
           </div>
         </div>
