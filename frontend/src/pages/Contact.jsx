@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import emailjs from '@emailjs/browser';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://greenaudit-production.up.railway.app/api';
+// Mêmes identifiants EmailJS que AuditBiais
+const EMAILJS_SERVICE_ID = 'service_a20f76h';
+const EMAILJS_TEMPLATE_ID = 'template_rk1zxyq';
+const EMAILJS_PUBLIC_KEY = 'SpdUZkbJUFL3sdP0b';
 
 export default function Contact() {
   const navigate = useNavigate();
@@ -19,12 +23,17 @@ export default function Contact() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/contact`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error('Erreur serveur');
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          from_name: form.name,
+          from_email: form.email,
+          company: form.company,
+          message: form.message,
+        },
+        EMAILJS_PUBLIC_KEY,
+      );
       setSent(true);
     } catch (err) {
       setError("Une erreur est survenue. Réessayez ou envoyez un email directement à optimaflow.pro@gmail.com");
