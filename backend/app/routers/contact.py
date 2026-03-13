@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +26,8 @@ class ContactForm(BaseModel):
 @router.post("")
 async def send_contact(form: ContactForm):
     """Reçoit le formulaire de contact et envoie un email de notification."""
-    smtp_user = getattr(settings, "SMTP_USER", None)
-    smtp_password = getattr(settings, "SMTP_PASSWORD", None)
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_password = os.environ.get("SMTP_PASSWORD")
 
     if not smtp_user or not smtp_password:
         logger.warning("SMTP non configuré — message contact reçu mais non envoyé par email")
