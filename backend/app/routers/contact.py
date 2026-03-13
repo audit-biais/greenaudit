@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, EmailStr
+
+from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/contact", tags=["contact"])
+
+RECIPIENT_EMAIL = "optimaflow.pro@gmail.com"
+
+
+class ContactForm(BaseModel):
+    name: str
+    email: EmailStr
+    company: str
+    message: str
+
+
+@router.post("")
+async def send_contact(form: ContactForm):
+    """Reçoit le formulaire de contact et envoie un email de notification."""
+    smtp_user = getattr(settings, "SMTP_USER", None)
+    smtp_password = getattr(settings, "SMTP_PASSWORD", None)
+
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP non configuré — message contact reçu mais non envoyé par email")
+        logger.info(f"Contact: {form.name} <{form.email}> ({form.company}) — {form.message[:100]}")
+        return {"status": "received", "detail": "Message enregistré (email non configuré)"}
+
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = smtp_user
+        msg["To"] = RECIPIENT_EMAIL
+        msg["Reply-To"] = form.email
+        msg["Subject"] = f"[GreenAudit] Demande de devis — {form.company}"
+
+        body = f"""Nouvelle demande de devis via GreenAudit
+
+Nom : {form.name}
+Email : {form.email}
+Entreprise : {form.company}
+
+Message :
+{form.message}
+"""
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+
+        logger.info(f"Email contact envoyé pour {form.company}")
+        return {"status": "sent"}
+
+    except Exception as e:
+        logger.error(f"Erreur envoi email contact: {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors de l'envoi du message")

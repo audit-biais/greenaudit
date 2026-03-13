@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # Claude API (monitoring continu)
     ANTHROPIC_API_KEY: Optional[str] = None
 
+    # SMTP (envoi emails contact)
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
