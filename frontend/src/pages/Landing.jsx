@@ -117,6 +117,12 @@ export default function Landing() {
             <span className="text-lg font-bold" style={{ color: '#1B5E20' }} translate="no">GreenAudit</span>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/contact')}
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Contact
+            </button>
             {partner ? (
               <button
                 onClick={() => navigate('/dashboard')}
