@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../api/auth';
 
 const STEPS = [
   {
@@ -98,6 +99,7 @@ const WHY = [
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { partner } = useAuth();
 
   return (
     <div className="min-h-screen bg-white">
@@ -115,21 +117,35 @@ export default function Landing() {
             <span className="text-lg font-bold" style={{ color: '#1B5E20' }} translate="no">GreenAudit</span>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/login')}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Se connecter
-            </button>
-            <button
-              onClick={() => navigate('/login')}
-              className="text-sm font-semibold text-white px-4 py-2 rounded-lg transition-colors"
-              style={{ backgroundColor: '#1B5E20' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#2E7D32')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#1B5E20')}
-            >
-              Créer un compte
-            </button>
+            {partner ? (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="text-sm font-semibold text-white px-4 py-2 rounded-lg transition-colors"
+                style={{ backgroundColor: '#1B5E20' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#2E7D32')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#1B5E20')}
+              >
+                Mon dashboard
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  Se connecter
+                </button>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="text-sm font-semibold text-white px-4 py-2 rounded-lg transition-colors"
+                  style={{ backgroundColor: '#1B5E20' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#2E7D32')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#1B5E20')}
+                >
+                  Créer un compte
+                </button>
+              </>
+            )}
           </div>
         </div>
       </nav>
