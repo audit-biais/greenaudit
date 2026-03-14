@@ -131,7 +131,7 @@ export default function Landing() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#2E7D32')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#1B5E20')}
               >
-                Mon dashboard
+                Tableau de bord
               </button>
             ) : (
               <>
