@@ -65,7 +65,7 @@ function AppRoutes() {
   const location = useLocation();
 
   return (
-    <Routes key={location.pathname}>
+    <Routes>
       <Route path="/" element={<HomeRoute />} />
       <Route path="/landing" element={<Landing />} />
       <Route path="/contact" element={<Contact />} />
