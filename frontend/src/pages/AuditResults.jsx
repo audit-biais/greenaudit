@@ -2,26 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 
-const VERDICT_COLORS = {
-  conforme: 'bg-green-100 text-green-800',
-  non_conforme: 'bg-red-100 text-red-800',
-  risque: 'bg-orange-100 text-orange-800',
-  non_applicable: 'bg-gray-100 text-gray-600',
+const VERDICT_STYLES = {
+  conforme: 'bg-[#eaf4ee] text-[#1a5c3a]',
+  non_conforme: 'bg-red-50 text-red-700',
+  risque: 'bg-orange-50 text-orange-700',
+  non_applicable: 'bg-gray-100 text-gray-500',
 };
+const VERDICT_LABELS = { conforme: 'Conforme', non_conforme: 'Non conforme', risque: 'Risque', non_applicable: 'N/A' };
 
-const VERDICT_LABELS = {
-  conforme: 'Conforme',
-  non_conforme: 'Non conforme',
-  risque: 'Risque',
-  non_applicable: 'N/A',
-};
-
-const RISK_COLORS = {
-  faible: 'bg-green-500',
-  modere: 'bg-yellow-500',
-  eleve: 'bg-orange-500',
-  critique: 'bg-red-600',
-};
+const RISK_BAR_COLORS = { faible: 'bg-[#1a5c3a]', modere: 'bg-yellow-500', eleve: 'bg-orange-500', critique: 'bg-red-600' };
 
 const CRITERION_LABELS = {
   specificity: 'Spécificité',
@@ -34,7 +23,7 @@ const CRITERION_LABELS = {
 
 function VerdictBadge({ verdict }) {
   return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${VERDICT_COLORS[verdict] || VERDICT_COLORS.non_applicable}`}>
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${VERDICT_STYLES[verdict] || VERDICT_STYLES.non_applicable}`}>
       {VERDICT_LABELS[verdict] || verdict}
     </span>
   );
@@ -47,9 +36,6 @@ export default function AuditResults() {
   const [generating, setGenerating] = useState(false);
   const [reportInfo, setReportInfo] = useState(null);
   const [error, setError] = useState('');
-
-  // Monitoring state
-  // null = chargement, false = non configuré, object = configuré
   const [monitoring, setMonitoring] = useState(null);
   const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [monitoringError, setMonitoringError] = useState('');
@@ -61,16 +47,11 @@ export default function AuditResults() {
       .finally(() => setLoading(false));
   }, [auditId]);
 
-  // Charger l'état du monitoring quand l'audit est completé
   useEffect(() => {
     if (results?.status === 'completed') {
       api.get(`/audits/${auditId}/monitoring`)
         .then((res) => setMonitoring(res.data))
-        .catch((err) => {
-          if (err.response?.status === 404) {
-            setMonitoring(false);
-          }
-        });
+        .catch((err) => { if (err.response?.status === 404) setMonitoring(false); });
     }
   }, [results, auditId]);
 
@@ -95,7 +76,7 @@ export default function AuditResults() {
       a.download = `rapport_greenaudit_${results.company_name}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       setError('Erreur lors du téléchargement du PDF');
     }
   };
@@ -128,207 +109,173 @@ export default function AuditResults() {
       setMonitoring((prev) => ({
         ...prev,
         unread_alerts_count: Math.max(0, prev.unread_alerts_count - 1),
-        alerts: prev.alerts.map((a) =>
-          a.id === alertId ? { ...a, is_read: true } : a
-        ),
+        alerts: prev.alerts.map((a) => a.id === alertId ? { ...a, is_read: true } : a),
       }));
-    } catch {
-      // silently fail
-    }
+    } catch { /* silent */ }
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-64"><div className="text-gray-500">Chargement...</div></div>;
-  }
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <p className="text-gray-400 text-sm">Chargement...</p>
+    </div>
+  );
 
-  if (error && !results) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg">{error}</div>
-        <Link to="/" className="mt-4 inline-block text-green-700 hover:underline">Retour au dashboard</Link>
-      </div>
-    );
-  }
+  if (error && !results) return (
+    <div className="max-w-4xl mx-auto">
+      <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm">{error}</div>
+      <Link to="/" className="mt-4 inline-block text-[#1a5c3a] hover:underline text-sm">← Dashboard</Link>
+    </div>
+  );
 
   if (!results) return null;
 
-  const scoreColor = results.risk_level ? RISK_COLORS[results.risk_level] : 'bg-gray-400';
-
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <Link to="/" className="text-green-700 hover:underline text-sm">← Dashboard</Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-1">{results.company_name}</h1>
+          <Link to="/" className="text-xs text-[#1a5c3a] hover:underline">← Dashboard</Link>
+          <h1 className="text-2xl font-black text-gray-900 mt-1">{results.company_name}</h1>
+          <p className="text-sm text-gray-400 capitalize mt-0.5">{results.sector}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-shrink-0">
           <button
             onClick={handleGeneratePdf}
             disabled={generating}
-            className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50"
+            className="px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors disabled:opacity-50"
           >
             {generating ? 'Génération...' : 'Générer le PDF'}
           </button>
           {reportInfo && (
             <button
               onClick={handleDownload}
-              className="px-4 py-2 bg-white border border-green-700 text-green-700 rounded-lg hover:bg-green-50"
+              className="px-4 py-2.5 rounded-full text-sm font-semibold text-[#1a5c3a] border-2 border-[#1a5c3a] hover:bg-[#eaf4ee] transition-colors"
             >
-              Télécharger le PDF
+              Télécharger →
             </button>
           )}
         </div>
       </div>
 
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">{error}</div>
+      )}
+
       {/* Score global */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Synthèse</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-3xl font-bold text-gray-800">{results.global_score ?? '—'}</div>
-            <div className="text-sm text-gray-500">Score /100</div>
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">Synthèse</p>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <div className="text-center p-4 bg-gray-50 rounded-xl">
+            <p className="text-3xl font-black text-gray-900">{results.global_score ?? '—'}</p>
+            <p className="text-xs text-gray-400 mt-1">Score /100</p>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className={`inline-block px-3 py-1 rounded-full text-white text-sm font-medium ${scoreColor}`}>
+          <div className="text-center p-4 bg-gray-50 rounded-xl">
+            <div className={`inline-block px-3 py-1 rounded-full text-white text-sm font-semibold ${RISK_BAR_COLORS[results.risk_level] || 'bg-gray-400'}`}>
               {results.risk_level || '—'}
             </div>
-            <div className="text-sm text-gray-500 mt-1">Niveau de risque</div>
+            <p className="text-xs text-gray-400 mt-2">Niveau de risque</p>
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-700">{results.conforming_claims}</div>
-            <div className="text-sm text-gray-500">Conformes</div>
+          <div className="text-center p-4 bg-[#eaf4ee] rounded-xl">
+            <p className="text-2xl font-black text-[#1a5c3a]">{results.conforming_claims}</p>
+            <p className="text-xs text-gray-500 mt-1">Conformes</p>
           </div>
-          <div className="text-center p-4 bg-orange-50 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">{results.at_risk_claims}</div>
-            <div className="text-sm text-gray-500">À risque</div>
+          <div className="text-center p-4 bg-orange-50 rounded-xl">
+            <p className="text-2xl font-black text-orange-600">{results.at_risk_claims}</p>
+            <p className="text-xs text-gray-500 mt-1">À risque</p>
           </div>
-          <div className="text-center p-4 bg-red-50 rounded-lg">
-            <div className="text-2xl font-bold text-red-700">{results.non_conforming_claims}</div>
-            <div className="text-sm text-gray-500">Non conformes</div>
+          <div className="text-center p-4 bg-red-50 rounded-xl">
+            <p className="text-2xl font-black text-red-700">{results.non_conforming_claims}</p>
+            <p className="text-xs text-gray-500 mt-1">Non conformes</p>
           </div>
         </div>
       </div>
 
       {/* Share link */}
       {reportInfo?.share_token && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <span className="font-medium">Lien de partage client :</span>{' '}
-            <code className="bg-blue-100 px-2 py-0.5 rounded text-xs">
+        <div className="bg-[#eaf4ee] border border-[#1a5c3a]/20 rounded-xl p-4">
+          <p className="text-sm text-[#1a5c3a]">
+            <span className="font-semibold">Lien de partage client : </span>
+            <code className="bg-white px-2 py-0.5 rounded text-xs border border-[#1a5c3a]/20">
               {window.location.origin}/api/audits/{auditId}/share/{reportInfo.share_token}
             </code>
           </p>
         </div>
       )}
 
-      {/* Monitoring continu */}
+      {/* Monitoring */}
       {results.status === 'completed' && (
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-1">Monitoring continu</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Détecte automatiquement les nouvelles allégations environnementales sur le site chaque semaine.
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-1">Monitoring</p>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Monitoring continu</h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Détecte automatiquement les nouvelles allégations sur le site chaque semaine.
           </p>
 
-          {/* Chargement initial */}
-          {monitoring === null && (
-            <p className="text-sm text-gray-400">Chargement du statut...</p>
-          )}
+          {monitoring === null && <p className="text-sm text-gray-400">Chargement...</p>}
 
-          {/* Pas configuré */}
           {monitoring === false && (
             <div>
               {!results.website_url && (
-                <p className="text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg mb-3">
-                  Cet audit n'a pas d'URL de site web. Modifiez l'audit pour en ajouter une.
+                <p className="text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-xl mb-3">
+                  Cet audit n'a pas d'URL de site web.
                 </p>
               )}
-              {monitoringError && (
-                <p className="text-sm text-red-600 mb-3">{monitoringError}</p>
-              )}
+              {monitoringError && <p className="text-sm text-red-600 mb-3">{monitoringError}</p>}
               <button
                 onClick={handleEnableMonitoring}
                 disabled={monitoringLoading || !results.website_url}
-                className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 text-sm"
+                className="px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors disabled:opacity-50"
               >
-                {monitoringLoading ? 'Activation...' : 'Activer le monitoring'}
+                {monitoringLoading ? 'Activation...' : 'Activer le monitoring →'}
               </button>
             </div>
           )}
 
-          {/* Configuré */}
           {monitoring && typeof monitoring === 'object' && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                      monitoring.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${monitoring.is_active ? 'bg-[#eaf4ee] text-[#1a5c3a]' : 'bg-gray-100 text-gray-500'}`}>
                     {monitoring.is_active ? 'Actif' : 'Inactif'}
                   </span>
                   {monitoring.unread_alerts_count > 0 && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                      {monitoring.unread_alerts_count} nouvelle
-                      {monitoring.unread_alerts_count > 1 ? 's' : ''} alerte
-                      {monitoring.unread_alerts_count > 1 ? 's' : ''}
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                      {monitoring.unread_alerts_count} nouvelle{monitoring.unread_alerts_count > 1 ? 's' : ''} alerte{monitoring.unread_alerts_count > 1 ? 's' : ''}
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={monitoring.is_active ? handleDisableMonitoring : handleEnableMonitoring}
-                  className="text-sm text-gray-400 hover:text-gray-600 underline"
-                >
+                <button onClick={monitoring.is_active ? handleDisableMonitoring : handleEnableMonitoring}
+                  className="text-sm text-gray-400 hover:text-gray-600 underline">
                   {monitoring.is_active ? 'Désactiver' : 'Réactiver'}
                 </button>
               </div>
 
               {monitoring.last_checked_at && (
                 <p className="text-xs text-gray-400 mb-4">
-                  Dernier check :{' '}
-                  {new Date(monitoring.last_checked_at).toLocaleString('fr-FR')}
-                  {monitoring.next_check_at && (
-                    <> · Prochain : {new Date(monitoring.next_check_at).toLocaleDateString('fr-FR')}</>
-                  )}
+                  Dernier check : {new Date(monitoring.last_checked_at).toLocaleString('fr-FR')}
+                  {monitoring.next_check_at && <> · Prochain : {new Date(monitoring.next_check_at).toLocaleDateString('fr-FR')}</>}
                 </p>
               )}
 
-              {monitoringError && (
-                <p className="text-sm text-red-600 mb-3">{monitoringError}</p>
-              )}
+              {monitoringError && <p className="text-sm text-red-600 mb-3">{monitoringError}</p>}
 
               {monitoring.alerts.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  Aucune nouvelle allégation détectée pour l'instant.
-                </p>
+                <p className="text-sm text-gray-400">Aucune nouvelle allégation détectée.</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {monitoring.alerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className={`p-3 rounded-lg border ${
-                        alert.is_read
-                          ? 'bg-gray-50 border-gray-100'
-                          : 'bg-amber-50 border-amber-200'
-                      }`}
-                    >
+                    <div key={alert.id} className={`p-3 rounded-xl border ${alert.is_read ? 'bg-gray-50 border-gray-100' : 'bg-amber-50 border-amber-200'}`}>
                       <div className="flex items-start justify-between gap-3">
                         <p className="text-sm text-gray-700 flex-1">{alert.claim_text}</p>
                         {!alert.is_read && (
-                          <button
-                            onClick={() => handleMarkRead(alert.id)}
-                            className="shrink-0 text-xs text-amber-700 hover:text-amber-900 font-medium whitespace-nowrap"
-                          >
+                          <button onClick={() => handleMarkRead(alert.id)}
+                            className="shrink-0 text-xs text-amber-700 hover:text-amber-900 font-medium whitespace-nowrap">
                             Marquer lu
                           </button>
                         )}
                       </div>
                       <p className="text-xs text-gray-400 mt-1">
-                        Détectée le{' '}
-                        {new Date(alert.detected_at).toLocaleDateString('fr-FR')}
+                        Détectée le {new Date(alert.detected_at).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
                   ))}
@@ -340,28 +287,28 @@ export default function AuditResults() {
       )}
 
       {/* Détail par claim */}
-      <div className="space-y-6">
-        <h2 className="text-lg font-semibold text-gray-800">Détail des allégations</h2>
+      <div className="space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a]">Détail des allégations</p>
         {results.claims.map((claim, idx) => (
-          <div key={claim.id} className="bg-white rounded-xl shadow overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div key={claim.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-400">#{idx + 1}</span>
+                <span className="text-xs text-gray-300 font-mono">#{idx + 1}</span>
                 <VerdictBadge verdict={claim.overall_verdict} />
               </div>
               <span className="text-xs text-gray-400">{claim.support_type} · {claim.scope}</span>
             </div>
-            <div className="p-4 bg-gray-50 border-b border-gray-100">
-              <p className="italic text-gray-700">« {claim.claim_text} »</p>
+            <div className="px-5 py-3 bg-gray-50 border-b border-gray-50">
+              <p className="italic text-sm text-gray-600">« {claim.claim_text} »</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-green-800 text-white">
-                    <th className="px-4 py-2 text-left font-medium">Critère</th>
-                    <th className="px-4 py-2 text-left font-medium">Verdict</th>
-                    <th className="px-4 py-2 text-left font-medium">Explication</th>
-                    <th className="px-4 py-2 text-left font-medium">Recommandation</th>
+                  <tr className="bg-[#1a5c3a] text-white">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold">Critère</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold">Verdict</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold">Explication</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold">Recommandation</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -371,11 +318,11 @@ export default function AuditResults() {
                       return order.indexOf(a.criterion) - order.indexOf(b.criterion);
                     })
                     .map((r) => (
-                      <tr key={r.id} className="border-b border-gray-100">
-                        <td className="px-4 py-2 font-medium text-gray-700">{CRITERION_LABELS[r.criterion] || r.criterion}</td>
-                        <td className="px-4 py-2"><VerdictBadge verdict={r.verdict} /></td>
-                        <td className="px-4 py-2 text-gray-600">{r.explanation}</td>
-                        <td className="px-4 py-2 text-gray-500">{r.recommendation || '—'}</td>
+                      <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-700 text-xs whitespace-nowrap">{CRITERION_LABELS[r.criterion] || r.criterion}</td>
+                        <td className="px-4 py-3"><VerdictBadge verdict={r.verdict} /></td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{r.explanation}</td>
+                        <td className="px-4 py-3 text-xs text-gray-400">{r.recommendation || '—'}</td>
                       </tr>
                     ))}
                 </tbody>
