@@ -8,17 +8,17 @@ const STEPS = [
   {
     step: '01',
     title: 'Saisissez les allégations',
-    desc: "Entrez les allégations environnementales de votre client telles qu'elles apparaissent sur son site web, packaging ou publicité. Le formulaire guidé prend 10 à 20 minutes.",
+    desc: "Entrez les allégations environnementales de votre client : \"éco-responsable\", \"durable\", \"carbon neutral\"… telles qu'elles apparaissent sur son site, packaging ou publicité. 10 à 20 minutes suffisent.",
   },
   {
     step: '02',
-    title: 'Analyse automatique',
-    desc: "Notre moteur vérifie chaque allégation contre les 6 interdictions de l'Annexe I de la directive (UE) 2024/825 : claims génériques, neutralité carbone, labels non certifiés, proportionnalité, engagements futurs, preuves.",
+    title: 'Analyse automatique en quelques secondes',
+    desc: "Notre moteur applique les 6 interdictions de l'Annexe I de la directive (UE) 2024/825 sur chaque allégation. Résultat immédiat : conforme, à risque ou non conforme — avec l'article exact violé.",
   },
   {
     step: '03',
-    title: 'Rapport PDF à votre marque',
-    desc: "Téléchargez un rapport professionnel avec votre logo et vos couleurs : verdict par allégation, articles violés, recommandations de correction et plan d'action priorisé.",
+    title: 'Rapport PDF prêt à facturer',
+    desc: "Téléchargez un rapport à votre logo et vos couleurs : verdict par allégation, références réglementaires, recommandations de correction. Revendez-le entre 300 € et 1 500 € à votre client.",
   },
 ];
 
@@ -63,39 +63,43 @@ const RULES = [
 
 const WHY = [
   {
-    title: '100% white-label',
-    desc: 'Votre logo, vos couleurs, vos coordonnées sur chaque rapport. Le client final ne voit que votre cabinet.',
+    title: '100% white-label — votre marque, pas la nôtre',
+    desc: 'Votre logo, vos couleurs, vos coordonnées sur chaque rapport. Le client final ne voit que votre cabinet. Vous restez l\'expert.',
   },
   {
-    title: 'Résultat en minutes',
-    desc: 'Un audit manuel prend 2 à 4 semaines. GreenAudit produit le même niveau d\'analyse en moins d\'une heure.',
+    title: 'Nouvelle source de revenus récurrents',
+    desc: 'Facturez l\'audit entre 300 € et 1 500 € selon votre positionnement. Chaque client a besoin d\'un audit par an minimum — c\'est un revenu récurrent, pas ponctuel.',
   },
   {
     title: 'Références réglementaires exactes',
-    desc: 'Chaque verdict cite l\'article précis de la directive (UE) 2024/825 et de la directive 2005/29/CE modifiée. Défendable juridiquement.',
+    desc: 'Chaque verdict cite l\'article précis de la directive (UE) 2024/825. Le rapport est défendable juridiquement face à un contrôle DGCCRF ou un contentieux client.',
   },
   {
-    title: 'Lien de partage client',
-    desc: 'Partagez un lien sécurisé en lecture seule. Votre client consulte son rapport depuis son navigateur, sans créer de compte.',
+    title: 'Premier rapport en moins d\'une heure',
+    desc: 'Un audit manuel prend 2 à 4 semaines. GreenAudit produit le même niveau d\'analyse en moins d\'une heure. Vos clients attendent une réponse rapide — donnez-la leur.',
   },
 ];
 
 const FAQ = [
   {
-    q: 'Qui peut utiliser GreenAudit ?',
-    a: 'GreenAudit est destiné aux partenaires professionnels : agences de communication, cabinets RSE, avocats spécialisés. Vous achetez l\'outil en marque blanche et le revendez à vos clients.',
+    q: 'Combien puis-je facturer un audit à mon client ?',
+    a: 'Les partenaires facturent généralement entre 300 € et 1 500 € par audit selon leur positionnement, la taille du client et le nombre d\'allégations analysées. Un cabinet RSE ou un avocat peut justifier facilement 1 000 € pour un rapport complet avec références réglementaires et plan de correction.',
   },
   {
-    q: 'Comment fonctionne le modèle white-label ?',
-    a: 'Vous configurez votre logo, vos couleurs et vos coordonnées dans les paramètres. Chaque rapport PDF généré portera votre identité visuelle. Vos clients ne voient jamais la marque GreenAudit.',
+    q: 'À qui s\'adresse GreenAudit ?',
+    a: 'GreenAudit est exclusivement destiné aux professionnels revendeurs : agences de communication, cabinets RSE/ESG, avocats spécialisés, consultants indépendants. Vous achetez l\'outil en marque blanche et le revendez à vos clients sous votre identité.',
   },
   {
-    q: 'Les rapports sont-ils juridiquement opposables ?',
-    a: 'Nos rapports sont des outils d\'aide à la conformité. Ils citent les articles exacts de la directive (UE) 2024/825 et constituent une base solide pour un conseil juridique. Ils ne remplacent pas l\'avis d\'un avocat.',
+    q: 'Comment fonctionne le white-label ?',
+    a: 'Vous configurez votre logo, vos couleurs et vos coordonnées dans les paramètres en 5 minutes. Chaque rapport PDF généré portera uniquement votre identité visuelle. Vos clients ne voient jamais la marque GreenAudit.',
   },
   {
-    q: 'Que couvre exactement la directive EmpCo ?',
-    a: 'La directive (UE) 2024/825 modifie la directive 2005/29/CE. Elle interdit 4 pratiques via l\'Annexe I et renforce 2 exigences existantes. Elle s\'applique à toutes les allégations environnementales destinées aux consommateurs dans l\'UE.',
+    q: 'Les rapports sont-ils utilisables en cas de contrôle ?',
+    a: 'Oui. Chaque rapport cite les articles exacts de la directive (UE) 2024/825 et de la directive 2005/29/CE modifiée. Il constitue une base documentaire solide pour un contrôle DGCCRF ou un contentieux. Il ne remplace pas le conseil d\'un avocat mais le complète utilement.',
+  },
+  {
+    q: 'Quelles allégations sont concernées par EmpCo ?',
+    a: 'Toute allégation environnementale destinée aux consommateurs dans l\'UE : "éco-responsable", "durable", "respectueux de l\'environnement", "carbon neutral", "zéro émission"… La directive interdit 4 pratiques via l\'Annexe I et renforce 2 exigences existantes. La majorité des marques utilisant ce type de formulations ne sont pas conformes.',
   },
 ];
 
@@ -212,7 +216,7 @@ export default function Landing() {
                   onClick={() => navigate('/login')}
                   className="text-sm font-semibold text-white px-5 py-2 rounded-full bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
                 >
-                  Démo →
+                  Commencer maintenant →
                 </button>
               </>
             )}
@@ -234,28 +238,28 @@ export default function Landing() {
           {/* Texte droite */}
           <div className="order-1 lg:order-2">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
-              Directive EmpCo
+              Directive (UE) 2024/825 · Sanctions dès septembre 2026
             </p>
             <h1 className="text-4xl sm:text-5xl font-black text-gray-900 leading-tight mb-6">
-              Auditez et sécurisez les allégations environnementales de vos clients
+              Vos clients risquent des sanctions pour greenwashing. Aidez-les — et facturez-le.
             </h1>
             <p className="text-base text-gray-500 leading-relaxed mb-8 max-w-lg">
-              La directive (UE) 2024/825 entre en vigueur le 27 septembre 2026.
-              GreenAudit analyse automatiquement chaque allégation contre les 6 interdictions
-              de l'Annexe I et génère un rapport PDF conforme, à votre marque.
+              La directive EmpCo interdit "éco-responsable", "durable", "carbon neutral" sans preuve.
+              GreenAudit analyse automatiquement chaque allégation, génère un rapport PDF conforme
+              à votre marque et vous permet de le revendre entre 300 € et 1 500 €.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/login')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
               >
-                Créer un compte partenaire →
+                Lancer un audit gratuit →
               </button>
               <button
                 onClick={() => navigate('/contact')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-[#1a5c3a] border-2 border-[#1a5c3a] hover:bg-[#eaf4ee] transition-colors"
               >
-                Contactez-nous →
+                Voir une démo →
               </button>
             </div>
           </div>
@@ -267,15 +271,15 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
           <div>
             <p className="text-4xl font-black text-[#1a5c3a]">27 sept. 2026</p>
-            <p className="mt-2 text-sm text-gray-500">Transposition obligatoire dans les 27 États membres</p>
+            <p className="mt-2 text-sm text-gray-500">Deadline réglementaire — vos clients doivent être conformes avant cette date</p>
           </div>
           <div>
-            <p className="text-4xl font-black text-[#1a5c3a]">6</p>
-            <p className="mt-2 text-sm text-gray-500">Interdictions de l'Annexe I vérifiées par allégation</p>
+            <p className="text-4xl font-black text-[#1a5c3a]">300–1 500 €</p>
+            <p className="mt-2 text-sm text-gray-500">Fourchette de revente par audit — nouvelle source de revenus récurrents</p>
           </div>
           <div>
             <p className="text-4xl font-black text-[#1a5c3a]">10×</p>
-            <p className="mt-2 text-sm text-gray-500">Moins cher qu'un audit manuel (2 000 € vs 20 000 €)</p>
+            <p className="mt-2 text-sm text-gray-500">Plus rapide qu'un audit manuel — résultat en moins d'une heure, pas en 3 semaines</p>
           </div>
         </div>
       </section>
@@ -288,24 +292,25 @@ export default function Landing() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mb-28">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
-                Analyse automatique
+                Détection automatique
               </p>
               <h2 className="text-4xl font-black text-gray-900 leading-tight mb-6">
-                Identifier et corriger les allégations non conformes
+                "Éco-responsable", "durable", "vert" — chaque allégation analysée en secondes
               </h2>
               <p className="text-gray-500 leading-relaxed mb-4">
-                Notre moteur applique automatiquement les 6 règles de la directive EmpCo sur chaque allégation
-                saisie. Résultat immédiat : conforme, à risque ou non conforme, avec la référence réglementaire exacte.
+                La majorité des entreprises utilisent des allégations environnementales non conformes sans le savoir.
+                GreenAudit détecte immédiatement ce qui est interdit, ce qui est à risque et ce qui est conforme —
+                avec l'article exact de la directive (UE) 2024/825.
               </p>
               <p className="text-gray-500 leading-relaxed mb-8">
-                Fini les 3 semaines d'analyse manuelle. En moins d'une heure, votre client dispose d'un
-                rapport complet avec plan de correction priorisé.
+                En moins d'une heure, votre client reçoit un rapport complet avec plan de correction priorisé.
+                Fini les 3 semaines d'analyse manuelle à 20 000 €.
               </p>
               <button
                 onClick={() => navigate('/login')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
               >
-                Voir une démo →
+                Lancer un audit gratuit →
               </button>
             </div>
             <div className="bg-[#eaf4ee] rounded-3xl p-8">
@@ -349,10 +354,10 @@ export default function Landing() {
 
             <div className="order-1 lg:order-2">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
-                White-label
+                White-label + monétisation
               </p>
               <h2 className="text-4xl font-black text-gray-900 leading-tight mb-6">
-                Votre marque sur chaque rapport
+                Votre marque sur chaque rapport. Vos revenus sur chaque audit.
               </h2>
               <div className="space-y-6">
                 {WHY.map((item) => (
@@ -381,11 +386,12 @@ export default function Landing() {
                 Ce que la directive interdit
               </p>
               <h2 className="text-4xl font-black text-gray-900 leading-tight mb-6">
-                6 règles vérifiées sur chaque allégation
+                6 règles. Vos clients en violent probablement plusieurs.
               </h2>
               <p className="text-gray-500 leading-relaxed">
                 La directive (UE) 2024/825 ajoute 4 interdictions absolues à l'Annexe I et renforce 2 exigences
-                existantes de la directive 2005/29/CE sur les pratiques commerciales déloyales.
+                existantes. "Éco-responsable", "durable", "carbon neutral" sans preuve sont désormais illégaux.
+                GreenAudit vérifie chacune de ces règles automatiquement.
               </p>
             </div>
 
@@ -416,10 +422,10 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
-              Process
+              Simple à utiliser
             </p>
             <h2 className="text-4xl font-black text-gray-900 leading-tight">
-              Un audit complet en 3 étapes
+              De zéro à rapport factu­rable en 3 étapes
             </h2>
           </div>
 
@@ -462,7 +468,7 @@ export default function Landing() {
                 Questions fréquentes
               </p>
               <h2 className="text-4xl font-black text-gray-900 leading-tight">
-                Audit anti-greenwashing (EmpCo)
+                Vos questions avant de commencer
               </h2>
             </div>
 
@@ -488,8 +494,8 @@ export default function Landing() {
               <p className="text-5xl font-black text-gray-900">27 sept.</p>
               <p className="text-5xl font-black text-gray-900">2026</p>
               <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                Transposition de la directive EmpCo dans les droits nationaux des 27 États membres.
-                Vos clients ne sont probablement pas conformes.
+                Mise en application de la directive EmpCo. Sanctions pour toute allégation environnementale non conforme.
+                Chaque semaine perdue réduit votre avance.
               </p>
             </div>
           </div>
@@ -497,24 +503,25 @@ export default function Landing() {
           {/* Texte droite */}
           <div>
             <h2 className="text-4xl font-black text-gray-900 leading-tight mb-4">
-              Proposez l'audit avant qu'il ne soit trop tard
+              Ceux qui commencent maintenant auront 12 mois d'avance sur leurs concurrents
             </h2>
             <p className="text-gray-500 leading-relaxed mb-8">
-              Planifiez une démonstration personnalisée et commencez à proposer l'audit EmpCo
-              à vos clients. Configuration en 10 minutes, premier rapport en moins d'une heure.
+              Vos clients ne sont probablement pas conformes. Ils ne le savent pas encore.
+              Positionnez-vous comme l'expert EmpCo de référence avant septembre 2026.
+              Premier rapport en moins d'une heure, configuration en 10 minutes.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/login')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
               >
-                Créer un compte partenaire →
+                Lancer un audit gratuit →
               </button>
               <button
                 onClick={() => navigate('/contact')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-[#1a5c3a] border-2 border-[#1a5c3a] hover:bg-white transition-colors"
               >
-                Contactez-nous →
+                Voir une démo →
               </button>
             </div>
             <p className="mt-4 text-xs text-gray-400">
