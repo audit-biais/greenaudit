@@ -274,7 +274,7 @@ export default function Landing() {
             <p className="mt-2 text-sm text-gray-500">Deadline réglementaire — vos clients doivent être conformes avant cette date</p>
           </div>
           <div>
-            <p className="text-4xl font-black text-[#1a5c3a]">300–1 500 €</p>
+            <p className="text-4xl font-black text-[#1a5c3a]">2 000–5 000 €</p>
             <p className="mt-2 text-sm text-gray-500">Fourchette de revente par audit — nouvelle source de revenus récurrents</p>
           </div>
           <div>
