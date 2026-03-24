@@ -18,7 +18,7 @@ const STEPS = [
   {
     step: '03',
     title: 'Rapport PDF prêt à facturer',
-    desc: "Téléchargez un rapport à votre logo et vos couleurs : verdict par allégation, références réglementaires, recommandations de correction. Revendez-le entre 300 € et 1 500 € à votre client.",
+    desc: "Téléchargez un rapport à votre logo et vos couleurs : verdict par allégation, références réglementaires, recommandations de correction. Revendez-le en marque blanche.",
   },
 ];
 
