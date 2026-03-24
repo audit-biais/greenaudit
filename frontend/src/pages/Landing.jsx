@@ -454,7 +454,7 @@ export default function Landing() {
                 Ce que la directive interdit
               </p>
               <h2 className="text-4xl font-black text-gray-900 leading-tight mb-6">
-                6 règles. Vos clients en violent probablement plusieurs.
+                6 règles. Vos clients en enfreignent probablement plusieurs.
               </h2>
               <p className="text-gray-500 leading-relaxed">
                 La directive (UE) 2024/825 ajoute 4 interdictions absolues à l'Annexe I et renforce 2 exigences
