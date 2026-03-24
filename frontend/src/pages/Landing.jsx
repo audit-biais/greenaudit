@@ -304,7 +304,6 @@ export default function Landing() {
               </p>
               <p className="text-gray-500 leading-relaxed mb-8">
                 En moins d'une heure, votre client reçoit un rapport complet avec plan de correction priorisé.
-                Fini les 3 semaines d'analyse manuelle à 20 000 €.
               </p>
               <button
                 onClick={() => navigate('/login')}
