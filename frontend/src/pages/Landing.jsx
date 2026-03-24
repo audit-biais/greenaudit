@@ -241,12 +241,12 @@ export default function Landing() {
               Directive (UE) 2024/825 · Sanctions dès septembre 2026
             </p>
             <h1 className="text-4xl sm:text-5xl font-black text-gray-900 leading-tight mb-6">
-              Vos clients risquent des sanctions pour greenwashing. Aidez-les — et facturez-le.
+              La réglementation se durcit sur le greenwashing. Transformez-la en opportunité de conseil premium.
             </h1>
             <p className="text-base text-gray-500 leading-relaxed mb-8 max-w-lg">
               La directive EmpCo interdit "éco-responsable", "durable", "carbon neutral" sans preuve.
               GreenAudit analyse automatiquement chaque allégation, génère un rapport PDF conforme
-              à votre marque et vous permet de le revendre entre 300 € et 1 500 €.
+              à votre marque et vous permet de la revendre en marque blanche.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
