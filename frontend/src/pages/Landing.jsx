@@ -122,6 +122,69 @@ function FaqItem({ q, a }) {
   );
 }
 
+/* ─── Gauge Mockup ──────────────────────────────────────────────────────────── */
+function GaugeMockup() {
+  const cx = 200, cy = 200, r = 130, thick = 26;
+  const score = 40;
+  const toRad = d => d * Math.PI / 180;
+  const pt = d => [
+    parseFloat((cx + r * Math.cos(toRad(d))).toFixed(2)),
+    parseFloat((cy - r * Math.sin(toRad(d))).toFixed(2)),
+  ];
+  const arcSeg = (d1, d2, color, i) => {
+    const [x1, y1] = pt(d1);
+    const [x2, y2] = pt(d2);
+    return (
+      <path key={i} d={`M ${x1} ${y1} A ${r} ${r} 0 0 0 ${x2} ${y2}`}
+        fill="none" stroke={color} strokeWidth={thick} strokeLinecap="butt" />
+    );
+  };
+  const segments = [
+    [180, 144, '#22c55e'],
+    [144, 108, '#a3e635'],
+    [108, 72,  '#f97316'],
+    [72,  36,  '#ea580c'],
+    [36,   0,  '#dc2626'],
+  ];
+  const needleDeg = 180 - (score / 100) * 180;
+  const nr = r - 22;
+  const nx = parseFloat((cx + nr * Math.cos(toRad(needleDeg))).toFixed(2));
+  const ny = parseFloat((cy - nr * Math.sin(toRad(needleDeg))).toFixed(2));
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 text-center">
+      <p style={{ fontSize: '1rem', fontWeight: 800, color: '#166534', marginBottom: '0.2rem' }}>
+        Rapport d'audit anti-greenwashing
+      </p>
+      <p style={{ fontSize: '0.7rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+        Directive EmpCo (EU 2024/825)
+      </p>
+      <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#111', marginBottom: '0.1rem' }}>BioMarket France</p>
+      <p style={{ fontSize: '0.7rem', color: '#6b7280', marginBottom: '0.25rem' }}>Secteur : alimentaire</p>
+
+      <svg viewBox="55 55 290 160" style={{ width: '100%', display: 'block' }}>
+        {segments.map(([d1, d2, c], i) => arcSeg(d1, d2, c, i))}
+        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#1f2937" strokeWidth="3.5" strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r="7" fill="#1f2937" />
+        <text x={cx} y={cy - 12} textAnchor="middle" fontSize="30" fontWeight="900" fill="#f97316">{score}</text>
+        <text x={cx} y={cy + 4} textAnchor="middle" fontSize="11" fill="#9ca3af">/100</text>
+        <text x={pt(180)[0] + 2} y={pt(180)[1] + 14} textAnchor="middle" fontSize="9" fill="#9ca3af">0</text>
+        <text x={pt(0)[0] - 2} y={pt(0)[1] + 14} textAnchor="middle" fontSize="9" fill="#9ca3af">100</text>
+      </svg>
+
+      <p style={{ color: '#f97316', fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.75rem' }}>Risque élevé</p>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+        {[['#dc2626','3 non conformes'],['#f97316','0 à risque'],['#22c55e','2 conformes']].map(([color, label]) => (
+          <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#6b7280' }}>
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Mockup UI (remplace la photo de l'équipe / screenshot) ──────────────── */
 function AppMockup() {
   return (
@@ -231,7 +294,7 @@ export default function Landing() {
           {/* Visuel gauche */}
           <div className="order-2 lg:order-1">
             <div className="bg-[#d4ecdb] rounded-3xl p-8">
-              <AppMockup />
+              <GaugeMockup />
             </div>
           </div>
 
