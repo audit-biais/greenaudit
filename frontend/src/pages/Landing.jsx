@@ -315,7 +315,7 @@ export default function Landing() {
             <p className="text-base text-gray-500 leading-relaxed mb-8 max-w-lg">
               La directive EmpCo interdit "éco-responsable", "durable", "carbon neutral" sans preuve.
               GreenAudit analyse automatiquement chaque allégation, génère un rapport PDF conforme
-              à votre marque et vous permet de la revendre en marque blanche.
+              à votre marque et vous permet de le revendre en marque blanche.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
