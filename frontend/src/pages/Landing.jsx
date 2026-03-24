@@ -67,10 +67,6 @@ const WHY = [
     desc: 'Votre logo, vos couleurs, vos coordonnées sur chaque rapport. Le client final ne voit que votre cabinet. Vous restez l\'expert.',
   },
   {
-    title: 'Nouvelle source de revenus récurrents',
-    desc: 'Facturez l\'audit entre 300 € et 1 500 € selon votre positionnement. Chaque client a besoin d\'un audit par an minimum — c\'est un revenu récurrent, pas ponctuel.',
-  },
-  {
     title: 'Références réglementaires exactes',
     desc: 'Chaque verdict cite l\'article précis de la directive (UE) 2024/825. Le rapport est défendable juridiquement face à un contrôle DGCCRF ou un contentieux client.',
   },
