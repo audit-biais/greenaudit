@@ -4,14 +4,14 @@ import api from './client';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [partner, setPartner] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       api.get('/auth/me')
-        .then((res) => setPartner(res.data))
+        .then((res) => setUser(res.data))
         .catch((err) => {
           if (err.response?.status === 401) {
             localStorage.removeItem('token');
@@ -24,25 +24,31 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
+    // OAuth2PasswordRequestForm attend du form-encoded avec "username"
+    const params = new URLSearchParams();
+    params.append('username', email);
+    params.append('password', password);
+    const res = await api.post('/auth/login', params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
     localStorage.setItem('token', res.data.access_token);
     const me = await api.get('/auth/me');
-    setPartner(me.data);
+    setUser(me.data);
     return me.data;
   };
 
   const register = async (data) => {
-    await api.post('/auth/register', data);
+    await api.post('/auth/signup', data);
     return login(data.email, data.password);
   };
 
   const logout = () => {
     localStorage.removeItem('token');
-    setPartner(null);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ partner, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -19,7 +19,7 @@ function MessageBanner({ message }) {
 }
 
 export default function Settings() {
-  const { partner } = useAuth();
+  const { user } = useAuth();
 
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -27,22 +27,31 @@ export default function Settings() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState(null);
 
-  const [logoUrl, setLogoUrl] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#1a5c3a');
   const [secondaryColor, setSecondaryColor] = useState('#2E7D32');
+  const [logoFile, setLogoFile] = useState(null);
+  const [hasLogo, setHasLogo] = useState(false);
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingMessage, setBrandingMessage] = useState(null);
 
   useEffect(() => {
-    if (partner) {
-      setCompanyName(partner.company_name || '');
-      setContactName(partner.contact_name || '');
-      setContactPhone(partner.contact_phone || '');
-      setLogoUrl(partner.logo_url || '');
-      setPrimaryColor(partner.brand_primary_color || '#1a5c3a');
-      setSecondaryColor(partner.brand_secondary_color || '#2E7D32');
-    }
-  }, [partner]);
+    if (!user?.organization?.id) return;
+    // Charger les détails complets de l'organisation (contact_name, contact_phone, etc.)
+    api.get('/organizations/me').then((res) => {
+      const org = res.data;
+      setCompanyName(org.name || '');
+      setContactName(org.contact_name || '');
+      setContactPhone(org.contact_phone || '');
+      setPrimaryColor(org.brand_primary_color || '#1a5c3a');
+      setSecondaryColor(org.brand_secondary_color || '#2E7D32');
+      setHasLogo(org.has_logo || false);
+    }).catch(() => {
+      // Fallback sur les données user si la route org échoue
+      setCompanyName(user.organization?.name || user.company_name || '');
+      setPrimaryColor(user.organization?.brand_primary_color || '#1a5c3a');
+      setSecondaryColor(user.organization?.brand_secondary_color || '#2E7D32');
+    });
+  }, [user]);
 
   useEffect(() => {
     if (profileMessage) { const t = setTimeout(() => setProfileMessage(null), 4000); return () => clearTimeout(t); }
@@ -57,7 +66,11 @@ export default function Settings() {
     setProfileSaving(true);
     setProfileMessage(null);
     try {
-      await api.put('/partners/me', { company_name: companyName, contact_name: contactName || null, contact_phone: contactPhone || null });
+      await api.put('/organizations/settings', {
+        name: companyName,
+        contact_name: contactName || null,
+        contact_phone: contactPhone || null,
+      });
       setProfileMessage({ type: 'success', text: 'Profil mis à jour avec succès.' });
     } catch (err) {
       const detail = err.response?.data?.detail;
@@ -72,7 +85,23 @@ export default function Settings() {
     setBrandingSaving(true);
     setBrandingMessage(null);
     try {
-      await api.put('/partners/me/branding', { logo_url: logoUrl || null, brand_primary_color: primaryColor, brand_secondary_color: secondaryColor });
+      // Sauvegarder les couleurs
+      await api.put('/organizations/settings', {
+        brand_primary_color: primaryColor,
+        brand_secondary_color: secondaryColor,
+      });
+
+      // Uploader le logo si un fichier a été sélectionné
+      if (logoFile) {
+        const formData = new FormData();
+        formData.append('logo', logoFile);
+        await api.post('/organizations/logo', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        setHasLogo(true);
+        setLogoFile(null);
+      }
+
       setBrandingMessage({ type: 'success', text: 'Branding mis à jour avec succès.' });
     } catch (err) {
       const detail = err.response?.data?.detail;
@@ -81,6 +110,8 @@ export default function Settings() {
       setBrandingSaving(false);
     }
   };
+
+  const logoPreviewUrl = logoFile ? URL.createObjectURL(logoFile) : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -135,16 +166,18 @@ export default function Settings() {
 
           {/* Logo */}
           <div>
-            <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700 mb-1.5">URL du logo</label>
-            <input id="logoUrl" type="url" value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://example.com/logo.png" className={inputCls} />
-            {logoUrl && (
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Logo (PNG ou JPEG, max 2 Mo)</label>
+            <input type="file" accept="image/png,image/jpeg"
+              onChange={(e) => setLogoFile(e.target.files[0] || null)}
+              className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#eaf4ee] file:text-[#1a5c3a] hover:file:bg-[#d4ecdd] cursor-pointer" />
+            {logoPreviewUrl && (
               <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100 inline-block">
                 <p className="text-xs text-gray-400 mb-2">Aperçu :</p>
-                <img src={logoUrl} alt="Logo preview" className="max-h-16 max-w-48 object-contain"
-                  onError={(e) => { e.target.style.display = 'none'; }} />
+                <img src={logoPreviewUrl} alt="Logo preview" className="max-h-16 max-w-48 object-contain" />
               </div>
+            )}
+            {!logoPreviewUrl && hasLogo && (
+              <p className="mt-2 text-xs text-[#1a5c3a]">Un logo est déjà enregistré. Sélectionnez un fichier pour le remplacer.</p>
             )}
           </div>
 
@@ -175,9 +208,8 @@ export default function Settings() {
             </div>
             <div className="p-4 bg-white">
               <div className="flex items-center gap-3 mb-3">
-                {logoUrl && (
-                  <img src={logoUrl} alt="Logo" className="h-8 object-contain"
-                    onError={(e) => { e.target.style.display = 'none'; }} />
+                {logoPreviewUrl && (
+                  <img src={logoPreviewUrl} alt="Logo" className="h-8 object-contain" />
                 )}
                 <span className="text-sm font-bold" style={{ color: primaryColor }}>
                   {companyName || 'Votre entreprise'}

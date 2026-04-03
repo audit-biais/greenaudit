@@ -236,7 +236,7 @@ function AppMockup() {
 /* ─── Landing principal ─────────────────────────────────────────────────────── */
 export default function Landing() {
   const navigate = useNavigate();
-  const { partner } = useAuth();
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -266,7 +266,7 @@ export default function Landing() {
 
           {/* CTA droite */}
           <div className="flex items-center gap-4">
-            {partner ? (
+            {user ? (
               <button
                 onClick={() => navigate('/dashboard')}
                 className="text-sm font-semibold text-white px-5 py-2 rounded-full bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"

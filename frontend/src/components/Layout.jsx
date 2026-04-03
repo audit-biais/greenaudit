@@ -8,7 +8,7 @@ const NAV_ITEMS = [
 ];
 
 export default function Layout({ children }) {
-  const { partner, logout } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
 
   return (
@@ -50,7 +50,7 @@ export default function Layout({ children }) {
 
             {/* Right side */}
             <div className="flex items-center gap-4">
-              <span className="hidden sm:block text-sm text-gray-500">{partner?.company_name}</span>
+              <span className="hidden sm:block text-sm text-gray-500">{user?.organization?.name || user?.company_name}</span>
               <button
                 onClick={logout}
                 className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
