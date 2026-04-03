@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # Claude API (monitoring continu)
     ANTHROPIC_API_KEY: Optional[str] = None
 
+    # Super admin (email qui déclenche l'activation automatique du flag is_superadmin)
+    SUPERADMIN_EMAIL: Optional[str] = None
+
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

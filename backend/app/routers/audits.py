@@ -9,12 +9,12 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_partner
+from app.auth.dependencies import check_audit_limit, get_current_user
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
 from app.models.claim_result import ClaimResult
-from app.models.partner import Partner
+from app.models.user import User
 from pydantic import BaseModel, Field
 
 from app.schemas.audit import AuditCreate, AuditDetailResponse, AuditSummaryResponse
@@ -26,14 +26,17 @@ from app.services.scoring import calculate_global_score, compute_verdict_counts
 router = APIRouter(prefix="/api/audits", tags=["audits"])
 
 
-async def _get_partner_audit(
+async def _get_user_audit(
     audit_id: UUID,
-    partner: Partner,
+    user: User,
     db: AsyncSession,
     load_claims: bool = False,
 ) -> Audit:
-    """Helper : récupère un audit appartenant au partenaire courant."""
-    stmt = select(Audit).where(Audit.id == audit_id, Audit.partner_id == partner.id)
+    """Helper : récupère un audit appartenant à l'organisation de l'utilisateur courant."""
+    stmt = select(Audit).where(
+        Audit.id == audit_id,
+        Audit.organization_id == user.organization_id,
+    )
     if load_claims:
         stmt = stmt.options(selectinload(Audit.claims))
     result = await db.execute(stmt)
@@ -49,12 +52,17 @@ async def _get_partner_audit(
 @router.post("", response_model=AuditSummaryResponse, status_code=status.HTTP_201_CREATED)
 async def create_audit(
     data: AuditCreate,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(check_audit_limit),
     db: AsyncSession = Depends(get_db),
 ) -> Audit:
     """Créer un audit (draft)."""
+    if not user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vous devez appartenir à une organisation pour créer un audit",
+        )
     audit = Audit(
-        partner_id=partner.id,
+        organization_id=user.organization_id,
         company_name=data.company_name,
         sector=data.sector,
         website_url=data.website_url,
@@ -68,13 +76,15 @@ async def create_audit(
 
 @router.get("", response_model=List[AuditSummaryResponse])
 async def list_audits(
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[Audit]:
-    """Lister les audits du partenaire courant."""
+    """Lister les audits de l'organisation courante."""
+    if not user.organization_id:
+        return []
     result = await db.execute(
         select(Audit)
-        .where(Audit.partner_id == partner.id)
+        .where(Audit.organization_id == user.organization_id)
         .order_by(Audit.created_at.desc())
     )
     return list(result.scalars().all())
@@ -83,21 +93,21 @@ async def list_audits(
 @router.get("/{audit_id}", response_model=AuditDetailResponse)
 async def get_audit(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Audit:
     """Détail d'un audit avec ses claims."""
-    return await _get_partner_audit(audit_id, partner, db, load_claims=True)
+    return await _get_user_audit(audit_id, user, db, load_claims=True)
 
 
 @router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_audit(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Supprimer un audit (uniquement si draft)."""
-    audit = await _get_partner_audit(audit_id, partner, db)
+    audit = await _get_user_audit(audit_id, user, db)
     if audit.status != "draft":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -110,15 +120,14 @@ async def delete_audit(
 @router.post("/{audit_id}/analyze", response_model=AuditResultsResponse)
 async def analyze_audit(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AuditResultsResponse:
     """
     Lancer l'analyse : applique les 6 règles sur chaque claim,
     calcule le scoring, met à jour le status de l'audit.
     """
-    # Charger l'audit avec ses claims
-    audit = await _get_partner_audit(audit_id, partner, db, load_claims=True)
+    audit = await _get_user_audit(audit_id, user, db, load_claims=True)
 
     if not audit.claims:
         raise HTTPException(
@@ -187,13 +196,13 @@ async def analyze_audit(
 @router.get("/{audit_id}/results", response_model=AuditResultsResponse)
 async def get_audit_results(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AuditResultsResponse:
     """Récupérer les résultats détaillés d'un audit analysé."""
     result = await db.execute(
         select(Audit)
-        .where(Audit.id == audit_id, Audit.partner_id == partner.id)
+        .where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
         .options(selectinload(Audit.claims).selectinload(Claim.results))
     )
     audit = result.scalar_one_or_none()
@@ -239,7 +248,7 @@ class ScanRequest(BaseModel):
 @router.post("/scan", response_model=AuditResultsResponse)
 async def scan_website_endpoint(
     data: ScanRequest,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(check_audit_limit),
     db: AsyncSession = Depends(get_db),
 ) -> AuditResultsResponse:
     """
@@ -247,9 +256,15 @@ async def scan_website_endpoint(
     1. Scrape le site via Jina Reader
     2. Extrait les allégations environnementales via Claude Haiku
     3. Crée un audit + claims automatiquement
-    4. Lance l'analyse des 7 règles EmpCo
+    4. Lance l'analyse des 6 règles EmpCo
     5. Retourne les résultats
     """
+    if not user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vous devez appartenir à une organisation pour lancer un scan",
+        )
+
     page_text = await scrape_website(data.url)
     if not page_text.strip():
         raise HTTPException(
@@ -266,7 +281,7 @@ async def scan_website_endpoint(
 
     # Créer l'audit
     audit = Audit(
-        partner_id=partner.id,
+        organization_id=user.organization_id,
         company_name=data.company_name,
         sector=data.sector,
         website_url=data.url,

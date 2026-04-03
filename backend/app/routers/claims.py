@@ -8,22 +8,22 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_partner
+from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
-from app.models.partner import Partner
+from app.models.user import User
 from app.schemas.claim import ClaimCreate, ClaimResponse, ClaimUpdate
 
 router = APIRouter(tags=["claims"])
 
 
-async def _get_partner_audit(
-    audit_id: UUID, partner: Partner, db: AsyncSession
+async def _get_user_audit(
+    audit_id: UUID, user: User, db: AsyncSession
 ) -> Audit:
-    """Helper : vérifie que l'audit appartient au partenaire."""
+    """Helper : vérifie que l'audit appartient à l'organisation de l'utilisateur."""
     result = await db.execute(
-        select(Audit).where(Audit.id == audit_id, Audit.partner_id == partner.id)
+        select(Audit).where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
     )
     audit = result.scalar_one_or_none()
     if audit is None:
@@ -34,14 +34,14 @@ async def _get_partner_audit(
     return audit
 
 
-async def _get_partner_claim(
-    claim_id: UUID, partner: Partner, db: AsyncSession, load_results: bool = False
+async def _get_user_claim(
+    claim_id: UUID, user: User, db: AsyncSession, load_results: bool = False
 ) -> Claim:
-    """Helper : récupère une claim dont l'audit appartient au partenaire."""
+    """Helper : récupère une claim dont l'audit appartient à l'organisation de l'utilisateur."""
     stmt = (
         select(Claim)
         .join(Audit)
-        .where(Claim.id == claim_id, Audit.partner_id == partner.id)
+        .where(Claim.id == claim_id, Audit.organization_id == user.organization_id)
     )
     if load_results:
         stmt = stmt.options(selectinload(Claim.results))
@@ -65,11 +65,11 @@ async def _get_partner_claim(
 async def create_claim(
     audit_id: UUID,
     data: ClaimCreate,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Claim:
     """Ajouter une claim à un audit."""
-    audit = await _get_partner_audit(audit_id, partner, db)
+    audit = await _get_user_audit(audit_id, user, db)
 
     if audit.status == "completed":
         raise HTTPException(
@@ -81,7 +81,6 @@ async def create_claim(
     db.add(claim)
     await db.commit()
 
-    # Recharger avec results pour la sérialisation
     result = await db.execute(
         select(Claim)
         .where(Claim.id == claim.id)
@@ -96,11 +95,11 @@ async def create_claim(
 )
 async def list_claims(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[Claim]:
     """Lister les claims d'un audit."""
-    await _get_partner_audit(audit_id, partner, db)
+    await _get_user_audit(audit_id, user, db)
 
     result = await db.execute(
         select(Claim)
@@ -117,13 +116,12 @@ async def list_claims(
 async def update_claim(
     claim_id: UUID,
     data: ClaimUpdate,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Claim:
     """Modifier une claim existante."""
-    claim = await _get_partner_claim(claim_id, partner, db, load_results=True)
+    claim = await _get_user_claim(claim_id, user, db, load_results=True)
 
-    # Vérifier que l'audit n'est pas terminé
     result = await db.execute(select(Audit).where(Audit.id == claim.audit_id))
     audit = result.scalar_one()
     if audit.status == "completed":
@@ -143,11 +141,11 @@ async def update_claim(
 @router.delete("/api/claims/{claim_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_claim(
     claim_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Supprimer une claim."""
-    claim = await _get_partner_claim(claim_id, partner, db)
+    claim = await _get_user_claim(claim_id, user, db)
 
     result = await db.execute(select(Audit).where(Audit.id == claim.audit_id))
     audit = result.scalar_one()

@@ -30,7 +30,7 @@ from reportlab.platypus import (
 
 from app.config import settings
 from app.models.audit import Audit
-from app.models.partner import Partner
+from app.models.organization import Organization as Partner
 
 
 # ---------------------------------------------------------------------------
@@ -536,8 +536,8 @@ def _build_styles(primary: colors.Color, secondary: colors.Color):
 
 def _build_doc(filepath: str, partner: Partner) -> BaseDocTemplate:
     primary = _hex(partner.brand_primary_color)
-    company = partner.company_name or ""
-    email = partner.email or ""
+    company = partner.name or ""
+    email = partner.contact_email or ""
     phone = partner.contact_phone or ""
 
     def _header_footer(canvas, doc):
@@ -616,7 +616,7 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict) -> list:
 
     elements.append(Spacer(1, 15 * mm))
     elements.append(Paragraph(
-        f"Audit réalisé le {_format_date(audit.completed_at)} par {partner.company_name}",
+        f"Audit réalisé le {_format_date(audit.completed_at)} par {partner.name}",
         styles["cover_small"],
     ))
     elements.append(NextPageTemplate("content"))
@@ -992,7 +992,7 @@ def _disclaimer_elements(partner: Partner, styles: dict) -> list:
         "conformité réglementaire de vos communications environnementales.",
         styles["disclaimer"],
     ))
-    contact_parts = [p for p in [partner.company_name, partner.contact_name, partner.contact_phone, partner.email] if p]
+    contact_parts = [p for p in [partner.name, partner.contact_name, partner.contact_phone, partner.contact_email] if p]
     elements.append(Spacer(1, 4 * mm))
     elements.append(Paragraph(" — ".join(contact_parts), styles["disclaimer"]))
     return elements

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+import os
+from datetime import datetime, timedelta
+from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from app.config import settings
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 jours
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -21,17 +24,20 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(subject: str) -> str:
-    """Crée un JWT avec le partner_id comme subject."""
-    expire = datetime.now(timezone.utc) + timedelta(hours=settings.JWT_EXPIRATION_HOURS)
-    payload: Dict[str, Any] = {"sub": subject, "exp": expire}
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Crée un JWT. data doit contenir {"sub": email, "user_id": str(uuid)}."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> str:
-    """Décode un JWT et retourne le subject (partner_id). Lève JWTError si invalide."""
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-    sub: str = payload.get("sub", "")
-    if not sub:
-        raise JWTError("Token sans subject")
-    return sub
+def decode_access_token(token: str) -> Optional[dict]:
+    """Décode un JWT et retourne le payload. Retourne None si invalide."""
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None

@@ -10,12 +10,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_partner
+from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.config import settings
 from app.models.audit import Audit
 from app.models.claim import Claim
-from app.models.partner import Partner
+from app.models.organization import Organization
+from app.models.user import User
 from app.schemas.claim_result import AuditResultsResponse
 from app.services.pdf_generator import generate_audit_pdf
 
@@ -23,15 +24,15 @@ router = APIRouter(prefix="/api/audits", tags=["reports"])
 
 
 async def _load_completed_audit(
-    audit_id: UUID, partner: Partner, db: AsyncSession
+    audit_id: UUID, user: User, db: AsyncSession
 ) -> Audit:
-    """Charge un audit completed avec claims, results et partner."""
+    """Charge un audit completed avec claims, results et organisation."""
     result = await db.execute(
         select(Audit)
-        .where(Audit.id == audit_id, Audit.partner_id == partner.id)
+        .where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
         .options(
             selectinload(Audit.claims).selectinload(Claim.results),
-            selectinload(Audit.partner),
+            selectinload(Audit.organization),
         )
     )
     audit = result.scalar_one_or_none()
@@ -52,15 +53,14 @@ async def _load_completed_audit(
 @router.post("/{audit_id}/report", status_code=status.HTTP_201_CREATED)
 async def generate_report(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Générer le rapport PDF pour un audit analysé."""
-    audit = await _load_completed_audit(audit_id, partner, db)
+    audit = await _load_completed_audit(audit_id, user, db)
 
-    filename = generate_audit_pdf(audit, partner)
+    filename = generate_audit_pdf(audit, audit.organization)
 
-    # Générer un share_token si absent
     if not audit.share_token:
         audit.share_token = secrets.token_urlsafe(32)
 
@@ -77,12 +77,12 @@ async def generate_report(
 @router.get("/{audit_id}/report/download")
 async def download_report(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FileResponse:
     """Télécharger le rapport PDF d'un audit."""
     result = await db.execute(
-        select(Audit).where(Audit.id == audit_id, Audit.partner_id == partner.id)
+        select(Audit).where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
     )
     audit = result.scalar_one_or_none()
 
@@ -99,7 +99,6 @@ async def download_report(
 
     storage = Path(settings.PDF_STORAGE_PATH).resolve()
     filepath = (storage / audit.pdf_url).resolve()
-    # Empêcher le path traversal
     if not str(filepath).startswith(str(storage)) or not filepath.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -15,7 +15,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from app.models.claim import Claim
     from app.models.monitoring_config import MonitoringConfig
-    from app.models.partner import Partner
+    from app.models.organization import Organization
 
 
 class Audit(Base):
@@ -26,8 +26,8 @@ class Audit(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    partner_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("partners.id"), nullable=False
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
     )
 
     # Infos entreprise auditée
@@ -58,7 +58,7 @@ class Audit(Base):
     )
 
     # Relations
-    partner: Mapped[Partner] = relationship(back_populates="audits")
+    organization: Mapped[Organization] = relationship()
     claims: Mapped[List[Claim]] = relationship(
         back_populates="audit", cascade="all, delete-orphan"
     )

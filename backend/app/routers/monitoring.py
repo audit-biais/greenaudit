@@ -8,12 +8,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_partner
+from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.monitoring_alert import MonitoringAlert
 from app.models.monitoring_config import MonitoringConfig
-from app.models.partner import Partner
+from app.models.user import User
 from app.schemas.monitoring import (
     MonitoringAlertResponse,
     MonitoringConfigCreate,
@@ -24,11 +24,11 @@ from app.services.monitoring_service import run_monitoring_check
 router = APIRouter(tags=["monitoring"])
 
 
-async def _get_audit_for_partner(
-    audit_id: UUID, partner: Partner, db: AsyncSession
+async def _get_audit_for_user(
+    audit_id: UUID, user: User, db: AsyncSession
 ) -> Audit:
     result = await db.execute(
-        select(Audit).where(Audit.id == audit_id, Audit.partner_id == partner.id)
+        select(Audit).where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
     )
     audit = result.scalar_one_or_none()
     if audit is None:
@@ -63,11 +63,11 @@ def _build_config_response(
 async def enable_monitoring(
     audit_id: UUID,
     data: MonitoringConfigCreate,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> MonitoringConfigResponse:
     """Activer le monitoring pour un audit (doit être completed + avoir website_url)."""
-    audit = await _get_audit_for_partner(audit_id, partner, db)
+    audit = await _get_audit_for_user(audit_id, user, db)
 
     if audit.status != "completed":
         raise HTTPException(
@@ -80,7 +80,6 @@ async def enable_monitoring(
             detail="L'audit doit avoir une URL de site web pour activer le monitoring",
         )
 
-    # Vérifier si une config existe déjà
     existing = await db.execute(
         select(MonitoringConfig)
         .where(MonitoringConfig.audit_id == audit_id)
@@ -89,7 +88,6 @@ async def enable_monitoring(
     config = existing.scalar_one_or_none()
 
     if config:
-        # Réactiver si désactivé
         config.is_active = True
         config.frequency_days = data.frequency_days
     else:
@@ -104,7 +102,6 @@ async def enable_monitoring(
     await db.commit()
     await db.refresh(config)
 
-    # Recharger avec les alertes
     result = await db.execute(
         select(MonitoringConfig)
         .where(MonitoringConfig.id == config.id)
@@ -120,11 +117,11 @@ async def enable_monitoring(
 )
 async def get_monitoring(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> MonitoringConfigResponse:
     """Récupérer la config monitoring + alertes d'un audit."""
-    await _get_audit_for_partner(audit_id, partner, db)
+    await _get_audit_for_user(audit_id, user, db)
 
     result = await db.execute(
         select(MonitoringConfig)
@@ -149,11 +146,11 @@ async def get_monitoring(
 )
 async def disable_monitoring(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Désactiver le monitoring pour un audit."""
-    await _get_audit_for_partner(audit_id, partner, db)
+    await _get_audit_for_user(audit_id, user, db)
 
     result = await db.execute(
         select(MonitoringConfig).where(MonitoringConfig.audit_id == audit_id)
@@ -176,7 +173,7 @@ async def disable_monitoring(
 )
 async def mark_alert_read(
     alert_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> MonitoringAlertResponse:
     """Marquer une alerte comme lue."""
@@ -196,7 +193,7 @@ async def mark_alert_read(
             status_code=status.HTTP_404_NOT_FOUND, detail="Alerte introuvable"
         )
 
-    if alert.monitoring_config.audit.partner_id != partner.id:
+    if alert.monitoring_config.audit.organization_id != user.organization_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé"
         )
@@ -213,16 +210,16 @@ async def mark_alert_read(
     summary="Nombre d'alertes non lues par audit",
 )
 async def get_unread_summary(
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Retourne {audit_id: unread_count} pour tous les audits du partenaire."""
+    """Retourne {audit_id: unread_count} pour tous les audits de l'organisation."""
     result = await db.execute(
         select(MonitoringConfig.audit_id, func.count(MonitoringAlert.id))
         .join(MonitoringAlert, MonitoringAlert.monitoring_config_id == MonitoringConfig.id)
         .join(Audit, Audit.id == MonitoringConfig.audit_id)
         .where(
-            Audit.partner_id == partner.id,
+            Audit.organization_id == user.organization_id,
             MonitoringAlert.is_read == False,  # noqa: E712
         )
         .group_by(MonitoringConfig.audit_id)
@@ -237,11 +234,11 @@ async def get_unread_summary(
 )
 async def trigger_monitoring_check(
     audit_id: UUID,
-    partner: Partner = Depends(get_current_partner),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Route de debug : déclencher manuellement un check de monitoring."""
-    await _get_audit_for_partner(audit_id, partner, db)
+    await _get_audit_for_user(audit_id, user, db)
 
     result = await db.execute(
         select(MonitoringConfig).where(

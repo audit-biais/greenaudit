@@ -1,53 +1,61 @@
 from __future__ import annotations
 
+# Ce fichier est conservé pour rétrocompatibilité.
+# La gestion du profil et du branding se fait maintenant via /api/organizations.
+# Les routes /api/partners/me sont redirigées vers les données User + Organization.
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_partner
+from app.auth.dependencies import get_admin_user, get_current_user
 from app.database import get_db
-from app.models.partner import Partner
-from app.schemas.partner import (
-    PartnerBrandingUpdate,
-    PartnerResponse,
-    PartnerUpdate,
-)
+from app.models.organization import Organization
+from app.models.user import User
+from app.routers.organizations import _org_to_response
+from sqlalchemy import select
 
 router = APIRouter(prefix="/api/partners", tags=["partners"])
 
 
-@router.get("/me", response_model=PartnerResponse)
+@router.get("/me")
 async def get_partner_profile(
-    partner: Partner = Depends(get_current_partner),
-) -> Partner:
-    """Infos du partenaire courant."""
-    return partner
-
-
-@router.put("/me", response_model=PartnerResponse)
-async def update_partner_profile(
-    data: PartnerUpdate,
-    partner: Partner = Depends(get_current_partner),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Partner:
-    """Modifier le profil du partenaire."""
-    update_data = data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(partner, field, value)
-    await db.commit()
-    await db.refresh(partner)
-    return partner
+) -> dict:
+    """Profil partenaire (organisation courante)."""
+    if not current_user.organization_id:
+        return {"id": str(current_user.id), "company_name": current_user.company_name, "email": current_user.email}
+
+    result = await db.execute(
+        select(Organization).where(Organization.id == current_user.organization_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        return {"id": str(current_user.id), "company_name": current_user.company_name, "email": current_user.email}
+
+    return await _org_to_response(org, db)
 
 
-@router.put("/me/branding", response_model=PartnerResponse)
-async def update_partner_branding(
-    data: PartnerBrandingUpdate,
-    partner: Partner = Depends(get_current_partner),
+@router.put("/me/branding")
+async def update_branding(
+    data: dict,
+    current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
-) -> Partner:
-    """Modifier le branding white-label (logo + couleurs)."""
-    update_data = data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(partner, field, value)
+) -> dict:
+    """Modifier le branding (couleurs). Utiliser /api/organizations/logo pour le logo."""
+    result = await db.execute(
+        select(Organization).where(Organization.id == current_user.organization_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Organisation introuvable")
+
+    if "brand_primary_color" in data:
+        org.brand_primary_color = data["brand_primary_color"]
+    if "brand_secondary_color" in data:
+        org.brand_secondary_color = data["brand_secondary_color"]
+
     await db.commit()
-    await db.refresh(partner)
-    return partner
+    await db.refresh(org)
+    return await _org_to_response(org, db)
