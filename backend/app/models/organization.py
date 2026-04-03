@@ -12,6 +12,7 @@ from sqlalchemy.sql import func
 from app.database import Base
 
 if TYPE_CHECKING:
+    from app.models.audit import Audit
     from app.models.user import User
 
 
@@ -51,3 +52,4 @@ class Organization(Base):
 
     # Relations
     users: Mapped[List[User]] = relationship(back_populates="organization")
+    audits: Mapped[List[Audit]] = relationship(back_populates="organization", cascade="all, delete-orphan")
