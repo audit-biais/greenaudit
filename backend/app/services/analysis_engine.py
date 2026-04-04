@@ -28,10 +28,10 @@ Changelog :
           Champ country sur Audit
 """
 
+from __future__ import annotations
+
 # Version des règles appliquées — à incrémenter à chaque modification du moteur
 RULES_VERSION = "1.1.0"
-
-from __future__ import annotations
 
 import re
 from typing import Dict, List, Optional, Tuple
