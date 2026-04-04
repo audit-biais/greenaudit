@@ -22,6 +22,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Appliquer les migrations Alembic en attente (idempotent, safe en prod)
+    try:
+        import subprocess, sys
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode == 0:
+            logger.info("Alembic migrations OK")
+        else:
+            logger.warning("Alembic warning: %s", result.stderr[-500:])
+    except Exception as exc:
+        logger.warning("Alembic non disponible, ignoré : %s", exc)
+
     # Démarrer le scheduler APScheduler
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from app.services.monitoring_service import run_due_monitoring_checks
