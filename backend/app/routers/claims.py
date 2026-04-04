@@ -12,8 +12,10 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
+from app.models.claim_result import ClaimResult
 from app.models.user import User
 from app.schemas.claim import ClaimCreate, ClaimResponse, ClaimUpdate
+from app.services.rewrite_engine import suggest_rewrite
 
 router = APIRouter(tags=["claims"])
 
@@ -157,3 +159,38 @@ async def delete_claim(
 
     await db.delete(claim)
     await db.commit()
+
+
+@router.post("/api/claims/{claim_id}/rewrite")
+async def rewrite_claim(
+    claim_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Propose une réécriture conforme EmpCo pour une claim non conforme."""
+    claim = await _get_user_claim(claim_id, user, db, load_results=True)
+
+    if claim.overall_verdict not in ("non_conforme", "risque"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La réécriture n'est disponible que pour les allégations non conformes ou à risque",
+        )
+
+    # Récupérer le secteur via l'audit
+    audit_result = await db.execute(select(Audit).where(Audit.id == claim.audit_id))
+    audit = audit_result.scalar_one()
+
+    # Collecter les raisons de non-conformité
+    reasons = [
+        r.explanation
+        for r in claim.results
+        if r.verdict in ("non_conforme", "risque")
+    ]
+
+    suggestion = await suggest_rewrite(
+        claim_text=claim.claim_text,
+        sector=audit.sector,
+        non_conforming_reasons=reasons,
+    )
+
+    return {"original": claim.claim_text, "suggestion": suggestion}

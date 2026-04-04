@@ -39,6 +39,8 @@ export default function AuditResults() {
   const [monitoring, setMonitoring] = useState(null);
   const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [monitoringError, setMonitoringError] = useState('');
+  const [rewrites, setRewrites] = useState({});
+  const [rewriteLoading, setRewriteLoading] = useState({});
 
   useEffect(() => {
     api.get(`/audits/${auditId}/results`)
@@ -100,6 +102,18 @@ export default function AuditResults() {
       setMonitoring((prev) => ({ ...prev, is_active: false }));
     } catch (err) {
       setMonitoringError(err.response?.data?.detail || 'Erreur');
+    }
+  };
+
+  const handleRewrite = async (claimId) => {
+    setRewriteLoading((prev) => ({ ...prev, [claimId]: true }));
+    try {
+      const res = await api.post(`/claims/${claimId}/rewrite`);
+      setRewrites((prev) => ({ ...prev, [claimId]: res.data.suggestion }));
+    } catch (err) {
+      setRewrites((prev) => ({ ...prev, [claimId]: err.response?.data?.detail || 'Erreur lors de la génération.' }));
+    } finally {
+      setRewriteLoading((prev) => ({ ...prev, [claimId]: false }));
     }
   };
 
@@ -300,6 +314,30 @@ export default function AuditResults() {
             </div>
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-50">
               <p className="italic text-sm text-gray-600">« {claim.claim_text} »</p>
+              {(claim.overall_verdict === 'non_conforme' || claim.overall_verdict === 'risque') && (
+                <div className="mt-3">
+                  {!rewrites[claim.id] ? (
+                    <button
+                      onClick={() => handleRewrite(claim.id)}
+                      disabled={rewriteLoading[claim.id]}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors disabled:opacity-50"
+                    >
+                      {rewriteLoading[claim.id] ? 'Génération...' : 'Suggérer une réécriture →'}
+                    </button>
+                  ) : (
+                    <div className="mt-2 p-3 bg-white border border-orange-200 rounded-xl">
+                      <p className="text-xs font-semibold text-orange-700 mb-1">Suggestion conforme EmpCo</p>
+                      <p className="text-sm text-gray-700 italic">« {rewrites[claim.id]} »</p>
+                      <button
+                        onClick={() => setRewrites((prev) => { const n = {...prev}; delete n[claim.id]; return n; })}
+                        className="mt-2 text-xs text-gray-400 hover:text-gray-600"
+                      >
+                        Effacer
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
