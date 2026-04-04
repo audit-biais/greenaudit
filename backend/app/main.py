@@ -4,6 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict
 
+import sqlalchemy as sa
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,19 +23,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Appliquer les migrations Alembic en attente (idempotent, safe en prod)
-    try:
-        import subprocess, sys
-        result = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            capture_output=True, text=True, timeout=60,
-        )
-        if result.returncode == 0:
-            logger.info("Alembic migrations OK")
-        else:
-            logger.warning("Alembic warning: %s", result.stderr[-500:])
-    except Exception as exc:
-        logger.warning("Alembic non disponible, ignoré : %s", exc)
+    # Migrations manuelles idempotentes (ADD COLUMN IF NOT EXISTS)
+    async with engine.begin() as conn:
+        await conn.execute(sa.text(
+            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS country VARCHAR(5) NOT NULL DEFAULT 'fr'"
+        ))
+        await conn.execute(sa.text(
+            "ALTER TABLE evidence_files ADD COLUMN IF NOT EXISTS document_type VARCHAR(50) NOT NULL DEFAULT 'autre'"
+        ))
+    logger.info("Colonnes country + document_type vérifiées/ajoutées")
 
     # Démarrer le scheduler APScheduler
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
