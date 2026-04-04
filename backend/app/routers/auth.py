@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
@@ -9,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user, oauth2_scheme
 from app.auth.jwt import create_access_token, decode_access_token, hash_password, verify_password
+from app.config import settings
 from app.database import get_db
 from app.models.organization import Organization
 from app.models.user import User
@@ -96,7 +95,7 @@ async def login(
         )
 
     # Activer le superadmin automatiquement si l'email correspond
-    superadmin_email = os.getenv("SUPERADMIN_EMAIL", "")
+    superadmin_email = settings.SUPERADMIN_EMAIL or ""
     if superadmin_email and user.email == superadmin_email and not user.is_superadmin:
         user.is_superadmin = True
         await db.commit()
