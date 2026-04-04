@@ -62,6 +62,9 @@ export default function Layout({ children }) {
 
             {/* Right side */}
             <div className="flex items-center gap-4">
+              {user?.is_superadmin && (
+                <span className="hidden sm:block text-xs font-semibold px-2 py-1 rounded-full bg-purple-100 text-purple-700">SuperAdmin</span>
+              )}
               <span className="hidden sm:block text-sm text-gray-500">{user?.organization?.name || user?.company_name}</span>
               <button
                 onClick={logout}
