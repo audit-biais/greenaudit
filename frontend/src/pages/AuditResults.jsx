@@ -41,6 +41,9 @@ export default function AuditResults() {
   const [monitoringError, setMonitoringError] = useState('');
   const [rewrites, setRewrites] = useState({});
   const [rewriteLoading, setRewriteLoading] = useState({});
+  const [evidenceFiles, setEvidenceFiles] = useState({});
+  const [evidenceUploading, setEvidenceUploading] = useState({});
+  const [evidenceOpen, setEvidenceOpen] = useState({});
 
   useEffect(() => {
     api.get(`/audits/${auditId}/results`)
@@ -117,6 +120,52 @@ export default function AuditResults() {
     }
   };
 
+  const loadEvidence = async (claimId) => {
+    try {
+      const res = await api.get(`/claims/${claimId}/evidence`);
+      setEvidenceFiles((prev) => ({ ...prev, [claimId]: res.data }));
+    } catch { /* silent */ }
+  };
+
+  const handleEvidenceToggle = (claimId) => {
+    const opening = !evidenceOpen[claimId];
+    setEvidenceOpen((prev) => ({ ...prev, [claimId]: opening }));
+    if (opening && !evidenceFiles[claimId]) loadEvidence(claimId);
+  };
+
+  const handleEvidenceUpload = async (claimId, file) => {
+    setEvidenceUploading((prev) => ({ ...prev, [claimId]: true }));
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      await api.post(`/claims/${claimId}/evidence`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await loadEvidence(claimId);
+    } catch (err) {
+      alert(err.response?.data?.detail || "Erreur lors de l'upload");
+    } finally {
+      setEvidenceUploading((prev) => ({ ...prev, [claimId]: false }));
+    }
+  };
+
+  const handleEvidenceDelete = async (claimId, evidenceId) => {
+    if (!window.confirm('Supprimer ce fichier ?')) return;
+    try {
+      await api.delete(`/evidence/${evidenceId}`);
+      setEvidenceFiles((prev) => ({
+        ...prev,
+        [claimId]: prev[claimId].filter((f) => f.id !== evidenceId),
+      }));
+    } catch { /* silent */ }
+  };
+
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} o`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+  };
+
   const handleMarkRead = async (alertId) => {
     try {
       await api.patch(`/monitoring/alerts/${alertId}/read`);
@@ -168,6 +217,13 @@ export default function AuditResults() {
               Télécharger →
             </button>
           )}
+          <a
+            href={`${api.defaults.baseURL}/audits/${auditId}/evidence/download-zip`}
+            className="px-4 py-2.5 rounded-full text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+            download
+          >
+            Dossier preuves ZIP
+          </a>
         </div>
       </div>
 
@@ -339,6 +395,69 @@ export default function AuditResults() {
                 </div>
               )}
             </div>
+            {/* Evidence Vault */}
+            <div className="px-5 py-3 border-b border-gray-50">
+              <button
+                onClick={() => handleEvidenceToggle(claim.id)}
+                className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+                Pièces justificatives
+                {evidenceFiles[claim.id]?.length > 0 && (
+                  <span className="bg-[#eaf4ee] text-[#1a5c3a] text-xs font-bold px-1.5 py-0.5 rounded-full">
+                    {evidenceFiles[claim.id].length}
+                  </span>
+                )}
+                <span className="text-gray-400">{evidenceOpen[claim.id] ? '▲' : '▼'}</span>
+              </button>
+
+              {evidenceOpen[claim.id] && (
+                <div className="mt-3 space-y-2">
+                  {/* Liste des fichiers */}
+                  {(evidenceFiles[claim.id] || []).map((f) => (
+                    <div key={f.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-xs text-gray-700 truncate">{f.filename}</span>
+                        <span className="text-xs text-gray-400 shrink-0">{formatSize(f.file_size)}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <a
+                          href={`${api.defaults.baseURL}/evidence/${f.id}/download`}
+                          className="text-xs text-[#1a5c3a] font-semibold hover:underline"
+                          download
+                        >
+                          Télécharger
+                        </a>
+                        <button
+                          onClick={() => handleEvidenceDelete(claim.id, f.id)}
+                          className="text-xs text-red-400 hover:text-red-600"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Upload */}
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-[#1a5c3a] font-semibold hover:underline">
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                      disabled={evidenceUploading[claim.id]}
+                      onChange={(e) => e.target.files[0] && handleEvidenceUpload(claim.id, e.target.files[0])}
+                    />
+                    {evidenceUploading[claim.id] ? 'Upload en cours...' : '+ Ajouter un fichier (PDF, image, Word — max 10 Mo)'}
+                  </label>
+                </div>
+              )}
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

@@ -14,6 +14,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from app.models.audit import Audit
     from app.models.claim_result import ClaimResult
+    from app.models.evidence import EvidenceFile
 
 
 class Claim(Base):
@@ -60,5 +61,8 @@ class Claim(Base):
     # Relations
     audit: Mapped[Audit] = relationship(back_populates="claims")
     results: Mapped[List[ClaimResult]] = relationship(
+        back_populates="claim", cascade="all, delete-orphan"
+    )
+    evidence_files: Mapped[List[EvidenceFile]] = relationship(
         back_populates="claim", cascade="all, delete-orphan"
     )
