@@ -129,9 +129,9 @@ export default function AuditResults() {
     setRewriteLoading((prev) => ({ ...prev, [claimId]: true }));
     try {
       const res = await api.post(`/claims/${claimId}/rewrite`);
-      setRewrites((prev) => ({ ...prev, [claimId]: res.data.suggestion }));
+      setRewrites((prev) => ({ ...prev, [claimId]: res.data.suggestions }));
     } catch (err) {
-      setRewrites((prev) => ({ ...prev, [claimId]: err.response?.data?.detail || 'Erreur lors de la génération.' }));
+      setRewrites((prev) => ({ ...prev, [claimId]: [err.response?.data?.detail || 'Erreur lors de la génération.'] }));
     } finally {
       setRewriteLoading((prev) => ({ ...prev, [claimId]: false }));
     }
@@ -407,8 +407,15 @@ export default function AuditResults() {
                     </button>
                   ) : (
                     <div className="mt-2 p-3 bg-white border border-orange-200 rounded-xl">
-                      <p className="text-xs font-semibold text-orange-700 mb-1">Suggestion conforme EmpCo</p>
-                      <p className="text-sm text-gray-700 italic">« {rewrites[claim.id]} »</p>
+                      <p className="text-xs font-semibold text-orange-700 mb-2">3 suggestions conformes EmpCo</p>
+                      <div className="space-y-2">
+                        {(rewrites[claim.id] || []).map((s, i) => (
+                          <div key={i} className="flex gap-2 items-start">
+                            <span className="text-xs font-bold text-orange-400 shrink-0 mt-0.5">{i + 1}.</span>
+                            <p className="text-sm text-gray-700 italic">« {s} »</p>
+                          </div>
+                        ))}
+                      </div>
                       <button
                         onClick={() => setRewrites((prev) => { const n = {...prev}; delete n[claim.id]; return n; })}
                         className="mt-2 text-xs text-gray-400 hover:text-gray-600"

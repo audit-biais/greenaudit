@@ -193,4 +193,4 @@ async def rewrite_claim(
         non_conforming_reasons=reasons,
     )
 
-    return {"original": claim.claim_text, "suggestion": suggestion}
+    return {"original": claim.claim_text, "suggestions": suggestion}

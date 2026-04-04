@@ -13,9 +13,9 @@ async def suggest_rewrite(
     claim_text: str,
     sector: str,
     non_conforming_reasons: list[str],
-) -> str:
+) -> list[str]:
     """
-    Appelle Claude pour proposer une réécriture conforme de l'allégation.
+    Appelle Claude pour proposer 3 réécritures conformes de l'allégation.
 
     Args:
         claim_text: L'allégation originale
@@ -23,10 +23,10 @@ async def suggest_rewrite(
         non_conforming_reasons: Liste des raisons de non-conformité
 
     Returns:
-        Une suggestion de réécriture conforme
+        Liste de 3 suggestions de réécriture conformes
     """
     if not settings.ANTHROPIC_API_KEY:
-        return "Clé API Claude non configurée."
+        return ["Clé API Claude non configurée."]
 
     reasons_text = "\n".join(f"- {r}" for r in non_conforming_reasons)
 
@@ -38,19 +38,38 @@ Une entreprise du secteur "{sector}" utilise l'allégation suivante :
 Cette allégation est NON CONFORME pour les raisons suivantes :
 {reasons_text}
 
-Propose UNE SEULE réécriture de cette allégation qui soit :
+Propose EXACTEMENT 3 réécritures différentes de cette allégation, chacune :
 1. Conforme à EmpCo : spécifique, vérifiable, non générique
 2. Honnête : ne pas inventer de chiffres ou certifications inexistants
 3. Actionnable : utilisable directement par une agence de communication
 4. Concise : une phrase maximum
+5. D'un angle différent des deux autres (ex : une axée sur les chiffres, une sur la certification, une sur l'action concrète)
 
-Réponds UNIQUEMENT avec la nouvelle formulation, sans explication, sans guillemets, sans préambule."""
+Réponds UNIQUEMENT avec les 3 formulations numérotées, format strict :
+1. [première suggestion]
+2. [deuxième suggestion]
+3. [troisième suggestion]
+
+Sans explication, sans guillemets, sans préambule."""
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=200,
+        max_tokens=400,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    return message.content[0].text.strip()
+    raw = message.content[0].text.strip()
+
+    # Parser les 3 suggestions numérotées
+    suggestions = []
+    for line in raw.split("\n"):
+        line = line.strip()
+        if line and line[0].isdigit() and ". " in line:
+            suggestions.append(line.split(". ", 1)[1].strip())
+
+    # Fallback si le parsing échoue
+    if not suggestions:
+        suggestions = [raw]
+
+    return suggestions[:3]
