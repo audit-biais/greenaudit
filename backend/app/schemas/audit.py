@@ -42,7 +42,7 @@ class AuditSummaryResponse(BaseModel):
 class AuditDetailResponse(BaseModel):
     """Détail complet d'un audit."""
     id: UUID
-    partner_id: UUID
+    organization_id: UUID
     company_name: str
     sector: str
     website_url: Optional[str] = None
