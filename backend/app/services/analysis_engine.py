@@ -370,41 +370,42 @@ def rule_proportionality(claim: Claim) -> ClaimResult:
             ),
         )
 
-    # scope = produit : vérifier si un composant mineur est cité pour justifier
-    # une allégation qui suggère que tout le produit est concerné
+    # scope = produit : non conforme UNIQUEMENT si le texte contient à la fois
+    # un terme générique global (durable, vert, écologique...) ET un composant mineur.
+    # Exemple non conforme : "Ce produit est durable grâce à son bouchon recyclé"
+    # Exemple conforme    : "Notre bouchon est en plastique recyclé" (périmètre honnête)
     minor_component = _find_minor_component(text)
     if minor_component:
-        return ClaimResult(
-            claim_id=claim.id,
-            criterion="proportionality",
-            verdict="non_conforme",
-            explanation=(
-                f"L'allégation porte sur le produit entier mais ne justifie l'avantage "
-                f"environnemental que par un composant mineur (« {minor_component} »). "
-                f"L'Annexe I, point 4ter interdit de suggérer qu'une caractéristique "
-                f"partielle s'applique à l'ensemble du produit."
-            ),
-            recommendation=(
-                f"Reformuler pour être explicite sur le périmètre réel : "
-                f"ex. « Le {minor_component} de ce produit est en matériau recyclé » "
-                f"au lieu de laisser entendre que tout le produit est concerné. "
-                f"Ou fournir des preuves que l'avantage environnemental couvre "
-                f"l'ensemble du cycle de vie du produit."
-            ),
-            regulation_reference=(
-                "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
-                "Annexe I, point 4ter — pratique réputée déloyale en toutes circonstances"
-            ),
-        )
+        global_term = _find_blacklist_match(text)
+        if global_term:
+            return ClaimResult(
+                claim_id=claim.id,
+                criterion="proportionality",
+                verdict="non_conforme",
+                explanation=(
+                    f"L'allégation utilise le terme global « {global_term} » pour "
+                    f"décrire le produit entier, alors que la justification environnementale "
+                    f"ne porte que sur un composant mineur (« {minor_component} »). "
+                    f"L'Annexe I, point 4ter interdit de suggérer qu'une caractéristique "
+                    f"partielle s'applique à l'ensemble du produit."
+                ),
+                recommendation=(
+                    f"Soit reformuler en limitant explicitement le périmètre : "
+                    f"ex. « Le {minor_component} de ce produit est en matériau recyclé ». "
+                    f"Soit fournir des preuves que l'avantage environnemental couvre "
+                    f"l'ensemble du cycle de vie du produit."
+                ),
+                regulation_reference=(
+                    "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
+                    "Annexe I, point 4ter — pratique réputée déloyale en toutes circonstances"
+                ),
+            )
 
     return ClaimResult(
         claim_id=claim.id,
         criterion="proportionality",
         verdict="non_applicable",
-        explanation=(
-            "Le scope est limité à un produit et aucun composant mineur n'est détecté. "
-            "La règle de proportionnalité ne s'applique pas."
-        ),
+        explanation="La règle de proportionnalité produit ne s'applique pas à cette allégation.",
     )
 
 
