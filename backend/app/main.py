@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
 from app.routers import auth, partners, audits, claims, reports
-from app.routers import monitoring, contact, organizations
+from app.routers import monitoring, contact, organizations, admin
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(organizations.router)
+app.include_router(admin.router)
 app.include_router(partners.router)
 app.include_router(audits.router)
 app.include_router(claims.router)

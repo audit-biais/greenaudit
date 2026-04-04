@@ -12,6 +12,7 @@ import AuditResults from './pages/AuditResults';
 import Settings from './pages/Settings';
 import ScanSite from './pages/ScanSite';
 import Contact from './pages/Contact';
+import AdminPanel from './pages/AdminPanel';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -77,6 +78,7 @@ function AppRoutes() {
       <Route path="/audits/:auditId/results" element={<ProtectedPage><AuditResults /></ProtectedPage>} />
       <Route path="/scan" element={<ProtectedPage><ScanSite /></ProtectedPage>} />
       <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
+      <Route path="/admin" element={<ProtectedPage><AdminPanel /></ProtectedPage>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
