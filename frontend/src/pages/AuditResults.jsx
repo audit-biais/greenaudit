@@ -217,7 +217,14 @@ export default function AuditResults() {
         <div>
           <Link to="/" className="text-xs text-[#1a5c3a] hover:underline">← Dashboard</Link>
           <h1 className="text-2xl font-black text-gray-900 mt-1">{results.company_name}</h1>
-          <p className="text-sm text-gray-400 capitalize mt-0.5">{results.sector}</p>
+          <p className="text-sm text-gray-400 capitalize mt-0.5">
+            {results.sector}
+            {results.rules_version && (
+              <span className="ml-2 text-xs text-gray-300 font-normal normal-case">
+                règles v{results.rules_version}
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex gap-3 flex-shrink-0">
           <button

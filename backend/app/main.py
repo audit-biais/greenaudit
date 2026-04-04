@@ -29,9 +29,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "ALTER TABLE audits ADD COLUMN IF NOT EXISTS country VARCHAR(5) NOT NULL DEFAULT 'fr'"
         ))
         await conn.execute(sa.text(
+            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS rules_version VARCHAR(20)"
+        ))
+        await conn.execute(sa.text(
             "ALTER TABLE evidence_files ADD COLUMN IF NOT EXISTS document_type VARCHAR(50) NOT NULL DEFAULT 'autre'"
         ))
-    logger.info("Colonnes country + document_type vérifiées/ajoutées")
+    logger.info("Colonnes country + rules_version + document_type vérifiées/ajoutées")
 
     # Démarrer le scheduler APScheduler
     from apscheduler.schedulers.asyncio import AsyncIOScheduler

@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.audit import AuditCreate, AuditDetailResponse, AuditSummaryResponse
 from app.schemas.claim_result import AuditResultsResponse
-from app.services.analysis_engine import analyze_claim
+from app.services.analysis_engine import analyze_claim, RULES_VERSION
 from app.services.monitoring_service import scrape_website, extract_claims_with_claude
 from app.services.scoring import calculate_global_score, compute_verdict_counts
 
@@ -183,6 +183,7 @@ async def analyze_audit(
     audit.at_risk_claims = counts["risque"]
     audit.global_score = score
     audit.risk_level = risk_level
+    audit.rules_version = RULES_VERSION
     audit.completed_at = datetime.now(timezone.utc)
 
     await db.commit()
@@ -206,6 +207,7 @@ async def analyze_audit(
         at_risk_claims=audit.at_risk_claims,
         global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
+        rules_version=audit.rules_version,
         claims=audit.claims,
     )
 
@@ -247,6 +249,7 @@ async def get_audit_results(
         at_risk_claims=audit.at_risk_claims,
         global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
+        rules_version=audit.rules_version,
         claims=audit.claims,
     )
 
@@ -354,6 +357,7 @@ async def scan_website_endpoint(
     audit.at_risk_claims = counts["risque"]
     audit.global_score = score
     audit.risk_level = risk_level
+    audit.rules_version = RULES_VERSION
     audit.completed_at = datetime.now(timezone.utc)
 
     await db.commit()
@@ -377,5 +381,6 @@ async def scan_website_endpoint(
         at_risk_claims=audit.at_risk_claims,
         global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
+        rules_version=audit.rules_version,
         claims=audit.claims,
     )

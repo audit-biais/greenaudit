@@ -51,6 +51,9 @@ class Audit(Base):
     # Pays (pour les règles nationales spécifiques, ex: loi AGEC France)
     country: Mapped[str] = mapped_column(String(5), nullable=False, server_default="fr")
 
+    # Version du moteur de règles utilisée pour l'analyse (traçabilité EmpCo)
+    rules_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
     # Méta
     pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     share_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)

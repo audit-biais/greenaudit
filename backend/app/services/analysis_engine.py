@@ -1,14 +1,35 @@
 """
-Moteur d'analyse des 7 règles EmpCo (EU 2024/825).
+Moteur d'analyse des 8 règles EmpCo (EU 2024/825) + loi AGEC France.
 
-Pour chaque claim, applique 7 critères et produit un ClaimResult par règle.
+Pour chaque claim, applique 8 critères et produit un ClaimResult par règle.
 
 Références directrices :
 - Directive 2005/29/CE modifiée par la Directive (UE) 2024/825 (« EmpCo »)
 - Annexe I : pratiques commerciales réputées déloyales en toutes circonstances
 - Art. 6 : actions trompeuses
 - Art. 7 : omissions trompeuses
+- Loi AGEC n°2020-105 du 10 février 2020, Art. 13 (France uniquement)
+
+VERSIONING DES RÈGLES
+---------------------
+Quand EmpCo évolue (nouvelles annexes, nouveaux articles, transpositions nationales) :
+1. Incrémenter RULES_VERSION ci-dessous
+2. Mettre à jour blacklist.py (termes / patterns concernés)
+3. Mettre à jour les fonctions rule_* impactées
+4. Pousser en prod → les nouveaux audits porteront la nouvelle version
+5. Les anciens audits conservent leur rules_version d'origine (traçabilité)
+
+Changelog :
+- 1.0.0 : 7 règles EmpCo de base (spécificité, compensation, labels, proportionnalité,
+          engagements futurs, justification, exigence légale)
+- 1.1.0 : Filtre Écolabel sur rule_specificity (Art. 2(s) + has_ecolabel_evidence)
+          Proportionnalité composants mineurs scope=produit (Annexe I, 4ter)
+          Règle 8 AGEC France (loi n°2020-105, Art. 13)
+          Champ country sur Audit
 """
+
+# Version des règles appliquées — à incrémenter à chaque modification du moteur
+RULES_VERSION = "1.1.0"
 
 from __future__ import annotations
 

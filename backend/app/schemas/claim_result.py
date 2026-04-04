@@ -46,4 +46,5 @@ class AuditResultsResponse(BaseModel):
     at_risk_claims: int
     global_score: Optional[float] = None
     risk_level: Optional[str] = None
+    rules_version: Optional[str] = None
     claims: List[ClaimWithResultsResponse] = []
