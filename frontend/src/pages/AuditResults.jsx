@@ -13,12 +13,28 @@ const VERDICT_LABELS = { conforme: 'Conforme', non_conforme: 'Non conforme', ris
 const RISK_BAR_COLORS = { faible: 'bg-[#1a5c3a]', modere: 'bg-yellow-500', eleve: 'bg-orange-500', critique: 'bg-red-600' };
 
 const CRITERION_LABELS = {
-  specificity: 'Spécificité',
-  compensation: 'Neutralité carbone',
-  labels: 'Labels',
-  proportionality: 'Proportionnalité',
-  future_commitment: 'Engagements futurs',
+  specificity: 'Spécificité (Annexe I, 4bis)',
+  compensation: 'Neutralité carbone (4quater)',
+  labels: 'Labels (2bis)',
+  proportionality: 'Proportionnalité (4ter)',
+  future_commitment: 'Engagements futurs (Art. 6)',
   justification: 'Justification / Preuves',
+  legal_requirement: 'Exigence légale (10bis)',
+  agec_france: 'Loi AGEC France (Art. 13)',
+};
+
+const DOCUMENT_TYPE_LABELS = {
+  ecolabel: 'Écolabel officiel',
+  certification: 'Certification',
+  rapport_interne: 'Rapport interne',
+  autre: 'Autre document',
+};
+
+const DOCUMENT_TYPE_COLORS = {
+  ecolabel: 'bg-[#eaf4ee] text-[#1a5c3a] border border-[#1a5c3a]/20',
+  certification: 'bg-blue-50 text-blue-700 border border-blue-200',
+  rapport_interne: 'bg-orange-50 text-orange-700 border border-orange-200',
+  autre: 'bg-gray-100 text-gray-600 border border-gray-200',
 };
 
 function VerdictBadge({ verdict }) {
@@ -44,6 +60,7 @@ export default function AuditResults() {
   const [evidenceFiles, setEvidenceFiles] = useState({});
   const [evidenceUploading, setEvidenceUploading] = useState({});
   const [evidenceOpen, setEvidenceOpen] = useState({});
+  const [evidenceDocType, setEvidenceDocType] = useState({});
 
   useEffect(() => {
     api.get(`/audits/${auditId}/results`)
@@ -137,6 +154,7 @@ export default function AuditResults() {
     setEvidenceUploading((prev) => ({ ...prev, [claimId]: true }));
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('document_type', evidenceDocType[claimId] || 'autre');
     try {
       await api.post(`/claims/${claimId}/evidence`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -424,6 +442,11 @@ export default function AuditResults() {
                         </svg>
                         <span className="text-xs text-gray-700 truncate">{f.filename}</span>
                         <span className="text-xs text-gray-400 shrink-0">{formatSize(f.file_size)}</span>
+                        {f.document_type && (
+                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full shrink-0 ${DOCUMENT_TYPE_COLORS[f.document_type] || DOCUMENT_TYPE_COLORS.autre}`}>
+                            {f.document_type === 'ecolabel' ? '★ ' : ''}{DOCUMENT_TYPE_LABELS[f.document_type] || f.document_type}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         <a
@@ -443,17 +466,35 @@ export default function AuditResults() {
                     </div>
                   ))}
 
-                  {/* Upload */}
-                  <label className="flex items-center gap-2 cursor-pointer text-xs text-[#1a5c3a] font-semibold hover:underline">
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                  {/* Upload — sélecteur de type + fichier */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#1a5c3a]"
+                      value={evidenceDocType[claim.id] || 'autre'}
+                      onChange={(e) => setEvidenceDocType((prev) => ({ ...prev, [claim.id]: e.target.value }))}
                       disabled={evidenceUploading[claim.id]}
-                      onChange={(e) => e.target.files[0] && handleEvidenceUpload(claim.id, e.target.files[0])}
-                    />
-                    {evidenceUploading[claim.id] ? 'Upload en cours...' : '+ Ajouter un fichier (PDF, image, Word — max 10 Mo)'}
-                  </label>
+                    >
+                      <option value="ecolabel">Écolabel officiel (EU, Ange Bleu, ISO 14024)</option>
+                      <option value="certification">Certification tierce</option>
+                      <option value="rapport_interne">Rapport interne</option>
+                      <option value="autre">Autre document</option>
+                    </select>
+                    <label className="flex items-center gap-1 cursor-pointer text-xs text-[#1a5c3a] font-semibold hover:underline">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                        disabled={evidenceUploading[claim.id]}
+                        onChange={(e) => e.target.files[0] && handleEvidenceUpload(claim.id, e.target.files[0])}
+                      />
+                      {evidenceUploading[claim.id] ? 'Upload en cours...' : '+ Ajouter (PDF, image, Word — max 10 Mo)'}
+                    </label>
+                  </div>
+                  {(evidenceDocType[claim.id] || 'autre') === 'ecolabel' && (
+                    <p className="text-xs text-[#1a5c3a] bg-[#eaf4ee] px-2 py-1 rounded-lg">
+                      Un Écolabel officiel déposé ici peut débloquer le verdict "Conforme" sur cette allégation lors de la prochaine analyse.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -471,8 +512,9 @@ export default function AuditResults() {
                 <tbody>
                   {claim.results
                     .sort((a, b) => {
-                      const order = ['specificity', 'compensation', 'labels', 'proportionality', 'future_commitment', 'justification'];
-                      return order.indexOf(a.criterion) - order.indexOf(b.criterion);
+                      const order = ['specificity', 'compensation', 'labels', 'proportionality', 'future_commitment', 'justification', 'legal_requirement', 'agec_france'];
+                      const ia = order.indexOf(a.criterion); const ib = order.indexOf(b.criterion);
+                      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
                     })
                     .map((r) => (
                       <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">

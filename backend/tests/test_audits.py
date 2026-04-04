@@ -73,7 +73,7 @@ class TestAnalyze:
         assert len(data["claims"]) == 1
         claim_data = data["claims"][0]
         assert claim_data["overall_verdict"] == "non_conforme"
-        assert len(claim_data["results"]) == 6
+        assert len(claim_data["results"]) == 7
 
     async def test_analyze_results_endpoint(
         self, client: AsyncClient, auth_headers, audit, claim
@@ -110,8 +110,8 @@ class TestAnalyze:
             f"/api/audits/{audit.id}/analyze", headers=auth_headers
         )
         assert resp2.status_code == 200
-        # Doit toujours avoir 6 résultats par claim, pas 12
-        assert len(resp2.json()["claims"][0]["results"]) == 6
+        # Doit toujours avoir 7 résultats par claim, pas 14
+        assert len(resp2.json()["claims"][0]["results"]) == 7
 
     async def test_delete_completed_audit_rejected(
         self, client: AsyncClient, auth_headers, audit, claim

@@ -11,11 +11,21 @@ const SECTORS = [
   { value: 'autre', label: 'Autre' },
 ];
 
+const COUNTRIES = [
+  { value: 'fr', label: 'France (loi AGEC — règles renforcées)' },
+  { value: 'de', label: 'Allemagne' },
+  { value: 'es', label: 'Espagne' },
+  { value: 'it', label: 'Italie' },
+  { value: 'be', label: 'Belgique' },
+  { value: 'nl', label: 'Pays-Bas' },
+  { value: 'eu', label: 'Autre pays UE' },
+];
+
 const inputCls = 'w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a] focus:border-transparent transition bg-white';
 
 export default function NewAudit() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ company_name: '', sector: '', website_url: '', contact_email: '' });
+  const [form, setForm] = useState({ company_name: '', sector: '', website_url: '', contact_email: '', country: 'fr' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -36,6 +46,7 @@ export default function NewAudit() {
         sector: form.sector,
         website_url: form.website_url.trim() || undefined,
         contact_email: form.contact_email.trim() || undefined,
+        country: form.country,
       });
       navigate(`/audits/${res.data.id}`);
     } catch (err) {
@@ -94,6 +105,21 @@ export default function NewAudit() {
           </label>
           <input type="email" id="contact_email" name="contact_email" value={form.contact_email}
             onChange={handleChange} placeholder="contact@example.com" className={inputCls} />
+        </div>
+
+        <div>
+          <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1.5">
+            Marché cible
+          </label>
+          <select id="country" name="country" value={form.country} onChange={handleChange}
+            className={inputCls + ' cursor-pointer'}>
+            {COUNTRIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+          {form.country === 'fr' && (
+            <p className="mt-1.5 text-xs text-amber-600">
+              La loi AGEC (Art. 13) interdit en France les termes "biodégradable" et "respectueux de l'environnement" sans exception.
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-50">

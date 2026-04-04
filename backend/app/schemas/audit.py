@@ -20,6 +20,7 @@ class AuditCreate(BaseModel):
     )
     website_url: Optional[str] = None
     contact_email: Optional[EmailStr] = None
+    country: str = Field(default="fr", max_length=5, description="Code pays ISO (fr, de, es...)")
 
 
 # --- Response schemas ---

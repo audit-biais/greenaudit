@@ -1,4 +1,4 @@
-"""Tests unitaires du moteur d'analyse — les 6 règles EmpCo."""
+"""Tests unitaires du moteur d'analyse — les 7 règles EmpCo."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from app.services.analysis_engine import (
     rule_future_commitment,
     rule_justification,
     rule_labels,
+    rule_legal_requirement,
     rule_proportionality,
     rule_specificity,
 )
@@ -100,6 +101,11 @@ class TestRuleCompensation:
 
     def test_compensation_carbone(self):
         claim = _make_claim(claim_text="Émissions en compensation carbone via reforestation")
+        result = rule_compensation(claim)
+        assert result.verdict == "non_conforme"
+
+    def test_carbon_positive(self):
+        claim = _make_claim(claim_text="Notre activité est carbon positive")
         result = rule_compensation(claim)
         assert result.verdict == "non_conforme"
 
@@ -202,7 +208,7 @@ class TestRuleFutureCommitment:
         )
         result = rule_future_commitment(claim)
         assert result.verdict == "non_conforme"
-        assert "vérification indépendante" in result.explanation
+        assert "tiers expert indépendant" in result.explanation
 
     def test_future_missing_both(self):
         claim = _make_claim(
@@ -213,7 +219,7 @@ class TestRuleFutureCommitment:
         result = rule_future_commitment(claim)
         assert result.verdict == "non_conforme"
         assert "date cible" in result.explanation
-        assert "vérification indépendante" in result.explanation
+        assert "tiers expert indépendant" in result.explanation
 
 
 # ===================================================================
@@ -253,6 +259,48 @@ class TestRuleJustification:
 
 
 # ===================================================================
+# Règle 7 — Exigences légales comme avantage distinctif
+# ===================================================================
+
+class TestRuleLegalRequirement:
+    def test_no_legal_mention(self):
+        claim = _make_claim(claim_text="Nos emballages sont fabriqués en France")
+        result = rule_legal_requirement(claim)
+        assert result.verdict == "non_applicable"
+
+    def test_sans_bpa(self):
+        claim = _make_claim(claim_text="Bouteille sans BPA")
+        result = rule_legal_requirement(claim)
+        assert result.verdict == "non_conforme"
+        assert "sans bpa" in result.explanation.lower() or "sans BPA" in result.explanation
+
+    def test_bpa_free(self):
+        claim = _make_claim(claim_text="Our bottles are BPA free")
+        result = rule_legal_requirement(claim)
+        assert result.verdict == "non_conforme"
+
+    def test_conforme_reach(self):
+        claim = _make_claim(claim_text="Produit conforme REACH")
+        result = rule_legal_requirement(claim)
+        assert result.verdict == "non_conforme"
+
+    def test_sans_phtalates(self):
+        claim = _make_claim(claim_text="Jouet garanti sans phtalates")
+        result = rule_legal_requirement(claim)
+        assert result.verdict == "non_conforme"
+
+    def test_conforme_reglementation(self):
+        claim = _make_claim(claim_text="Conforme à la réglementation en vigueur")
+        result = rule_legal_requirement(claim)
+        assert result.verdict == "non_conforme"
+
+    def test_not_triggered_by_unrelated(self):
+        claim = _make_claim(claim_text="Fabriqué avec 50% de plastique recyclé")
+        result = rule_legal_requirement(claim)
+        assert result.verdict == "non_applicable"
+
+
+# ===================================================================
 # Orchestration — analyze_claim
 # ===================================================================
 
@@ -266,7 +314,7 @@ class TestAnalyzeClaim:
             proof_type="certification_tierce",
         )
         results, verdict = analyze_claim(claim)
-        assert len(results) == 6
+        assert len(results) == 7
         assert verdict == "conforme"
 
     def test_non_conforme_claim(self):
@@ -285,7 +333,7 @@ class TestAnalyzeClaim:
         """Claim avec exactement 2 critères risque et 0 non_conforme → overall risque."""
         # specificity=risque (terme qualifié), justification=risque (rapport interne)
         # compensation=n/a, labels=n/a, proportionality=conforme (entreprise sans partial),
-        # future_commitment=n/a
+        # future_commitment=n/a, legal_requirement=n/a
         claim = _make_claim(
             claim_text="Produit durable certifié ISO 14001",
             scope="entreprise",
@@ -310,13 +358,14 @@ class TestAnalyzeClaim:
         comp = [r for r in results if r.criterion == "compensation"]
         assert comp[0].verdict == "non_conforme"
 
-    def test_results_count_always_six(self):
-        """Chaque claim produit exactement 6 résultats."""
+    def test_results_count_always_seven(self):
+        """Chaque claim produit exactement 7 résultats."""
         claim = _make_claim(claim_text="Test quelconque")
         results, _ = analyze_claim(claim)
-        assert len(results) == 6
+        assert len(results) == 7
         criteria = {r.criterion for r in results}
         assert criteria == {
             "specificity", "compensation", "labels",
             "proportionality", "future_commitment", "justification",
+            "legal_requirement",
         }

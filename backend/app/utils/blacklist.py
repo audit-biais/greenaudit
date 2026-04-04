@@ -139,7 +139,7 @@ QUALIFICATION_PATTERNS: list = [
     r"audit[ée]",         # audité / auditée
 ]
 
-# Mots-clés indiquant un aspect partiel (pour la règle de proportionnalité)
+# Mots-clés indiquant un aspect partiel de l'entreprise (pour la règle de proportionnalité scope=entreprise)
 PARTIAL_SCOPE_PATTERNS: list = [
     r"\bemballage[s]?\b",
     r"\bpackaging\b",
@@ -156,3 +156,40 @@ PARTIAL_SCOPE_PATTERNS: list = [
     r"\bco2\b",
     r"\bémission[s]?\b",
 ]
+
+# Composants mineurs d'un produit (pour la règle de proportionnalité scope=produit)
+# Si la claim porte sur le produit entier mais ne cite qu'un composant mineur → non conforme
+MINOR_COMPONENT_PATTERNS: list = [
+    r"\bbouchon[s]?\b",
+    r"\bcouvercle[s]?\b",
+    r"\bétiquette[s]?\b",
+    r"\blabel[s]?\b",
+    r"\blogo[s]?\b",
+    r"\bfilm[s]?\s+(plastique|d'emballage)?\b",
+    r"\bsachet[s]?\b",
+    r"\bsuremballage[s]?\b",
+    r"\bpalette[s]?\b",
+    r"\brunner[s]?\b",
+    r"\bpoignée[s]?\b",
+    r"\bvis\b",
+    r"\bboulons?\b",
+    r"\bsangle[s]?\b",
+    r"\bfil[s]?\s+d'emballage\b",
+    r"\bcalage[s]?\b",
+    r"\bprotège[\s-]?coin[s]?\b",
+]
+
+# Termes absolument interdits en France par la loi AGEC (Art. 13) + EmpCo
+# Interdits même avec preuve, même avec qualification — AUCUNE exception
+AGEC_ABSOLUTE_FORBIDDEN: list = [
+    "biodégradable",
+    "biodegradable",
+    "respectueux de l'environnement",
+    "respectueux de la nature",
+    "respectueux de la planète",
+]
+AGEC_ABSOLUTE_FORBIDDEN_NORMALIZED: list = [(_normalize(t), t) for t in AGEC_ABSOLUTE_FORBIDDEN]
+
+# Types de documents reconnus comme Écolabel officiel (Annexe I, point 4bis + Art. 2(s))
+# Ces types débloquent le verdict "conforme" pour une allégation générique
+OFFICIAL_ECOLABEL_DOCUMENT_TYPE = "ecolabel"

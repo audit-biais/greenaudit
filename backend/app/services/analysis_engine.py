@@ -18,10 +18,12 @@ from typing import Dict, List, Optional, Tuple
 from app.models.claim import Claim
 from app.models.claim_result import ClaimResult
 from app.utils.blacklist import (
+    AGEC_ABSOLUTE_FORBIDDEN_NORMALIZED,
     BLACKLIST_TERMS,
     BLACKLIST_TERMS_NORMALIZED,
     CARBON_NEUTRAL_TERMS,
     LEGAL_REQUIREMENT_PATTERNS,
+    MINOR_COMPONENT_PATTERNS,
     PARTIAL_SCOPE_PATTERNS,
     QUALIFICATION_PATTERNS,
     _normalize,
@@ -69,6 +71,24 @@ def _has_partial_scope_mention(text: str) -> bool:
     return False
 
 
+def _find_minor_component(text: str) -> Optional[str]:
+    """Retourne le premier composant mineur mentionné, ou None."""
+    for pattern in MINOR_COMPONENT_PATTERNS:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(0)
+    return None
+
+
+def _find_agec_forbidden(text: str) -> Optional[str]:
+    """Retourne le premier terme absolument interdit par la loi AGEC, ou None."""
+    text_normalized = _normalize(text)
+    for norm_term, original_term in AGEC_ABSOLUTE_FORBIDDEN_NORMALIZED:
+        if norm_term in text_normalized:
+            return original_term
+    return None
+
+
 def _find_legal_requirement_match(text: str) -> Optional[str]:
     """Retourne le premier pattern d'exigence légale trouvé, ou None."""
     for pattern in LEGAL_REQUIREMENT_PATTERNS:
@@ -82,7 +102,7 @@ def _find_legal_requirement_match(text: str) -> Optional[str]:
 # Règle 1 — Claims génériques (Annexe I, point 4bis)
 # ---------------------------------------------------------------------------
 
-def rule_specificity(claim: Claim) -> ClaimResult:
+def rule_specificity(claim: Claim, has_ecolabel_evidence: bool = False) -> ClaimResult:
     """
     Détecte les allégations environnementales génériques.
 
@@ -93,6 +113,9 @@ def rule_specificity(claim: Claim) -> ClaimResult:
     La « performance environnementale excellente reconnue » (Art. 2(s)) correspond
     au label écologique de l'UE (règlement CE 66/2010), aux systèmes ISO 14024
     de type I, ou aux meilleures performances en vertu du droit de l'Union.
+
+    Si un Écolabel officiel est présent dans l'Evidence Vault de la claim,
+    l'allégation peut être conforme même avec un terme générique.
     """
     text = _text_lower(claim)
     matched_term = _find_blacklist_match(text)
@@ -103,6 +126,31 @@ def rule_specificity(claim: Claim) -> ClaimResult:
             criterion="specificity",
             verdict="non_applicable",
             explanation="Aucun terme générique interdit détecté dans l'allégation.",
+        )
+
+    # Filtre Écolabel : un écolabel officiel dans le vault démontre la "performance
+    # environnementale excellente reconnue" exigée par l'Art. 2(s)
+    if has_ecolabel_evidence:
+        return ClaimResult(
+            claim_id=claim.id,
+            criterion="specificity",
+            verdict="conforme",
+            explanation=(
+                f"Le terme « {matched_term} » est présent mais un Écolabel officiel "
+                f"(EU Ecolabel, ISO 14024 Type I ou équivalent) a été déposé dans "
+                f"l'Evidence Vault. Cela constitue la « performance environnementale "
+                f"excellente reconnue » exigée par l'Art. 2(s) et l'Annexe I, point 4bis."
+            ),
+            recommendation=(
+                "Conserver l'Écolabel dans vos dossiers de conformité. "
+                "S'assurer que l'écolabel est affiché visiblement avec l'allégation "
+                "sur tous les supports (Art. 6.1(b))."
+            ),
+            regulation_reference=(
+                "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
+                "Annexe I, point 4bis + Art. 2(s) — performance environnementale "
+                "excellente reconnue via Écolabel EU / ISO 14024 Type I"
+            ),
         )
 
     if _has_qualification(text):
@@ -118,10 +166,9 @@ def rule_specificity(claim: Claim) -> ClaimResult:
                 f"ne suffit pas toujours à satisfaire cette exigence."
             ),
             recommendation=(
-                "Obtenir une certification reconnue (EU Ecolabel, ISO 14024 Type I) "
-                "ou fournir une preuve de performance environnementale excellente "
-                "au sens de l'Art. 2(s) de la directive 2005/29/CE modifiée. "
-                "À défaut, reformuler l'allégation de manière spécifique et mesurable."
+                "Déposer un Écolabel officiel (EU Ecolabel, ISO 14024 Type I) "
+                "dans l'Evidence Vault pour sécuriser cette allégation, "
+                "ou reformuler l'allégation de manière spécifique et mesurable."
             ),
             regulation_reference=(
                 "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
@@ -136,14 +183,14 @@ def rule_specificity(claim: Claim) -> ClaimResult:
         verdict="non_conforme",
         explanation=(
             f"Le terme « {matched_term} » est utilisé seul, sans qualification "
-            f"spécifique ni preuve mesurable. Cette pratique est interdite en "
+            f"spécifique ni Écolabel officiel. Cette pratique est interdite en "
             f"toutes circonstances par l'Annexe I, point 4bis."
         ),
         recommendation=(
-            f"Supprimer le terme « {matched_term} » ou le remplacer par une "
-            f"allégation spécifique étayée par une performance environnementale "
-            f"excellente reconnue (EU Ecolabel, ISO 14024 Type I). "
-            f"Exemple : « contient 30 % de matières recyclées certifiées »."
+            f"Supprimer le terme « {matched_term} » ou obtenir un Écolabel officiel "
+            f"(EU Ecolabel, Ange Bleu, ISO 14024 Type I) et le déposer dans l'Evidence Vault. "
+            f"Alternative : reformuler avec une allégation spécifique et mesurable, "
+            f"ex : « contient 30 % de matières recyclées certifiées »."
         ),
         regulation_reference=(
             "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
@@ -282,33 +329,67 @@ def rule_proportionality(claim: Claim) -> ClaimResult:
     Annexe I, point 4ter : « Présenter une allégation environnementale concernant
     l'ensemble du produit ou de l'entreprise du professionnel, alors qu'elle ne
     concerne qu'un des aspects du produit ou une activité spécifique de l'entreprise. »
-    """
-    if claim.scope != "entreprise":
-        return ClaimResult(
-            claim_id=claim.id,
-            criterion="proportionality",
-            verdict="non_applicable",
-            explanation="Le scope est limité à un produit, la règle de proportionnalité ne s'applique pas.",
-        )
 
+    Deux cas détectés :
+    1. scope=entreprise + mention d'un aspect partiel → risque
+    2. scope=produit + mention d'un composant mineur seulement → non_conforme
+       (ex : "Ce produit est durable car le bouchon est recyclé")
+    """
     text = _text_lower(claim)
 
-    if _has_partial_scope_mention(text):
+    if claim.scope == "entreprise":
+        if _has_partial_scope_mention(text):
+            return ClaimResult(
+                claim_id=claim.id,
+                criterion="proportionality",
+                verdict="risque",
+                explanation=(
+                    "L'allégation est déclarée au niveau « entreprise » mais le texte "
+                    "mentionne un aspect partiel (emballage, transport, produit…). "
+                    "L'Annexe I, point 4ter interdit de présenter une allégation sur "
+                    "l'ensemble de l'entreprise alors qu'elle ne concerne qu'une "
+                    "activité spécifique."
+                ),
+                recommendation=(
+                    "Reformuler l'allégation pour préciser qu'elle ne concerne qu'un "
+                    "aspect spécifique de l'activité, ou fournir des preuves couvrant "
+                    "l'ensemble de l'entreprise."
+                ),
+                regulation_reference=(
+                    "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
+                    "Annexe I, point 4ter — pratique réputée déloyale en toutes circonstances"
+                ),
+            )
         return ClaimResult(
             claim_id=claim.id,
             criterion="proportionality",
-            verdict="risque",
+            verdict="conforme",
             explanation=(
-                "L'allégation est déclarée au niveau « entreprise » mais le texte "
-                "mentionne un aspect partiel (emballage, transport, produit…). "
-                "L'Annexe I, point 4ter interdit de présenter une allégation sur "
-                "l'ensemble de l'entreprise alors qu'elle ne concerne qu'une "
-                "activité spécifique."
+                "L'allégation au niveau « entreprise » ne semble pas limitée à un "
+                "aspect partiel. La portée déclarée paraît cohérente avec le contenu."
+            ),
+        )
+
+    # scope = produit : vérifier si un composant mineur est cité pour justifier
+    # une allégation qui suggère que tout le produit est concerné
+    minor_component = _find_minor_component(text)
+    if minor_component:
+        return ClaimResult(
+            claim_id=claim.id,
+            criterion="proportionality",
+            verdict="non_conforme",
+            explanation=(
+                f"L'allégation porte sur le produit entier mais ne justifie l'avantage "
+                f"environnemental que par un composant mineur (« {minor_component} »). "
+                f"L'Annexe I, point 4ter interdit de suggérer qu'une caractéristique "
+                f"partielle s'applique à l'ensemble du produit."
             ),
             recommendation=(
-                "Reformuler l'allégation pour préciser qu'elle ne concerne qu'un "
-                "aspect spécifique de l'activité, ou fournir des preuves couvrant "
-                "l'ensemble de l'entreprise."
+                f"Reformuler pour être explicite sur le périmètre réel : "
+                f"ex. « Le {minor_component} de ce produit est en matériau recyclé » "
+                f"au lieu de laisser entendre que tout le produit est concerné. "
+                f"Ou fournir des preuves que l'avantage environnemental couvre "
+                f"l'ensemble du cycle de vie du produit."
             ),
             regulation_reference=(
                 "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
@@ -319,10 +400,10 @@ def rule_proportionality(claim: Claim) -> ClaimResult:
     return ClaimResult(
         claim_id=claim.id,
         criterion="proportionality",
-        verdict="conforme",
+        verdict="non_applicable",
         explanation=(
-            "L'allégation au niveau « entreprise » ne semble pas limitée à un "
-            "aspect partiel. La portée déclarée paraît cohérente avec le contenu."
+            "Le scope est limité à un produit et aucun composant mineur n'est détecté. "
+            "La règle de proportionnalité ne s'applique pas."
         ),
     )
 
@@ -546,23 +627,83 @@ def rule_legal_requirement(claim: Claim) -> ClaimResult:
 
 
 # ---------------------------------------------------------------------------
+# Règle 8 — Termes absolument interdits en France (Loi AGEC Art. 13)
+# ---------------------------------------------------------------------------
+
+def rule_agec_france(claim: Claim, country: str = "fr") -> ClaimResult:
+    """
+    Détecte les termes interdits par la loi AGEC (Art. 13) en France.
+
+    La loi AGEC (Anti-Gaspillage pour une Économie Circulaire, loi n°2020-105)
+    interdit ABSOLUMENT les mentions « biodégradable », « respectueux de
+    l'environnement » et termes équivalents sur tout produit mis sur le marché
+    français — sans exception possible, même avec preuve ou certification.
+
+    Cette règle est plus sévère qu'EmpCo : EmpCo permet ces termes avec
+    un Écolabel, la loi AGEC les interdit systématiquement.
+
+    S'applique uniquement si country="fr".
+    """
+    if country.lower() != "fr":
+        return ClaimResult(
+            claim_id=claim.id,
+            criterion="agec_france",
+            verdict="non_applicable",
+            explanation="La règle AGEC ne s'applique qu'aux produits commercialisés en France.",
+        )
+
+    text = _text_lower(claim)
+    matched_term = _find_agec_forbidden(text)
+
+    if matched_term is None:
+        return ClaimResult(
+            claim_id=claim.id,
+            criterion="agec_france",
+            verdict="non_applicable",
+            explanation="Aucun terme interdit par la loi AGEC (Art. 13) détecté.",
+        )
+
+    return ClaimResult(
+        claim_id=claim.id,
+        criterion="agec_france",
+        verdict="non_conforme",
+        explanation=(
+            f"Le terme « {matched_term} » est formellement interdit en France par "
+            f"la loi AGEC (Art. 13, loi n°2020-105 du 10 février 2020). "
+            f"Cette interdiction est absolue : aucune preuve, certification ou "
+            f"Écolabel ne peut la lever. Elle est plus stricte que la directive "
+            f"EmpCo (EU 2024/825) sur ce point spécifique."
+        ),
+        recommendation=(
+            f"Supprimer immédiatement le terme « {matched_term} » de tous les supports "
+            f"commerciaux destinés au marché français. "
+            f"Remplacer par une allégation spécifique et quantifiée, ex : "
+            f"« se décompose en 6 mois dans des conditions industrielles certifiées EN 13432 »."
+        ),
+        regulation_reference=(
+            "Loi AGEC n°2020-105 du 10 février 2020, Art. 13 — "
+            "interdiction des mentions « biodégradable » et « respectueux de "
+            "l'environnement » sur les produits (marché français)"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestration : analyse complète d'une claim
 # ---------------------------------------------------------------------------
 
-ALL_RULES = [
-    rule_specificity,
-    rule_compensation,
-    rule_labels,
-    rule_proportionality,
-    rule_future_commitment,
-    rule_justification,
-    rule_legal_requirement,
-]
-
-
-def analyze_claim(claim: Claim) -> Tuple[List[ClaimResult], str]:
+def analyze_claim(
+    claim: Claim,
+    has_ecolabel_evidence: bool = False,
+    country: str = "fr",
+) -> Tuple[List[ClaimResult], str]:
     """
-    Applique les 7 règles sur une claim.
+    Applique les 8 règles sur une claim.
+
+    Paramètres :
+    - has_ecolabel_evidence : True si un document de type "ecolabel" est dans
+      l'Evidence Vault de cette claim (débloque le verdict conforme pour rule_specificity)
+    - country : code pays ISO pour les règles nationales (défaut "fr" → loi AGEC)
 
     Retourne (liste de ClaimResult, overall_verdict).
 
@@ -572,9 +713,16 @@ def analyze_claim(claim: Claim) -> Tuple[List[ClaimResult], str]:
     - "conforme" sinon (0 non_conforme et max 1 risque)
     """
     results: List[ClaimResult] = []
-    for rule_fn in ALL_RULES:
-        result = rule_fn(claim)
-        results.append(result)
+
+    # Règles avec paramètres spécifiques
+    results.append(rule_specificity(claim, has_ecolabel_evidence=has_ecolabel_evidence))
+    results.append(rule_compensation(claim))
+    results.append(rule_labels(claim))
+    results.append(rule_proportionality(claim))
+    results.append(rule_future_commitment(claim))
+    results.append(rule_justification(claim))
+    results.append(rule_legal_requirement(claim))
+    results.append(rule_agec_france(claim, country=country))
 
     non_conforme_count = sum(1 for r in results if r.verdict == "non_conforme")
     risque_count = sum(1 for r in results if r.verdict == "risque")

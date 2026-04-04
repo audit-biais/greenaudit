@@ -4,7 +4,7 @@ import io
 import zipfile
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -43,14 +43,23 @@ async def _get_user_claim(claim_id: UUID, user: User, db: AsyncSession) -> Claim
     return claim
 
 
+ALLOWED_DOCUMENT_TYPES = {"ecolabel", "certification", "rapport_interne", "autre"}
+
+
 @router.post("/api/claims/{claim_id}/evidence", status_code=status.HTTP_201_CREATED)
 async def upload_evidence(
     claim_id: UUID,
     file: UploadFile = File(...),
+    document_type: str = Form(default="autre"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Upload une pièce justificative pour une allégation."""
+    """Upload une pièce justificative pour une allégation.
+
+    document_type : "ecolabel" | "certification" | "rapport_interne" | "autre"
+    - "ecolabel" : EU Ecolabel, Ange Bleu, ISO 14024 Type I... débloque le verdict conforme
+      sur les allégations génériques (Art. 2(s) EmpCo)
+    """
     claim = await _get_user_claim(claim_id, user, db)
 
     if file.content_type not in ALLOWED_TYPES:
@@ -58,6 +67,9 @@ async def upload_evidence(
             status_code=400,
             detail="Format non supporté. Utilisez PDF, JPEG, PNG ou Word.",
         )
+
+    if document_type not in ALLOWED_DOCUMENT_TYPES:
+        document_type = "autre"
 
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
@@ -69,6 +81,7 @@ async def upload_evidence(
         content_type=file.content_type,
         file_data=contents,
         file_size=len(contents),
+        document_type=document_type,
     )
     db.add(evidence)
     await db.commit()
@@ -79,6 +92,7 @@ async def upload_evidence(
         "filename": evidence.filename,
         "content_type": evidence.content_type,
         "file_size": evidence.file_size,
+        "document_type": evidence.document_type,
         "uploaded_at": evidence.uploaded_at.isoformat(),
     }
 
@@ -98,6 +112,7 @@ async def list_evidence(
             "filename": e.filename,
             "content_type": e.content_type,
             "file_size": e.file_size,
+            "document_type": e.document_type,
             "uploaded_at": e.uploaded_at.isoformat(),
         }
         for e in claim.evidence_files

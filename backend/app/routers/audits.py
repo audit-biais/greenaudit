@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import List
+from typing import Dict, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -14,6 +14,7 @@ from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
 from app.models.claim_result import ClaimResult
+from app.models.evidence import EvidenceFile
 from app.models.user import User
 from pydantic import BaseModel, Field
 
@@ -67,6 +68,7 @@ async def create_audit(
         sector=data.sector,
         website_url=data.website_url,
         contact_email=data.contact_email,
+        country=data.country,
     )
     db.add(audit)
     await db.commit()
@@ -141,10 +143,25 @@ async def analyze_audit(
         delete(ClaimResult).where(ClaimResult.claim_id.in_(claim_ids))
     )
 
+    # Charger les evidence files pour détecter les écolabels
+    claim_ids = [c.id for c in audit.claims]
+    evidence_result = await db.execute(
+        select(EvidenceFile).where(EvidenceFile.claim_id.in_(claim_ids))
+    )
+    evidence_by_claim: Dict[UUID, bool] = {}
+    for ev in evidence_result.scalars().all():
+        if ev.document_type == "ecolabel":
+            evidence_by_claim[ev.claim_id] = True
+
     # Analyser chaque claim
     all_verdicts: List[str] = []
     for claim in audit.claims:
-        results, overall_verdict = analyze_claim(claim)
+        has_ecolabel = evidence_by_claim.get(claim.id, False)
+        results, overall_verdict = analyze_claim(
+            claim,
+            has_ecolabel_evidence=has_ecolabel,
+            country=audit.country,
+        )
         claim.overall_verdict = overall_verdict
         all_verdicts.append(overall_verdict)
         for r in results:
@@ -314,10 +331,10 @@ async def scan_website_endpoint(
     )
     audit = result.scalar_one()
 
-    # Analyser
+    # Analyser (scan = pas d'écolabel dans vault, country par défaut "fr")
     all_verdicts: List[str] = []
     for claim in audit.claims:
-        results, overall_verdict = analyze_claim(claim)
+        results, overall_verdict = analyze_claim(claim, has_ecolabel_evidence=False, country="fr")
         claim.overall_verdict = overall_verdict
         all_verdicts.append(overall_verdict)
         for r in results:
