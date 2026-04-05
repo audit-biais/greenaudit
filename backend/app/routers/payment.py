@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import stripe
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,8 +96,12 @@ async def stripe_webhook(
         session_obj = event["data"]["object"]
         org_id = (session_obj.get("metadata") or {}).get("organization_id")
         if org_id:
+            try:
+                org_uuid = UUID(org_id)
+            except ValueError:
+                return {"received": True}
             result = await db.execute(
-                select(Organization).where(Organization.id == org_id)
+                select(Organization).where(Organization.id == org_uuid)
             )
             org = result.scalar_one_or_none()
             if org:

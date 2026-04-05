@@ -5,9 +5,9 @@ export default function PaymentSuccess() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const t = setTimeout(() => navigate('/dashboard'), 5000);
+    const t = setTimeout(() => { window.location.href = '/dashboard'; }, 5000);
     return () => clearTimeout(t);
-  }, [navigate]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -23,7 +23,7 @@ export default function PaymentSuccess() {
         </p>
         <p className="text-xs text-gray-400">Redirection automatique dans 5 secondes...</p>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => { window.location.href = '/dashboard'; }}
           className="mt-4 px-6 py-2.5 rounded-xl bg-[#1a5c3a] text-white text-sm font-semibold hover:bg-[#154d30] transition"
         >
           Aller au dashboard
