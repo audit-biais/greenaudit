@@ -34,10 +34,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.execute(sa.text(
             "ALTER TABLE evidence_files ADD COLUMN IF NOT EXISTS document_type VARCHAR(50) NOT NULL DEFAULT 'autre'"
         ))
-    # Renommer plan 'free' → 'starter' pour les orgs existantes
-    await conn.execute(sa.text(
-        "UPDATE organizations SET subscription_plan = 'starter' WHERE subscription_plan = 'free'"
-    ))
+        # Renommer plan 'free' → 'starter' pour les orgs existantes
+        await conn.execute(sa.text(
+            "UPDATE organizations SET subscription_plan = 'starter' WHERE subscription_plan = 'free'"
+        ))
     logger.info("Colonnes country + rules_version + document_type vérifiées/ajoutées")
 
     # Démarrer le scheduler APScheduler
