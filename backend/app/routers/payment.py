@@ -97,9 +97,10 @@ async def stripe_webhook(
 
     if event["type"] == "checkout.session.completed":
         session_obj = event["data"]["object"]
-        metadata = session_obj.get("metadata") or {}
-        org_id = metadata.get("organization_id")
-        logger.info(f"[webhook] checkout.session.completed — org_id={org_id!r} metadata={metadata!r}")
+        # stripe-python v7+ : accès par attribut, pas par .get()
+        raw_metadata = getattr(session_obj, "metadata", None) or {}
+        org_id = raw_metadata.get("organization_id") if isinstance(raw_metadata, dict) else getattr(raw_metadata, "organization_id", None)
+        logger.info(f"[webhook] checkout.session.completed — org_id={org_id!r} metadata={raw_metadata!r}")
         if org_id:
             try:
                 org_uuid = UUID(org_id)
@@ -117,14 +118,14 @@ async def stripe_webhook(
                 org.audits_limit = 15
                 org.audits_this_month = 0
                 org.audits_reset_month = None
-                org.stripe_customer_id = session_obj.get("customer")
-                org.stripe_subscription_id = session_obj.get("subscription")
+                org.stripe_customer_id = getattr(session_obj, "customer", None)
+                org.stripe_subscription_id = getattr(session_obj, "subscription", None)
                 await db.commit()
                 logger.info(f"[webhook] org {org_uuid} mise à jour → plan pro")
 
     elif event["type"] in ("customer.subscription.deleted", "customer.subscription.paused"):
         subscription = event["data"]["object"]
-        customer_id = subscription.get("customer")
+        customer_id = getattr(subscription, "customer", None)
         if customer_id:
             result = await db.execute(
                 select(Organization).where(Organization.stripe_customer_id == customer_id)
