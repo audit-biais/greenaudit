@@ -6,8 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import logging
 from app.auth.dependencies import get_current_user, require_pro
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 from app.database import get_db
 from app.models.organization import Organization
 from app.models.user import User
@@ -94,16 +97,20 @@ async def stripe_webhook(
 
     if event["type"] == "checkout.session.completed":
         session_obj = event["data"]["object"]
-        org_id = (session_obj.get("metadata") or {}).get("organization_id")
+        metadata = session_obj.get("metadata") or {}
+        org_id = metadata.get("organization_id")
+        logger.info(f"[webhook] checkout.session.completed — org_id={org_id!r} metadata={metadata!r}")
         if org_id:
             try:
                 org_uuid = UUID(org_id)
             except ValueError:
+                logger.error(f"[webhook] UUID invalide : {org_id!r}")
                 return {"received": True}
             result = await db.execute(
                 select(Organization).where(Organization.id == org_uuid)
             )
             org = result.scalar_one_or_none()
+            logger.info(f"[webhook] org trouvée : {org is not None} — plan actuel : {org.subscription_plan if org else 'N/A'}")
             if org:
                 org.subscription_plan = "pro"
                 org.subscription_status = "active"
@@ -113,6 +120,7 @@ async def stripe_webhook(
                 org.stripe_customer_id = session_obj.get("customer")
                 org.stripe_subscription_id = session_obj.get("subscription")
                 await db.commit()
+                logger.info(f"[webhook] org {org_uuid} mise à jour → plan pro")
 
     elif event["type"] in ("customer.subscription.deleted", "customer.subscription.paused"):
         subscription = event["data"]["object"]
