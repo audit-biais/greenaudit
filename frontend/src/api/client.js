@@ -19,6 +19,12 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
+    if (
+      error.response?.status === 402 &&
+      error.response?.data?.detail === 'upgrade_required'
+    ) {
+      window.dispatchEvent(new CustomEvent('upgrade_required'));
+    }
     return Promise.reject(error);
   }
 );

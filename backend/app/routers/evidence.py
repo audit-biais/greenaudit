@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_pro
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
@@ -51,7 +51,7 @@ async def upload_evidence(
     claim_id: UUID,
     file: UploadFile = File(...),
     document_type: str = Form(default="autre"),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Upload une pièce justificative pour une allégation.

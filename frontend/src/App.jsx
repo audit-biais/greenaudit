@@ -13,6 +13,7 @@ import Settings from './pages/Settings';
 import ScanSite from './pages/ScanSite';
 import Contact from './pages/Contact';
 import AdminPanel from './pages/AdminPanel';
+import PaymentSuccess from './pages/PaymentSuccess';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -79,6 +80,7 @@ function AppRoutes() {
       <Route path="/scan" element={<ProtectedPage><ScanSite /></ProtectedPage>} />
       <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
       <Route path="/admin" element={<ProtectedPage><AdminPanel /></ProtectedPage>} />
+      <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

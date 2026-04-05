@@ -24,9 +24,11 @@ class Settings(BaseSettings):
     # Stockage PDF
     PDF_STORAGE_PATH: str = "./reports"
 
-    # Stripe (optionnel)
+    # Stripe
     STRIPE_SECRET_KEY: Optional[str] = None
     STRIPE_WEBHOOK_SECRET: Optional[str] = None
+    STRIPE_PRO_PRICE_ID: Optional[str] = None  # Price ID du plan Pro 2990€/mois
+    FRONTEND_URL: str = "https://greenaudit.vercel.app"
 
     # Claude API (monitoring continu)
     ANTHROPIC_API_KEY: Optional[str] = None

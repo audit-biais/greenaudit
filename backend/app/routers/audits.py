@@ -9,7 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import check_audit_limit, get_current_user
+from app.auth.dependencies import check_audit_limit, get_current_user, require_pro
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
@@ -18,6 +18,7 @@ from app.models.evidence import EvidenceFile
 from app.models.user import User
 from pydantic import BaseModel, Field
 
+from app.models.organization import Organization
 from app.schemas.audit import AuditCreate, AuditDetailResponse, AuditSummaryResponse
 from app.schemas.claim_result import AuditResultsResponse
 from app.services.analysis_engine import analyze_claim, RULES_VERSION
@@ -71,6 +72,16 @@ async def create_audit(
         country=data.country,
     )
     db.add(audit)
+    await db.flush()
+
+    # Incrémenter le compteur d'audits de l'organisation
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == user.organization_id)
+    )
+    org = org_result.scalar_one_or_none()
+    if org:
+        org.audits_this_month = (org.audits_this_month or 0) + 1
+
     await db.commit()
     await db.refresh(audit)
     return audit
@@ -122,7 +133,7 @@ async def delete_audit(
 @router.post("/{audit_id}/analyze", response_model=AuditResultsResponse)
 async def analyze_audit(
     audit_id: UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
 ) -> AuditResultsResponse:
     """
@@ -308,6 +319,14 @@ async def scan_website_endpoint(
     )
     db.add(audit)
     await db.flush()
+
+    # Incrémenter le compteur d'audits de l'organisation
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == user.organization_id)
+    )
+    org = org_result.scalar_one_or_none()
+    if org:
+        org.audits_this_month = (org.audits_this_month or 0) + 1
 
     # Créer les claims (mode simplifié — scope web, pas de preuve déclarée)
     for claim_text in claims_text:

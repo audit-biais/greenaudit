@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../api/auth';
+import UpgradeModal from './UpgradeModal';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard' },
@@ -80,6 +81,7 @@ export default function Layout({ children }) {
       <main className="max-w-7xl mx-auto px-6 py-8" key={location.pathname}>
         {children}
       </main>
+      <UpgradeModal />
     </div>
   );
 }

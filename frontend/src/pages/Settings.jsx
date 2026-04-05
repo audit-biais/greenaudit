@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../api/auth';
 import api from '../api/client';
 
+const PLAN_LABELS = {
+  starter: 'Starter',
+  free: 'Starter',
+  pro: 'Pro',
+  enterprise: 'Enterprise',
+};
+
+const PLAN_COLORS = {
+  starter: 'bg-gray-100 text-gray-600',
+  free: 'bg-gray-100 text-gray-600',
+  pro: 'bg-[#eaf4ee] text-[#1a5c3a]',
+  enterprise: 'bg-purple-100 text-purple-700',
+};
+
 const inputCls = 'w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a] focus:border-transparent transition bg-white';
 
 function MessageBanner({ message }) {
@@ -33,6 +47,8 @@ export default function Settings() {
   const [hasLogo, setHasLogo] = useState(false);
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingMessage, setBrandingMessage] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (!user?.organization?.id) return;
@@ -229,6 +245,130 @@ export default function Settings() {
           </div>
         </form>
       </div>
+
+      {/* ── Abonnement ── */}
+      <SubscriptionSection
+        user={user}
+        checkoutLoading={checkoutLoading}
+        setCheckoutLoading={setCheckoutLoading}
+        portalLoading={portalLoading}
+        setPortalLoading={setPortalLoading}
+      />
+    </div>
+  );
+}
+
+function SubscriptionSection({ user, checkoutLoading, setCheckoutLoading, portalLoading, setPortalLoading }) {
+  const plan = user?.subscription_plan || 'starter';
+  const auditsUsed = user?.audits_this_month ?? 0;
+  const auditsLimit = user?.audits_limit ?? 1;
+  const isPro = plan === 'pro';
+  const isEnterprise = plan === 'enterprise';
+  const isStarter = !isPro && !isEnterprise;
+
+  const handleUpgrade = async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await api.post('/payment/create-checkout');
+      window.location.href = res.data.checkout_url;
+    } catch (err) {
+      alert('Erreur lors de la création du checkout. Réessayez.');
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handlePortal = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await api.post('/payment/portal');
+      window.location.href = res.data.portal_url;
+    } catch (err) {
+      alert('Erreur lors de l\'ouverture du portail. Réessayez.');
+      setPortalLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <h2 className="text-base font-semibold text-gray-900 mb-5">Abonnement</h2>
+
+      {/* Plan actuel */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-sm text-gray-500 mb-1">Plan actuel</p>
+          <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full ${PLAN_COLORS[plan] || PLAN_COLORS.starter}`}>
+            {PLAN_LABELS[plan] || 'Starter'}
+          </span>
+        </div>
+        {(isPro) && (
+          <div className="text-right">
+            <p className="text-sm text-gray-500 mb-1">Audits ce mois</p>
+            <p className="text-sm font-semibold text-gray-900">{auditsUsed} / {auditsLimit}</p>
+          </div>
+        )}
+        {isEnterprise && (
+          <div className="text-right">
+            <p className="text-sm text-gray-500">Audits</p>
+            <p className="text-sm font-semibold text-gray-900">Illimités</p>
+          </div>
+        )}
+      </div>
+
+      {/* Barre de progression pour Pro */}
+      {isPro && (
+        <div className="mb-5">
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
+            <div
+              className="bg-[#1a5c3a] h-1.5 rounded-full transition-all"
+              style={{ width: `${Math.min((auditsUsed / auditsLimit) * 100, 100)}%` }}
+            />
+          </div>
+          {auditsUsed >= auditsLimit && (
+            <p className="text-xs text-orange-600 mt-1">
+              Limite atteinte — contactez-nous pour ajouter des audits (400€/audit).
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Starter → upgrade */}
+      {isStarter && (
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 mb-4">
+          <p className="text-sm text-gray-600 mb-3">
+            Votre audit d'essai est inclus. Passez au plan Pro pour accéder à l'analyse complète,
+            les rapports PDF, l'Evidence Vault et le monitoring continu.
+          </p>
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="text-2xl font-bold text-gray-900">2 990€</span>
+            <span className="text-sm text-gray-500">/mois · 12 mois</span>
+          </div>
+          <button
+            onClick={handleUpgrade}
+            disabled={checkoutLoading}
+            className="w-full py-2.5 rounded-xl bg-[#1a5c3a] text-white text-sm font-semibold hover:bg-[#154d30] transition disabled:opacity-60"
+          >
+            {checkoutLoading ? 'Redirection...' : 'Passer au plan Pro'}
+          </button>
+        </div>
+      )}
+
+      {/* Pro → gérer abonnement */}
+      {isPro && (
+        <button
+          onClick={handlePortal}
+          disabled={portalLoading}
+          className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition disabled:opacity-60"
+        >
+          {portalLoading ? 'Ouverture...' : 'Gérer mon abonnement (factures, résiliation)'}
+        </button>
+      )}
+
+      {/* Enterprise */}
+      {isEnterprise && (
+        <p className="text-sm text-gray-500">
+          Plan Enterprise actif. Contactez-nous pour toute modification.
+        </p>
+      )}
     </div>
   );
 }

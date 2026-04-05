@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_pro
 from app.database import get_db
 from app.config import settings
 from app.models.audit import Audit
@@ -53,7 +53,7 @@ async def _load_completed_audit(
 @router.post("/{audit_id}/report", status_code=status.HTTP_201_CREATED)
 async def generate_report(
     audit_id: UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Générer le rapport PDF pour un audit analysé."""
@@ -77,7 +77,7 @@ async def generate_report(
 @router.get("/{audit_id}/report/download")
 async def download_report(
     audit_id: UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
 ) -> FileResponse:
     """Télécharger le rapport PDF d'un audit."""

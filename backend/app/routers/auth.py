@@ -50,7 +50,7 @@ async def signup(
         email=data.email,
         company_name=data.company_name,
         hashed_password=hash_password(data.password),
-        subscription_plan="free",
+        subscription_plan="starter",
         audits_limit=1,
         role="admin",
     )

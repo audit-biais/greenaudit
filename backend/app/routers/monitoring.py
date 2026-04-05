@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_pro
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.monitoring_alert import MonitoringAlert
@@ -63,7 +63,7 @@ def _build_config_response(
 async def enable_monitoring(
     audit_id: UUID,
     data: MonitoringConfigCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
 ) -> MonitoringConfigResponse:
     """Activer le monitoring pour un audit (doit être completed + avoir website_url)."""
