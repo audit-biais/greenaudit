@@ -81,6 +81,8 @@ class ClaimResponse(BaseModel):
     has_independent_verification: bool
 
     overall_verdict: Optional[str] = None
+    is_corrected: bool = False
+    corrected_at: Optional[datetime] = None
     created_at: datetime
 
     results: List[ClaimResultInClaimResponse] = []

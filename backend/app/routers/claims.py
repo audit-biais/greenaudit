@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
 
@@ -159,6 +160,21 @@ async def delete_claim(
 
     await db.delete(claim)
     await db.commit()
+
+
+@router.patch("/api/claims/{claim_id}/mark-corrected", response_model=ClaimResponse)
+async def mark_claim_corrected(
+    claim_id: UUID,
+    user: User = Depends(require_pro),
+    db: AsyncSession = Depends(get_db),
+) -> Claim:
+    """Marquer une allégation comme corrigée (toggle). Réservé aux plans Pro et Enterprise."""
+    claim = await _get_user_claim(claim_id, user, db, load_results=True)
+    claim.is_corrected = not claim.is_corrected
+    claim.corrected_at = datetime.now(timezone.utc) if claim.is_corrected else None
+    await db.commit()
+    await db.refresh(claim)
+    return claim
 
 
 @router.post("/api/claims/{claim_id}/rewrite")

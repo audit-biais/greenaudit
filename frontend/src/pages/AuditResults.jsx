@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
+import { useAuth } from '../api/auth';
 
 const VERDICT_STYLES = {
   conforme: 'bg-[#eaf4ee] text-[#1a5c3a]',
@@ -47,6 +48,8 @@ function VerdictBadge({ verdict }) {
 
 export default function AuditResults() {
   const { auditId } = useParams();
+  const { user } = useAuth();
+  const isPro = ['pro', 'enterprise'].includes(user?.subscription_plan);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -61,13 +64,32 @@ export default function AuditResults() {
   const [evidenceUploading, setEvidenceUploading] = useState({});
   const [evidenceOpen, setEvidenceOpen] = useState({});
   const [evidenceDocType, setEvidenceDocType] = useState({});
+  const [correctedClaims, setCorrectedClaims] = useState({});
+  const [correctingClaim, setCorrectingClaim] = useState({});
 
   useEffect(() => {
     api.get(`/audits/${auditId}/results`)
-      .then((res) => setResults(res.data))
+      .then((res) => {
+        setResults(res.data);
+        const corrected = {};
+        res.data.claims?.forEach((c) => { corrected[c.id] = c.is_corrected; });
+        setCorrectedClaims(corrected);
+      })
       .catch((err) => setError(err.response?.data?.detail || 'Erreur lors du chargement'))
       .finally(() => setLoading(false));
   }, [auditId]);
+
+  const handleMarkCorrected = async (claimId) => {
+    setCorrectingClaim((prev) => ({ ...prev, [claimId]: true }));
+    try {
+      const res = await api.patch(`/claims/${claimId}/mark-corrected`);
+      setCorrectedClaims((prev) => ({ ...prev, [claimId]: res.data.is_corrected }));
+    } catch {
+      // l'UpgradeModal global prend en charge le cas 402
+    } finally {
+      setCorrectingClaim((prev) => ({ ...prev, [claimId]: false }));
+    }
+  };
 
   useEffect(() => {
     if (results?.status === 'completed') {
@@ -390,8 +412,32 @@ export default function AuditResults() {
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-300 font-mono">#{idx + 1}</span>
                 <VerdictBadge verdict={claim.overall_verdict} />
+                {correctedClaims[claim.id] && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#eaf4ee] text-[#1a5c3a]">
+                    Corrigée
+                  </span>
+                )}
               </div>
-              <span className="text-xs text-gray-400">{claim.support_type} · {claim.scope}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400">{claim.support_type} · {claim.scope}</span>
+                {isPro && (
+                  <button
+                    onClick={() => handleMarkCorrected(claim.id)}
+                    disabled={correctingClaim[claim.id]}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors disabled:opacity-50 ${
+                      correctedClaims[claim.id]
+                        ? 'bg-[#eaf4ee] text-[#1a5c3a] hover:bg-red-50 hover:text-red-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-[#eaf4ee] hover:text-[#1a5c3a]'
+                    }`}
+                  >
+                    {correctingClaim[claim.id]
+                      ? '...'
+                      : correctedClaims[claim.id]
+                        ? 'Corrigée'
+                        : 'Marquer corrigée'}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-50">
               <p className="italic text-sm text-gray-600">« {claim.claim_text} »</p>
