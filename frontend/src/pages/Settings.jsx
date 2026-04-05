@@ -171,7 +171,25 @@ export default function Settings() {
         </form>
       </div>
 
-      {/* Section Branding */}
+      {/* Section Branding — Pro/Enterprise uniquement */}
+      {['starter', 'free'].includes(user?.subscription_plan) ? (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-50 bg-gray-50">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-gray-400">Branding white-label</h2>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Pro</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">Personnalisez le logo et les couleurs de vos rapports PDF.</p>
+          </div>
+          <div className="p-6 flex flex-col items-center justify-center text-center gap-3 py-10">
+            <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <p className="text-sm text-gray-400">Le branding white-label est réservé au plan Pro.</p>
+          </div>
+        </div>
+      ) : (
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-50 bg-[#eaf4ee]">
           <h2 className="text-sm font-bold text-[#1a5c3a]">Branding white-label</h2>
@@ -245,6 +263,7 @@ export default function Settings() {
           </div>
         </form>
       </div>
+      )}
 
       {/* ── Abonnement ── */}
       <SubscriptionSection
