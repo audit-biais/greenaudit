@@ -441,15 +441,21 @@ function TeamSection({ user }) {
                     )}
                   </div>
                 </div>
-                {!m.is_self && (
-                  <button
-                    onClick={() => handleDelete(m.id)}
-                    disabled={deletingId === m.id}
-                    className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-50"
-                  >
-                    {deletingId === m.id ? '...' : 'Supprimer'}
-                  </button>
-                )}
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-900">{m.audits_count ?? 0}</p>
+                    <p className="text-xs text-gray-400">audit{m.audits_count !== 1 ? 's' : ''}</p>
+                  </div>
+                  {!m.is_self && (
+                    <button
+                      onClick={() => handleDelete(m.id)}
+                      disabled={deletingId === m.id}
+                      className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-50"
+                    >
+                      {deletingId === m.id ? '...' : 'Supprimer'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

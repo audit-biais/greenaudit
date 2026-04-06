@@ -70,6 +70,7 @@ async def create_audit(
         website_url=data.website_url,
         contact_email=data.contact_email,
         country=data.country,
+        created_by_user_id=user.id,
     )
     db.add(audit)
     await db.flush()
@@ -316,6 +317,7 @@ async def scan_website_endpoint(
         company_name=data.company_name,
         sector=data.sector,
         website_url=data.url,
+        created_by_user_id=user.id,
     )
     db.add(audit)
     await db.flush()

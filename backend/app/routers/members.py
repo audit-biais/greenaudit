@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.auth.jwt import hash_password
 from app.database import get_db
+from app.models.audit import Audit
 from app.models.organization import Organization
 from app.models.user import User
 
@@ -48,6 +49,15 @@ async def list_members(
         .order_by(User.created_at)
     )
     members = result.scalars().all()
+
+    # Compter les audits par membre
+    audit_counts = {}
+    for m in members:
+        count_result = await db.execute(
+            select(func.count()).where(Audit.created_by_user_id == m.id)
+        )
+        audit_counts[m.id] = count_result.scalar() or 0
+
     return [
         {
             "id": str(m.id),
@@ -56,6 +66,7 @@ async def list_members(
             "role": m.role or "member",
             "created_at": m.created_at.isoformat(),
             "is_self": m.id == user.id,
+            "audits_count": audit_counts.get(m.id, 0),
         }
         for m in members
     ]

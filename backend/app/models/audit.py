@@ -54,6 +54,11 @@ class Audit(Base):
     # Version du moteur de règles utilisée pour l'analyse (traçabilité EmpCo)
     rules_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
+    # Créateur (membre de l'org qui a lancé l'audit)
+    created_by_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
     # Méta
     pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     share_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
