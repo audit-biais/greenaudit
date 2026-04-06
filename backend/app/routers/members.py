@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +24,7 @@ MEMBER_LIMITS = {
 
 
 class InviteMemberRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     role: str = "member"
 
