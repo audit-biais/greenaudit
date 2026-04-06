@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../api/auth';
 import api from '../api/client';
 
+const MEMBER_LIMITS = { pro: 10, enterprise: null };
+
 const PLAN_LABELS = {
   starter: 'Starter',
   free: 'Starter',
@@ -265,6 +267,11 @@ export default function Settings() {
       </div>
       )}
 
+      {/* ── Équipe — Pro/Enterprise uniquement ── */}
+      {['pro', 'enterprise'].includes(user?.subscription_plan) && user?.role === 'admin' && (
+        <TeamSection user={user} />
+      )}
+
       {/* ── Abonnement ── */}
       <SubscriptionSection
         user={user}
@@ -273,6 +280,181 @@ export default function Settings() {
         portalLoading={portalLoading}
         setPortalLoading={setPortalLoading}
       />
+    </div>
+  );
+}
+
+function TeamSection({ user }) {
+  const plan = user?.subscription_plan;
+  const limit = MEMBER_LIMITS[plan] ?? null;
+
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [invitePassword, setInvitePassword] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+  const [inviting, setInviting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  useEffect(() => {
+    api.get('/organizations/members')
+      .then((res) => setMembers(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (success) { const t = setTimeout(() => setSuccess(''), 4000); return () => clearTimeout(t); }
+  }, [success]);
+
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    setInviting(true);
+    setError('');
+    try {
+      const res = await api.post('/organizations/members', {
+        email: inviteEmail,
+        password: invitePassword,
+        role: inviteRole,
+      });
+      setMembers((prev) => [...prev, res.data]);
+      setInviteEmail('');
+      setInvitePassword('');
+      setInviteRole('member');
+      setShowForm(false);
+      setSuccess('Collaborateur ajouté avec succès.');
+    } catch (err) {
+      setError(err.response?.data?.detail || "Erreur lors de l'invitation.");
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleDelete = async (memberId) => {
+    if (!window.confirm('Supprimer ce membre ?')) return;
+    setDeletingId(memberId);
+    try {
+      await api.delete(`/organizations/members/${memberId}`);
+      setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      setSuccess('Membre supprimé.');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Erreur lors de la suppression.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const atLimit = limit !== null && members.length >= limit;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-50 bg-[#eaf4ee] flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-[#1a5c3a]">Équipe</h2>
+            {limit !== null && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white text-[#1a5c3a] border border-[#1a5c3a]/20">
+                {members.length}/{limit}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">Gérez les collaborateurs de votre organisation.</p>
+        </div>
+        {!atLimit && (
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1a5c3a] text-white hover:bg-[#14472d] transition-colors"
+          >
+            {showForm ? 'Annuler' : '+ Inviter'}
+          </button>
+        )}
+      </div>
+
+      <div className="p-6 space-y-4">
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">{error}</div>
+        )}
+        {success && (
+          <div className="p-3 bg-[#eaf4ee] border border-[#1a5c3a]/20 rounded-xl text-[#1a5c3a] text-sm">{success}</div>
+        )}
+
+        {/* Formulaire invitation */}
+        {showForm && (
+          <form onSubmit={handleInvite} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+            <p className="text-xs font-semibold text-gray-700">Nouveau collaborateur</p>
+            <input
+              type="email" required placeholder="Email" value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className={inputCls}
+            />
+            <input
+              type="password" required placeholder="Mot de passe temporaire" value={invitePassword}
+              onChange={(e) => setInvitePassword(e.target.value)}
+              className={inputCls}
+            />
+            <select
+              value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}
+              className={inputCls}
+            >
+              <option value="member">Membre</option>
+              <option value="admin">Administrateur</option>
+            </select>
+            <button
+              type="submit" disabled={inviting}
+              className="w-full py-2.5 rounded-xl bg-[#1a5c3a] text-white text-sm font-semibold hover:bg-[#14472d] transition disabled:opacity-50"
+            >
+              {inviting ? 'Ajout en cours...' : 'Ajouter le collaborateur'}
+            </button>
+          </form>
+        )}
+
+        {atLimit && (
+          <div className="p-3 bg-orange-50 border border-orange-100 rounded-xl text-orange-700 text-xs">
+            Limite de {limit} membres atteinte pour le plan Pro.
+          </div>
+        )}
+
+        {/* Liste des membres */}
+        {loading ? (
+          <p className="text-sm text-gray-400">Chargement...</p>
+        ) : members.length === 0 ? (
+          <p className="text-sm text-gray-400">Aucun membre pour l'instant.</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {members.map((m) => (
+              <div key={m.id} className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{m.email}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      m.role === 'admin'
+                        ? 'bg-[#eaf4ee] text-[#1a5c3a]'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {m.role === 'admin' ? 'Admin' : 'Membre'}
+                    </span>
+                    {m.is_self && (
+                      <span className="text-xs text-gray-400">(vous)</span>
+                    )}
+                  </div>
+                </div>
+                {!m.is_self && (
+                  <button
+                    onClick={() => handleDelete(m.id)}
+                    disabled={deletingId === m.id}
+                    className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-50"
+                  >
+                    {deletingId === m.id ? '...' : 'Supprimer'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
