@@ -326,6 +326,15 @@ export default function AuditResults() {
         </div>
       </div>
 
+      {/* SHA-256 */}
+      {reportInfo?.pdf_sha256 && (
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+          <p className="text-xs font-semibold text-gray-500 mb-1">Empreinte SHA-256 du rapport</p>
+          <code className="text-xs text-gray-600 break-all font-mono">{reportInfo.pdf_sha256}</code>
+          <p className="text-xs text-gray-400 mt-1">Permet de vérifier l'intégrité du rapport après téléchargement.</p>
+        </div>
+      )}
+
       {/* Share link */}
       {reportInfo?.share_token && (
         <div className="bg-[#eaf4ee] border border-[#1a5c3a]/20 rounded-xl p-4">

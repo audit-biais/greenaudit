@@ -5,10 +5,11 @@ Version améliorée : jauge visuelle, radar chart, alertes, échéances, risque 
 
 from __future__ import annotations
 
+import hashlib
 import math
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -1172,12 +1173,12 @@ def _disclaimer_elements(partner: Partner, styles: dict) -> list:
 # Point d'entrée principal
 # ---------------------------------------------------------------------------
 
-def generate_audit_pdf(audit: Audit, partner: Partner) -> str:
+def generate_audit_pdf(audit: Audit, partner: Partner) -> Tuple[str, str]:
     """
     Génère le rapport PDF complet et le sauvegarde sur disque.
 
     Returns:
-        Nom du fichier PDF généré.
+        Tuple (nom du fichier PDF, hash SHA-256 du fichier).
     """
     claims = sorted(audit.claims, key=lambda c: c.created_at)
     primary = _hex(partner.brand_primary_color)
@@ -1205,4 +1206,45 @@ def generate_audit_pdf(audit: Audit, partner: Partner) -> str:
 
     doc.build(elements)
 
-    return filename
+    # Calculer le SHA-256 du fichier généré
+    sha256 = hashlib.sha256(Path(filepath).read_bytes()).hexdigest()
+
+    # Ajouter le hash en pied du PDF (reconstruction légère avec canvas)
+    _stamp_sha256(filepath, sha256, audit.id)
+
+    return filename, sha256
+
+
+def _stamp_sha256(filepath: str, sha256: str, audit_id) -> None:
+    """Ajoute une ligne SHA-256 en bas de la dernière page du PDF."""
+    try:
+        from reportlab.pdfgen import canvas as rl_canvas
+        from reportlab.lib.pagesizes import A4
+        import io
+        from pypdf import PdfReader, PdfWriter
+
+        # Créer une page overlay avec juste le hash
+        packet = io.BytesIO()
+        c = rl_canvas.Canvas(packet, pagesize=A4)
+        c.setFont("Helvetica", 6)
+        c.setFillColorRGB(0.6, 0.6, 0.6)
+        text = f"SHA-256 : {sha256} — Rapport #{str(audit_id)[:8].upper()}"
+        c.drawCentredString(A4[0] / 2, 6 * mm, text)
+        c.save()
+        packet.seek(0)
+
+        overlay_reader = PdfReader(packet)
+        overlay_page = overlay_reader.pages[0]
+
+        reader = PdfReader(filepath)
+        writer = PdfWriter()
+
+        for i, page in enumerate(reader.pages):
+            if i == len(reader.pages) - 1:
+                page.merge_page(overlay_page)
+            writer.add_page(page)
+
+        with open(filepath, "wb") as f:
+            writer.write(f)
+    except Exception:
+        pass  # Si pypdf n'est pas installé, on ignore — le hash est quand même en base

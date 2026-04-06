@@ -61,18 +61,20 @@ async def generate_report(
     """Générer le rapport PDF pour un audit analysé."""
     audit = await _load_completed_audit(audit_id, user, db)
 
-    filename = generate_audit_pdf(audit, audit.organization)
+    filename, sha256 = generate_audit_pdf(audit, audit.organization)
 
     if not audit.share_token:
         audit.share_token = secrets.token_urlsafe(32)
 
     audit.pdf_url = filename
+    audit.pdf_sha256 = sha256
     await db.commit()
 
     return {
         "message": "Rapport généré avec succès",
         "pdf_url": filename,
         "share_token": audit.share_token,
+        "pdf_sha256": sha256,
     }
 
 

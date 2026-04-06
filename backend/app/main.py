@@ -47,6 +47,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.execute(sa.text(
             "ALTER TABLE audits ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL"
         ))
+        await conn.execute(sa.text(
+            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS pdf_sha256 VARCHAR(64)"
+        ))
     logger.info("Colonnes country + rules_version + document_type vérifiées/ajoutées")
 
     # Démarrer le scheduler APScheduler

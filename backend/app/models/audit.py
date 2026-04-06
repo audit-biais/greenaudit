@@ -61,6 +61,7 @@ class Audit(Base):
 
     # Méta
     pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    pdf_sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     share_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
