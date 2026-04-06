@@ -614,7 +614,24 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict) -> list:
     dots_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
     elements.append(dots_table)
 
-    elements.append(Spacer(1, 15 * mm))
+    # Bloc progression post-correction (si applicable)
+    corrected = _compute_corrected_score(audit)
+    if corrected:
+        elements.append(Spacer(1, 4 * mm))
+        initial_score = float(audit.global_score or 0)
+        correction_style = ParagraphStyle(
+            "correction_cover",
+            parent=styles["cover_small"],
+            fontSize=11,
+            textColor=colors.HexColor("#16A34A"),
+        )
+        elements.append(Paragraph(
+            f"Score initial : <b>{initial_score:.0f}/100</b> → Score après {corrected['corrected_count']} correction(s) : "
+            f"<b>{corrected['corrected_score']}/100</b> (risque {_risk_label(corrected['corrected_risk'])})",
+            correction_style,
+        ))
+
+    elements.append(Spacer(1, 8 * mm))
     elements.append(Paragraph(
         f"Audit réalisé le {_format_date(audit.completed_at)} par {partner.name}",
         styles["cover_small"],
@@ -657,7 +674,107 @@ def _summary_elements(audit: Audit, styles: dict) -> list:
         f"{_summary_phrase(audit.risk_level)}",
         styles["body"],
     ))
+
+    # Bloc progression post-correction
+    corrected = _compute_corrected_score(audit)
+    if corrected:
+        elements.append(Spacer(1, 4 * mm))
+
+        prog_data = [
+            ["", "Score", "Niveau de risque", "Allégations conformes"],
+            [
+                "Audit initial",
+                f"{float(audit.global_score or 0):.0f}/100",
+                _risk_label(audit.risk_level).capitalize(),
+                f"{audit.conforming_claims} / {audit.total_claims}",
+            ],
+            [
+                f"Après {corrected['corrected_count']} correction(s)",
+                f"{corrected['corrected_score']}/100",
+                _risk_label(corrected["corrected_risk"]).capitalize(),
+                f"{corrected['corrected_conforming']} / {audit.total_claims}",
+            ],
+        ]
+        page_width = A4[0] - 40 * mm
+        prog_table = Table(prog_data, colWidths=[page_width * 0.30, page_width * 0.20, page_width * 0.25, page_width * 0.25])
+        prog_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8F5E9")),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("TEXTCOLOR", (1, 2), (1, 2), colors.HexColor("#16A34A")),
+            ("FONTNAME", (1, 2), (1, 2), "Helvetica-Bold"),
+        ]))
+        elements.append(Paragraph("<b>Progression après corrections</b>", styles["body"]))
+        elements.append(prog_table)
+        elements.append(Spacer(1, 2 * mm))
+        elements.append(Paragraph(
+            "Ce score est indicatif. Il reflète la progression déclarée par l'organisation "
+            "et ne remplace pas un nouvel audit de vérification.",
+            styles["disclaimer"],
+        ))
+
     return elements
+
+
+def _compute_corrected_score(audit: Audit) -> Optional[dict]:
+    """
+    Calcule un score indicatif post-correction.
+    Les allégations marquées is_corrected=True sont traitées comme conformes.
+    Retourne None si aucune allégation n'est corrigée.
+    """
+    claims = audit.claims or []
+    corrected_count = sum(1 for c in claims if getattr(c, "is_corrected", False))
+    if corrected_count == 0:
+        return None
+
+    total = len(claims)
+    if total == 0:
+        return None
+
+    # Score actuel
+    conforming = audit.conforming_claims or 0
+    at_risk = audit.at_risk_claims or 0
+
+    # Score post-correction : les allégations corrigées qui étaient NC ou risque deviennent conformes
+    # On recalcule en ajoutant les corrigées aux conformes
+    corrected_conforming = conforming
+    corrected_at_risk = at_risk
+    for claim in claims:
+        if not getattr(claim, "is_corrected", False):
+            continue
+        verdict = claim.overall_verdict
+        if verdict == "non_conforme":
+            corrected_conforming += 1
+        elif verdict == "risque":
+            corrected_conforming += 1
+            corrected_at_risk = max(0, corrected_at_risk - 1)
+
+    corrected_nc = total - corrected_conforming - corrected_at_risk
+    corrected_nc = max(0, corrected_nc)
+
+    corrected_score = round(
+        (corrected_conforming * 100 + corrected_at_risk * 50) / total
+    )
+
+    if corrected_score >= 80:
+        corrected_risk = "faible"
+    elif corrected_score >= 60:
+        corrected_risk = "modere"
+    elif corrected_score >= 40:
+        corrected_risk = "eleve"
+    else:
+        corrected_risk = "critique"
+
+    return {
+        "corrected_count": corrected_count,
+        "corrected_score": corrected_score,
+        "corrected_risk": corrected_risk,
+        "corrected_conforming": corrected_conforming,
+    }
 
 
 def _compute_radar_scores(claims: list) -> Dict[str, float]:
