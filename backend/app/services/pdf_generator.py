@@ -794,7 +794,60 @@ def _claims_detail_elements(claims: list, styles: dict) -> list:
             ("RIGHTPADDING", (0, 0), (-1, -1), 4),
         ]))
         claim_elements.append(t)
-        claim_elements.append(Spacer(1, 6 * mm))
+        claim_elements.append(Spacer(1, 2 * mm))
+
+        # Badge "Corrigée" si l'allégation a été marquée comme corrigée
+        if getattr(claim, "is_corrected", False):
+            corrected_at = getattr(claim, "corrected_at", None)
+            date_str = f" le {corrected_at.strftime('%d/%m/%Y')}" if corrected_at else ""
+            claim_elements.append(
+                Paragraph(
+                    f"<font color='#16A34A'><b>Corrigée{date_str}</b></font>",
+                    styles["small"],
+                )
+            )
+            claim_elements.append(Spacer(1, 2 * mm))
+
+        # Liste des pièces justificatives uploadées
+        evidence_files = getattr(claim, "evidence_files", [])
+        if evidence_files:
+            DOC_TYPE_LABELS = {
+                "ecolabel": "Écolabel",
+                "certification": "Certification",
+                "rapport_interne": "Rapport interne",
+                "autre": "Autre",
+            }
+            ev_data = [[
+                Paragraph("<b>Pièce justificative</b>", styles["small"]),
+                Paragraph("<b>Type</b>", styles["small"]),
+                Paragraph("<b>Taille</b>", styles["small"]),
+            ]]
+            for ef in evidence_files:
+                size_kb = round(getattr(ef, "file_size", 0) / 1024, 1)
+                doc_label = DOC_TYPE_LABELS.get(getattr(ef, "document_type", "autre"), "Autre")
+                ev_data.append([
+                    Paragraph(getattr(ef, "filename", "—"), styles["small"]),
+                    Paragraph(doc_label, styles["small"]),
+                    Paragraph(f"{size_kb} Ko", styles["small"]),
+                ])
+            ev_table = Table(ev_data, colWidths=[page_width * 0.55, page_width * 0.25, page_width * 0.20], repeatRows=1)
+            ev_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8F5E9")),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ALIGN", (0, 0), (-1, 0), "LEFT"),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ]))
+            claim_elements.append(Paragraph("<b>Pièces justificatives</b>", styles["small"]))
+            claim_elements.append(Spacer(1, 1 * mm))
+            claim_elements.append(ev_table)
+            claim_elements.append(Spacer(1, 2 * mm))
+
+        claim_elements.append(Spacer(1, 4 * mm))
 
         # KeepTogether pour éviter les coupures au milieu d'une allégation
         elements.append(KeepTogether(claim_elements))

@@ -15,6 +15,7 @@ from app.database import get_db
 from app.config import settings
 from app.models.audit import Audit
 from app.models.claim import Claim
+from app.models.evidence import EvidenceFile  # noqa: F401 — needed for selectinload
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.claim_result import AuditResultsResponse
@@ -32,6 +33,7 @@ async def _load_completed_audit(
         .where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
         .options(
             selectinload(Audit.claims).selectinload(Claim.results),
+            selectinload(Audit.claims).selectinload(Claim.evidence_files),
             selectinload(Audit.organization),
         )
     )
