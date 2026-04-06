@@ -344,7 +344,11 @@ function SubscriptionSection({ user, checkoutLoading, setCheckoutLoading, portal
           </div>
           {auditsUsed >= auditsLimit && (
             <p className="text-xs text-orange-600 mt-1">
-              Limite atteinte — contactez-nous pour ajouter des audits (400€/audit).
+              Limite atteinte —{' '}
+              <a href="/contact" className="underline font-semibold hover:text-orange-700">
+                contactez-nous
+              </a>{' '}
+              pour ajouter des audits (400€/audit).
             </p>
           )}
         </div>

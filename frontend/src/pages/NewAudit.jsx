@@ -50,6 +50,10 @@ export default function NewAudit() {
       });
       navigate(`/audits/${res.data.id}`);
     } catch (err) {
+      if (err.response?.status === 403) {
+        navigate('/contact');
+        return;
+      }
       setError(err.response?.data?.detail || "Impossible de créer l'audit. Veuillez réessayer.");
     } finally {
       setSubmitting(false);
