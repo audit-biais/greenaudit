@@ -877,9 +877,9 @@ export default function ClaimForm() {
         {claims.length > 0 && !showForm && (
           <div className="mt-8 rounded-xl border border-[#2E7D32]/30 bg-[#1B5E20]/5 px-6 py-5 text-center">
             <p className="mb-3 text-sm text-gray-700">
-              <strong>{claims.length}</strong> allegation{claims.length > 1 ? 's' : ''} prete
-              {claims.length > 1 ? 's' : ''} a etre analysee{claims.length > 1 ? 's' : ''} selon
-              les 6 criteres de la Directive EmpCo.
+              <strong>{claims.length}</strong> allégation{claims.length > 1 ? 's' : ''} prête
+              {claims.length > 1 ? 's' : ''} à être analysée{claims.length > 1 ? 's' : ''} selon
+              les 6 critères de la Directive EmpCo.
             </p>
             <button
               onClick={handleAnalyze}
