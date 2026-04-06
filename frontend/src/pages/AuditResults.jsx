@@ -189,6 +189,20 @@ export default function AuditResults() {
     }
   };
 
+  const handleEvidenceDownload = async (evidenceId, filename) => {
+    try {
+      const res = await api.get(`/evidence/${evidenceId}/download`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert('Erreur lors du téléchargement');
+    }
+  };
+
   const handleEvidenceDelete = async (claimId, evidenceId) => {
     if (!window.confirm('Supprimer ce fichier ?')) return;
     try {
@@ -509,13 +523,12 @@ export default function AuditResults() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <a
-                          href={`${api.defaults.baseURL}/evidence/${f.id}/download`}
+                        <button
+                          onClick={() => handleEvidenceDownload(f.id, f.filename)}
                           className="text-xs text-[#1a5c3a] font-semibold hover:underline"
-                          download
                         >
                           Télécharger
-                        </a>
+                        </button>
                         <button
                           onClick={() => handleEvidenceDelete(claim.id, f.id)}
                           className="text-xs text-red-400 hover:text-red-600"
