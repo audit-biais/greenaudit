@@ -120,16 +120,12 @@ async def invite_member(
     }
 
 
-@router.delete(
-    "/members/{member_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
-)
+@router.delete("/members/{member_id}", status_code=status.HTTP_200_OK)
 async def remove_member(
     member_id: UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> dict:
     _require_admin(user)
 
     if member_id == user.id:
@@ -153,3 +149,4 @@ async def remove_member(
 
     await db.delete(member)
     await db.commit()
+    return {"status": "ok"}
