@@ -80,12 +80,17 @@ export default function AuditResults() {
   }, [auditId]);
 
   const handleMarkCorrected = async (claimId) => {
+    const previousState = correctedClaims[claimId] ?? false;
+    // Mise à jour optimiste : l'UI change immédiatement
+    setCorrectedClaims((prev) => ({ ...prev, [claimId]: !previousState }));
     setCorrectingClaim((prev) => ({ ...prev, [claimId]: true }));
     try {
       const res = await api.patch(`/claims/${claimId}/mark-corrected`);
+      // Confirme avec la valeur réelle retournée par l'API
       setCorrectedClaims((prev) => ({ ...prev, [claimId]: res.data.is_corrected }));
     } catch {
-      // l'UpgradeModal global prend en charge le cas 402
+      // Rollback si erreur (402 upgrade, réseau, etc.)
+      setCorrectedClaims((prev) => ({ ...prev, [claimId]: previousState }));
     } finally {
       setCorrectingClaim((prev) => ({ ...prev, [claimId]: false }));
     }
