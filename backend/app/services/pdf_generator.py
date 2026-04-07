@@ -636,7 +636,7 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
 
     # Logo en bas de page de garde
     from reportlab.platypus import Image as RLImage
-    greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.jpg"
+    greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.png"
     if is_starter and greenaudit_logo.exists():
         try:
             img = RLImage(str(greenaudit_logo), width=80, height=40)

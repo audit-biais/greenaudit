@@ -247,7 +247,7 @@ export default function Landing() {
 
           {/* Logo */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <img src="/logo.jpg" alt="GreenAudit" className="h-10 w-auto object-contain" style={{mixBlendMode: 'multiply'}} />
+            <img src="/logo.png" alt="GreenAudit" className="h-10 w-auto object-contain" />
           </div>
 
           {/* Nav links centre */}
@@ -646,7 +646,7 @@ export default function Landing() {
         <div className="border-t border-gray-800">
           <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <img src="/logo.jpg" alt="GreenAudit" className="h-8 w-auto object-contain" style={{mixBlendMode: 'multiply'}} />
+              <img src="/logo.png" alt="GreenAudit" className="h-8 w-auto object-contain" />
             </div>
             <p className="text-xs text-gray-500 text-center">
               Copyright © 2026 GreenAudit · Conformité Directive (UE) 2024/825 · Transposition avant le 27 septembre 2026
