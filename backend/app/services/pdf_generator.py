@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -636,7 +638,6 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
 
     # Logo en bas de page de garde
     from reportlab.platypus import Image as RLImage
-    import tempfile, os
     greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.png"
     if is_starter and greenaudit_logo.exists():
         try:
@@ -654,7 +655,6 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
                 tmp.write(partner.logo_data)
                 tmp_path = tmp.name
             img = RLImage(tmp_path, width=120, height=60)
-            img.keepInFrame = True
             img_table = Table([[img]], colWidths=[120])
             img_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
             elements.append(img_table)
