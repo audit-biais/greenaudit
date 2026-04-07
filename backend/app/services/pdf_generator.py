@@ -1478,10 +1478,13 @@ def _labels_checklist_elements(claims: list, styles: dict) -> list:
         else:
             to_remove.append(name)
 
-    if not to_remove and not to_keep:
-        return []
-
     elements = []
+
+    if not to_remove and not to_keep:
+        no_label = Paragraph("Aucun label déclaré dans cet audit.", styles["body"])
+        elements.append(KeepTogether([Paragraph("6. Checklist labels", styles["h1"]), no_label]))
+        return elements
+
     first_item = (
         Paragraph("Labels à retirer (auto-décernés) :", styles["body"])
         if to_remove
