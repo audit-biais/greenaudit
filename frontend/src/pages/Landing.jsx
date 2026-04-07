@@ -80,7 +80,7 @@ const WHY = [
 const FAQ = [
   {
     q: 'Combien puis-je facturer un audit à mon client ?',
-    a: 'Les partenaires facturent généralement entre 300 € et 1 500 € par audit selon leur positionnement, la taille du client et le nombre d\'allégations analysées. Un cabinet RSE ou un avocat peut justifier facilement 1 000 € pour un rapport complet avec références réglementaires et plan de correction.',
+    a: 'Les partenaires facturent généralement entre 1 500 € et 3 000 € par audit selon leur positionnement et la taille du client. Un cabinet RSE ou un avocat peut justifier facilement 2 000 € pour un rapport complet avec références réglementaires et plan de correction. Sur 10 audits par mois, cela représente 240 000 € de revenu annuel pour une marge de 85 %.',
   },
   {
     q: 'À qui s\'adresse GreenAudit ?',
