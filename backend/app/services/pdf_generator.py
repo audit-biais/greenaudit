@@ -650,16 +650,14 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
             pass
     elif not is_starter and partner.logo_data:
         try:
-            ext = "png" if (partner.logo_content_type or "").endswith("png") else "jpg"
-            with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
-                tmp.write(partner.logo_data)
-                tmp_path = tmp.name
-            img = RLImage(tmp_path, width=120, height=60)
+            from io import BytesIO
+            from reportlab.lib.utils import ImageReader
+            img_reader = ImageReader(BytesIO(partner.logo_data))
+            img = RLImage(img_reader, width=120, height=60)
             img_table = Table([[img]], colWidths=[120])
             img_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
             elements.append(img_table)
             elements.append(Spacer(1, 3 * mm))
-            os.unlink(tmp_path)
         except Exception:
             pass
 
