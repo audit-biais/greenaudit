@@ -648,10 +648,10 @@ export default function Landing() {
               </button>
             </div>
 
-            {/* Entreprise */}
+            {/* Enterprise */}
             <div className="rounded-2xl border border-gray-200 p-8 flex flex-col bg-gray-50">
               <div className="mb-6">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Entreprise</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Enterprise</p>
                 <div className="text-4xl font-black text-gray-900 mb-1">Sur devis</div>
                 <p className="text-sm text-gray-400">À partir de 50 000 €/an</p>
               </div>
