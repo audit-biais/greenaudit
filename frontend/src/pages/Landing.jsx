@@ -565,10 +565,10 @@ export default function Landing() {
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">Tarifs</p>
             <h2 className="text-4xl font-black text-gray-900 leading-tight mb-4">
-              Un modèle simple, pensé pour les partenaires
+              Un modèle pensé pour les revendeurs
             </h2>
             <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-              Vous achetez les audits, vous les revendez à vos clients. Aucun engagement sans avoir testé.
+              Vous achetez les audits, vous les revendez à vos clients sous votre marque. Engagement 12 mois sur les plans payants.
             </p>
           </div>
 
@@ -579,12 +579,28 @@ export default function Landing() {
               <div className="mb-6">
                 <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Starter</p>
                 <div className="text-4xl font-black text-gray-900 mb-1">Gratuit</div>
-                <p className="text-sm text-gray-400">1 audit d'essai inclus</p>
+                <p className="text-sm text-gray-400">1 audit unique — sans CB</p>
               </div>
               <ul className="space-y-3 mb-8 flex-1">
-                {['1 audit complet', 'Rapport PDF GreenAudit', 'Analyse des 6 critères EmpCo', 'Accès immédiat sans CB'].map(f => (
+                {[
+                  '1 audit one-shot (non récurrent)',
+                  '3 pages scannées maximum',
+                  'Score global + verdicts par allégation',
+                  'Rapport PDF GreenAudit',
+                  'Analyse des 6 critères EmpCo',
+                ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
                     <span className="text-[#1a5c3a] font-bold mt-0.5">✓</span>{f}
+                  </li>
+                ))}
+                {[
+                  'White-label',
+                  'Recommandations de correction',
+                  'Evidence Vault',
+                  'Monitoring continu',
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-400">
+                    <span className="mt-0.5">–</span>{f}
                   </li>
                 ))}
               </ul>
@@ -592,28 +608,31 @@ export default function Landing() {
                 onClick={() => navigate('/login')}
                 className="w-full rounded-full py-3 text-sm font-semibold border border-gray-300 text-gray-700 hover:border-gray-400 transition-colors"
               >
-                Essayer gratuitement
+                Scanner un site gratuitement
               </button>
             </div>
 
             {/* Pro — mis en avant */}
             <div className="rounded-2xl border-2 border-[#1a5c3a] p-8 flex flex-col relative shadow-lg">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-[#1a5c3a] text-white text-xs font-semibold px-4 py-1 rounded-full">Recommandé</span>
+                <span className="bg-[#1a5c3a] text-white text-xs font-semibold px-4 py-1 rounded-full">Le plus choisi</span>
               </div>
               <div className="mb-6">
                 <p className="text-sm font-semibold text-[#1a5c3a] uppercase tracking-widest mb-2">Pro</p>
                 <div className="text-4xl font-black text-gray-900 mb-1">2 990 €<span className="text-lg font-normal text-gray-400">/mois</span></div>
-                <p className="text-sm text-gray-400">15 audits par mois inclus</p>
+                <p className="text-sm text-gray-400">15 audits/mois · Engagement 12 mois</p>
               </div>
               <ul className="space-y-3 mb-8 flex-1">
                 {[
-                  '15 audits/mois',
-                  'Rapports PDF en marque blanche',
-                  'Votre logo + vos couleurs',
-                  'Gestion équipe (jusqu\'à 10)',
-                  'SHA-256 + dossier de preuves',
-                  'Support prioritaire',
+                  '15 audits complets par mois',
+                  'Pages illimitées par audit',
+                  'Rapport PDF complet',
+                  'White-label (logo + couleurs + coordonnées)',
+                  'Rewrite engine conforme EmpCo',
+                  'Evidence Vault (ZIP DGCCRF)',
+                  'Monitoring continu du site',
+                  'Suivi des corrections claim par claim',
+                  'Jusqu\'à 10 utilisateurs',
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
                     <span className="text-[#1a5c3a] font-bold mt-0.5">✓</span>{f}
@@ -634,15 +653,16 @@ export default function Landing() {
               <div className="mb-6">
                 <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Enterprise</p>
                 <div className="text-4xl font-black text-gray-900 mb-1">Sur devis</div>
-                <p className="text-sm text-gray-400">Audits illimités</p>
+                <p className="text-sm text-gray-400">À partir de 50 000 €/an</p>
               </div>
               <ul className="space-y-3 mb-8 flex-1">
                 {[
                   'Audits illimités',
-                  'Équipe illimitée',
+                  'Utilisateurs illimités',
+                  'Branding full custom + URL dédiée',
+                  'Toutes les features Pro',
                   'Intégration API',
-                  'SLA garanti',
-                  'Onboarding dédié',
+                  'Support dédié',
                   'Facturation sur mesure',
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
@@ -660,9 +680,15 @@ export default function Landing() {
 
           </div>
 
-          <p className="text-center text-sm text-gray-400 mt-10">
-            Audits supplémentaires au-delà du quota Pro : 400 € / audit. Pas d'engagement annuel obligatoire.
-          </p>
+          {/* ROI partenaire */}
+          <div className="mt-16 max-w-2xl mx-auto bg-[#eaf4ee] rounded-2xl p-8 text-center">
+            <p className="text-sm font-semibold uppercase tracking-widest text-[#1a5c3a] mb-3">Économie partenaire</p>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Scénario : 10 audits/mois revendus à 2 000 € chacun.<br/>
+              <span className="font-bold text-gray-900">240 000 € de revenu annuel</span> — coût GreenAudit : 35 880 €.<br/>
+              Marge partenaire : <span className="font-bold text-[#1a5c3a]">85% — ROI ×6,7</span>.
+            </p>
+          </div>
         </div>
       </section>
 
