@@ -269,7 +269,7 @@ export default function Landing() {
             <a href="#fonctionnalites" className="hover:text-gray-900 transition-colors">Fonctionnalités</a>
             <a href="#regles" className="hover:text-gray-900 transition-colors">Règles EmpCo</a>
             <a href="#partenaires" className="hover:text-gray-900 transition-colors">Partenaires</a>
-            <button onClick={() => navigate('/contact')} className="hover:text-gray-900 transition-colors">Tarifs</button>
+            <button onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })} className="hover:text-gray-900 transition-colors">Tarifs</button>
           </div>
 
           {/* CTA droite */}
@@ -560,7 +560,7 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════ PRICING ══ */}
-      <section className="py-24 border-t border-gray-100 bg-white">
+      <section id="pricing" className="py-24 border-t border-gray-100 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">Tarifs</p>
