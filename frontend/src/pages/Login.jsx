@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../api/auth';
+import api from '../api/client';
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
@@ -14,6 +15,8 @@ export default function Login() {
 
   const { login, register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const checkoutAfterLogin = new URLSearchParams(location.search).get('checkout') === '1';
 
   const resetForm = () => {
     setEmail(''); setPassword(''); setCompanyName('');
@@ -34,6 +37,15 @@ export default function Login() {
         await register(data);
       } else {
         await login(email, password);
+      }
+      if (checkoutAfterLogin) {
+        try {
+          const res = await api.post('/payment/create-checkout');
+          window.location.href = res.data.checkout_url;
+          return;
+        } catch {
+          // déjà Pro ou erreur Stripe → dashboard
+        }
       }
       navigate('/dashboard');
     } catch (err) {

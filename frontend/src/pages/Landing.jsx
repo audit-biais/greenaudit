@@ -241,7 +241,7 @@ export default function Landing() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const handleProCheckout = async () => {
-    if (!user) { navigate('/login'); return; }
+    if (!user) { navigate('/login?checkout=1'); return; }
     setCheckoutLoading(true);
     try {
       const res = await api.post('/payment/create-checkout');
