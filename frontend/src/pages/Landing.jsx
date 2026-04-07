@@ -797,6 +797,10 @@ export default function Landing() {
             <p className="text-xs text-gray-500 text-center">
               Copyright © 2026 GreenAudit · Conformité Directive (UE) 2024/825 · Transposition avant le 27 septembre 2026
             </p>
+            <div className="flex gap-4 text-xs text-gray-500">
+              <button onClick={() => navigate('/mentions-legales')} className="hover:text-white transition-colors">Mentions légales</button>
+              <button onClick={() => navigate('/cgv')} className="hover:text-white transition-colors">CGV</button>
+            </div>
           </div>
         </div>
       </footer>
