@@ -545,6 +545,112 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ══════════════════════════════════════════════ PRICING ══ */}
+      <section className="py-24 border-t border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">Tarifs</p>
+            <h2 className="text-4xl font-black text-gray-900 leading-tight mb-4">
+              Un modèle simple, pensé pour les partenaires
+            </h2>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+              Vous achetez les audits, vous les revendez à vos clients. Aucun engagement sans avoir testé.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+
+            {/* Starter */}
+            <div className="rounded-2xl border border-gray-200 p-8 flex flex-col">
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Starter</p>
+                <div className="text-4xl font-black text-gray-900 mb-1">Gratuit</div>
+                <p className="text-sm text-gray-400">1 audit d'essai inclus</p>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['1 audit complet', 'Rapport PDF GreenAudit', 'Analyse des 6 critères EmpCo', 'Accès immédiat sans CB'].map(f => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                    <span className="text-[#1a5c3a] font-bold mt-0.5">✓</span>{f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => navigate('/login')}
+                className="w-full rounded-full py-3 text-sm font-semibold border border-gray-300 text-gray-700 hover:border-gray-400 transition-colors"
+              >
+                Essayer gratuitement
+              </button>
+            </div>
+
+            {/* Pro — mis en avant */}
+            <div className="rounded-2xl border-2 border-[#1a5c3a] p-8 flex flex-col relative shadow-lg">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-[#1a5c3a] text-white text-xs font-semibold px-4 py-1 rounded-full">Recommandé</span>
+              </div>
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-[#1a5c3a] uppercase tracking-widest mb-2">Pro</p>
+                <div className="text-4xl font-black text-gray-900 mb-1">2 990 €<span className="text-lg font-normal text-gray-400">/mois</span></div>
+                <p className="text-sm text-gray-400">15 audits par mois inclus</p>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {[
+                  '15 audits/mois',
+                  'Rapports PDF en marque blanche',
+                  'Votre logo + vos couleurs',
+                  'Gestion équipe (jusqu\'à 10)',
+                  'SHA-256 + dossier de preuves',
+                  'Support prioritaire',
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                    <span className="text-[#1a5c3a] font-bold mt-0.5">✓</span>{f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => navigate('/contact')}
+                className="w-full rounded-full py-3 text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
+              >
+                Demander un devis
+              </button>
+            </div>
+
+            {/* Enterprise */}
+            <div className="rounded-2xl border border-gray-200 p-8 flex flex-col bg-gray-50">
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Enterprise</p>
+                <div className="text-4xl font-black text-gray-900 mb-1">Sur devis</div>
+                <p className="text-sm text-gray-400">Audits illimités</p>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {[
+                  'Audits illimités',
+                  'Équipe illimitée',
+                  'Intégration API',
+                  'SLA garanti',
+                  'Onboarding dédié',
+                  'Facturation sur mesure',
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                    <span className="text-[#1a5c3a] font-bold mt-0.5">✓</span>{f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => navigate('/contact')}
+                className="w-full rounded-full py-3 text-sm font-semibold border border-gray-300 text-gray-700 hover:border-gray-400 transition-colors"
+              >
+                Nous contacter
+              </button>
+            </div>
+
+          </div>
+
+          <p className="text-center text-sm text-gray-400 mt-10">
+            Audits supplémentaires au-delà du quota Pro : 400 € / audit. Pas d'engagement annuel obligatoire.
+          </p>
+        </div>
+      </section>
+
       {/* ═══════════════════════════════════════════════ CTA FINAL ══ */}
       <section className="bg-[#eaf4ee] py-24">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
