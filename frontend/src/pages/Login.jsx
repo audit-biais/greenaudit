@@ -55,7 +55,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-2">
-            <img src="/logo.jpg" alt="GreenAudit" className="h-12 w-auto object-contain" />
+            <img src="/logo.jpg" alt="GreenAudit" className="h-16 w-auto object-contain" style={{mixBlendMode: 'multiply'}} />
           </div>
           <p className="text-sm text-gray-500">Plateforme d'audit anti-greenwashing</p>
         </div>

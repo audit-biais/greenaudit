@@ -22,7 +22,7 @@ export default function Layout({ children }) {
             {/* Logo */}
             <div className="flex items-center gap-8">
               <Link to="/landing" className="flex items-center gap-2 flex-shrink-0">
-                <img src="/logo.jpg" alt="GreenAudit" className="h-8 w-auto object-contain" />
+                <img src="/logo.jpg" alt="GreenAudit" className="h-10 w-auto object-contain" style={{mixBlendMode: 'multiply'}} />
               </Link>
 
               {/* Nav links */}
