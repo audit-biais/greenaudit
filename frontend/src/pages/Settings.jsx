@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api/auth';
 import api from '../api/client';
 
@@ -35,7 +36,8 @@ function MessageBanner({ message }) {
 }
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -290,6 +292,59 @@ export default function Settings() {
         portalLoading={portalLoading}
         setPortalLoading={setPortalLoading}
       />
+
+      {/* ── Données & RGPD ── */}
+      <DeleteAccountSection logout={logout} navigate={navigate} />
+    </div>
+  );
+}
+
+function DeleteAccountSection({ logout, navigate }) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      'Supprimer définitivement votre compte et toutes vos données ?\n\nCette action est irréversible. Vos audits et rapports seront supprimés.'
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError('');
+    try {
+      await api.delete('/organizations/me');
+      logout();
+      navigate('/landing');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Erreur lors de la suppression. Contactez contact@green-audit.fr');
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-red-100 overflow-hidden">
+      <div className="px-6 py-4 border-b border-red-50 bg-red-50">
+        <h2 className="text-sm font-bold text-red-700">Données & RGPD</h2>
+        <p className="text-xs text-red-500 mt-0.5">Droit à l'effacement — Art. 17 RGPD</p>
+      </div>
+      <div className="p-6 space-y-3">
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">{error}</div>
+        )}
+        <p className="text-sm text-gray-600">
+          Vous pouvez demander la suppression de votre compte et de l'ensemble de vos données conformément au RGPD. Cette action supprimera votre organisation, vos collaborateurs et tous vos audits.
+        </p>
+        <p className="text-xs text-gray-400">
+          Les données de facturation peuvent être conservées 10 ans pour obligation légale. Pour toute question : contact@green-audit.fr
+        </p>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="text-sm font-medium text-red-600 hover:text-red-800 underline underline-offset-2 transition-colors disabled:opacity-50"
+        >
+          {deleting ? 'Suppression en cours...' : 'Supprimer mon compte et mes données'}
+        </button>
+      </div>
     </div>
   );
 }

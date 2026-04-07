@@ -800,6 +800,8 @@ export default function Landing() {
             <div className="flex gap-4 text-xs text-gray-500">
               <button onClick={() => navigate('/mentions-legales')} className="hover:text-white transition-colors">Mentions légales</button>
               <button onClick={() => navigate('/cgv')} className="hover:text-white transition-colors">CGV</button>
+              <button onClick={() => navigate('/politique-de-confidentialite')} className="hover:text-white transition-colors">Confidentialité</button>
+              <button onClick={() => navigate('/dpa')} className="hover:text-white transition-colors">DPA</button>
             </div>
           </div>
         </div>

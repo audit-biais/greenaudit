@@ -243,6 +243,40 @@ async def remove_user(
     return {"status": "success", "message": f"{user.email} retiré de l'organisation"}
 
 
+@router.delete("/me")
+async def delete_my_organization(
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Supprime l'organisation et tous ses utilisateurs (Art. 17 RGPD — droit à l'effacement). Admin uniquement."""
+    if not current_user.organization_id:
+        raise HTTPException(status_code=404, detail="Aucune organisation trouvée")
+
+    org_id = current_user.organization_id
+
+    result = await db.execute(
+        select(Organization).where(Organization.id == org_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation introuvable")
+
+    # Détacher tous les utilisateurs de l'organisation
+    users_result = await db.execute(
+        select(User).where(User.organization_id == org_id)
+    )
+    users = list(users_result.scalars().all())
+    for u in users:
+        u.organization_id = None
+        u.role = "member"
+
+    await db.flush()
+    await db.delete(org)
+    await db.commit()
+
+    return {"status": "success", "message": "Compte et données supprimés conformément au RGPD (Art. 17)"}
+
+
 async def _org_to_response(org: Organization, db: AsyncSession) -> dict:
     result = await db.execute(
         select(User).where(User.organization_id == org.id)

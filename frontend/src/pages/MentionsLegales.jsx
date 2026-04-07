@@ -81,6 +81,8 @@ export default function MentionsLegales() {
           <div className="flex gap-4">
             <button onClick={() => navigate('/mentions-legales')} className="hover:text-gray-700 transition-colors">Mentions légales</button>
             <button onClick={() => navigate('/cgv')} className="hover:text-gray-700 transition-colors">CGV</button>
+            <button onClick={() => navigate('/politique-de-confidentialite')} className="hover:text-gray-700 transition-colors">Confidentialité</button>
+            <button onClick={() => navigate('/dpa')} className="hover:text-gray-700 transition-colors">DPA</button>
           </div>
         </div>
       </footer>

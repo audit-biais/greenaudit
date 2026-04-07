@@ -16,6 +16,8 @@ import AdminPanel from './pages/AdminPanel';
 import PaymentSuccess from './pages/PaymentSuccess';
 import MentionsLegales from './pages/MentionsLegales';
 import CGV from './pages/CGV';
+import PolitiqueConfidentialite from './pages/PolitiqueConfidentialite';
+import DPA from './pages/DPA';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -85,6 +87,8 @@ function AppRoutes() {
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/mentions-legales" element={<MentionsLegales />} />
       <Route path="/cgv" element={<CGV />} />
+      <Route path="/politique-de-confidentialite" element={<PolitiqueConfidentialite />} />
+      <Route path="/dpa" element={<DPA />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
