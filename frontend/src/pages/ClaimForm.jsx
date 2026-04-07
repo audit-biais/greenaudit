@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { useAuth } from '../api/auth';
 
 // ---------------------------------------------------------------------------
 // Constantes
@@ -68,6 +69,8 @@ const STEPS = [
 export default function ClaimForm() {
   const { auditId: audit_id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isPro = ['pro', 'enterprise'].includes(user?.subscription_plan);
 
   // Audit info
   const [audit, setAudit] = useState(null);
@@ -232,6 +235,10 @@ export default function ClaimForm() {
       setError("Ajoutez au moins une allegation avant de lancer l'analyse.");
       return;
     }
+    if (!isPro) {
+      navigate('/settings');
+      return;
+    }
     setAnalyzing(true);
     setError(null);
     try {
@@ -349,20 +356,27 @@ export default function ClaimForm() {
             <button
               onClick={handleAnalyze}
               disabled={analyzing || claims.length === 0}
-              className="inline-flex items-center rounded-lg bg-[#2E7D32] px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#1B5E20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isPro ? 'bg-[#2E7D32] hover:bg-[#1B5E20]' : 'bg-gray-500 hover:bg-gray-600'}`}
             >
+              {!isPro && (
+                <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              )}
               {analyzing ? (
                 <>
                   <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   Analyse en cours...
                 </>
-              ) : (
+              ) : isPro ? (
                 <>
                   <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                   Lancer l'analyse
                 </>
+              ) : (
+                'Passer au plan Pro pour analyser'
               )}
             </button>
           </div>
@@ -881,10 +895,18 @@ export default function ClaimForm() {
               {claims.length > 1 ? 's' : ''} à être analysée{claims.length > 1 ? 's' : ''} selon
               les 6 critères de la Directive EmpCo.
             </p>
+            {!isPro && (
+              <p className="mb-3 text-xs text-orange-600 font-medium">
+                L'analyse complète est réservée au plan Pro.{' '}
+                <button onClick={() => navigate('/settings')} className="underline font-semibold hover:text-orange-800">
+                  Passer au Pro →
+                </button>
+              </p>
+            )}
             <button
               onClick={handleAnalyze}
               disabled={analyzing}
-              className="inline-flex items-center rounded-lg bg-[#1B5E20] px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-[#2E7D32] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`inline-flex items-center rounded-lg px-6 py-3 text-sm font-semibold text-white shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isPro ? 'bg-[#1B5E20] hover:bg-[#2E7D32]' : 'bg-gray-500 hover:bg-gray-600'}`}
             >
               {analyzing ? (
                 <>
@@ -898,10 +920,10 @@ export default function ClaimForm() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M9 5l7 7-7 7"
+                      d={isPro ? "M9 5l7 7-7 7" : "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"}
                     />
                   </svg>
-                  Lancer l'analyse
+                  {isPro ? "Lancer l'analyse" : 'Passer au plan Pro pour analyser'}
                 </>
               )}
             </button>

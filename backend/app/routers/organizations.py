@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user, get_admin_user
 from app.auth.jwt import hash_password
 from app.database import get_db
+from app.models.audit import Audit
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.organization import (
@@ -261,7 +262,7 @@ async def delete_my_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation introuvable")
 
-    # Détacher tous les utilisateurs de l'organisation
+    # Détacher tous les utilisateurs de l'organisation (avant suppression)
     users_result = await db.execute(
         select(User).where(User.organization_id == org_id)
     )
@@ -269,6 +270,15 @@ async def delete_my_organization(
     for u in users:
         u.organization_id = None
         u.role = "member"
+
+    await db.flush()
+
+    # Supprimer les audits via ORM pour déclencher les cascades (claims, evidence, etc.)
+    audits_result = await db.execute(
+        select(Audit).where(Audit.organization_id == org_id)
+    )
+    for audit in audits_result.scalars().all():
+        await db.delete(audit)
 
     await db.flush()
     await db.delete(org)

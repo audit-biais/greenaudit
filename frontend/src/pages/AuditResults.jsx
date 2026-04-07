@@ -471,7 +471,7 @@ export default function AuditResults() {
               <p className="italic text-sm text-gray-600">« {claim.claim_text} »</p>
               {(claim.overall_verdict === 'non_conforme' || claim.overall_verdict === 'risque') && (
                 <div className="mt-3">
-                  {!rewrites[claim.id] ? (
+                  {isPro && !rewrites[claim.id] ? (
                     <button
                       onClick={() => handleRewrite(claim.id)}
                       disabled={rewriteLoading[claim.id]}
@@ -553,30 +553,34 @@ export default function AuditResults() {
                     </div>
                   ))}
 
-                  {/* Upload — sélecteur de type + fichier */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#1a5c3a]"
-                      value={evidenceDocType[claim.id] || 'autre'}
-                      onChange={(e) => setEvidenceDocType((prev) => ({ ...prev, [claim.id]: e.target.value }))}
-                      disabled={evidenceUploading[claim.id]}
-                    >
-                      <option value="ecolabel">Écolabel officiel (EU, Ange Bleu, ISO 14024)</option>
-                      <option value="certification">Certification tierce</option>
-                      <option value="rapport_interne">Rapport interne</option>
-                      <option value="autre">Autre document</option>
-                    </select>
-                    <label className="flex items-center gap-1 cursor-pointer text-xs text-[#1a5c3a] font-semibold hover:underline">
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                  {/* Upload — Pro uniquement */}
+                  {isPro ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select
+                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#1a5c3a]"
+                        value={evidenceDocType[claim.id] || 'autre'}
+                        onChange={(e) => setEvidenceDocType((prev) => ({ ...prev, [claim.id]: e.target.value }))}
                         disabled={evidenceUploading[claim.id]}
-                        onChange={(e) => e.target.files[0] && handleEvidenceUpload(claim.id, e.target.files[0])}
-                      />
-                      {evidenceUploading[claim.id] ? 'Upload en cours...' : '+ Ajouter (PDF, image, Word — max 10 Mo)'}
-                    </label>
-                  </div>
+                      >
+                        <option value="ecolabel">Écolabel officiel (EU, Ange Bleu, ISO 14024)</option>
+                        <option value="certification">Certification tierce</option>
+                        <option value="rapport_interne">Rapport interne</option>
+                        <option value="autre">Autre document</option>
+                      </select>
+                      <label className="flex items-center gap-1 cursor-pointer text-xs text-[#1a5c3a] font-semibold hover:underline">
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                          disabled={evidenceUploading[claim.id]}
+                          onChange={(e) => e.target.files[0] && handleEvidenceUpload(claim.id, e.target.files[0])}
+                        />
+                        {evidenceUploading[claim.id] ? 'Upload en cours...' : '+ Ajouter (PDF, image, Word — max 10 Mo)'}
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic">L'ajout de preuves est réservé au plan Pro.</p>
+                  )}
                   {(evidenceDocType[claim.id] || 'autre') === 'ecolabel' && (
                     <p className="text-xs text-[#1a5c3a] bg-[#eaf4ee] px-2 py-1 rounded-lg">
                       Un Écolabel officiel déposé ici peut débloquer le verdict "Conforme" sur cette allégation lors de la prochaine analyse.

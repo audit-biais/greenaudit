@@ -280,7 +280,7 @@ class ScanRequest(BaseModel):
 @router.post("/scan", response_model=AuditResultsResponse)
 async def scan_website_endpoint(
     data: ScanRequest,
-    user: User = Depends(check_audit_limit),
+    user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
 ) -> AuditResultsResponse:
     """

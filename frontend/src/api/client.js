@@ -23,7 +23,10 @@ api.interceptors.response.use(
       error.response?.status === 402 &&
       error.response?.data?.detail === 'upgrade_required'
     ) {
-      window.dispatchEvent(new CustomEvent('upgrade_required'));
+      // Redirect to settings for upgrade instead of silent failure
+      if (!window.location.pathname.includes('/settings')) {
+        window.location.href = '/settings#abonnement';
+      }
     }
     return Promise.reject(error);
   }
