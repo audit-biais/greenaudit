@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Dict, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -23,6 +23,7 @@ from app.schemas.audit import AuditCreate, AuditDetailResponse, AuditSummaryResp
 from app.schemas.claim_result import AuditResultsResponse
 from app.services.analysis_engine import analyze_claim, RULES_VERSION
 from app.services.monitoring_service import scrape_website, extract_claims_with_claude
+from app.limiter import limiter, get_user_or_ip
 from app.services.scoring import calculate_global_score, compute_verdict_counts
 
 router = APIRouter(prefix="/api/audits", tags=["audits"])
@@ -132,7 +133,9 @@ async def delete_audit(
 
 
 @router.post("/{audit_id}/analyze", response_model=AuditResultsResponse)
+@limiter.limit("10/minute", key_func=get_user_or_ip)
 async def analyze_audit(
+    request: Request,
     audit_id: UUID,
     user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
@@ -278,7 +281,9 @@ class ScanRequest(BaseModel):
 
 
 @router.post("/scan", response_model=AuditResultsResponse)
+@limiter.limit("5/minute", key_func=get_user_or_ip)
 async def scan_website_endpoint(
+    request: Request,
     data: ScanRequest,
     user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),

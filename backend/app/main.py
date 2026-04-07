@@ -12,6 +12,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.limiter import limiter
+from app.utils.security_headers import SecurityHeadersMiddleware
 from app.database import engine, Base
 from app.routers import auth, partners, audits, claims, reports
 from app.routers import monitoring, contact, organizations, admin, evidence, payment, members
@@ -90,6 +91,11 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 cors_origins = [s.strip() for s in settings.CORS_ORIGINS.split(",") if s.strip()]
+
+# IMPORTANT : les middlewares sont appliqués dans l'ordre inverse d'ajout.
+# SecurityHeaders doit être en dernier (ajouté en premier) pour couvrir toutes les réponses,
+# y compris celles générées par CORSMiddleware.
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

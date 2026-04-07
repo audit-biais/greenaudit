@@ -5,6 +5,7 @@ from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -181,7 +182,12 @@ async def mark_claim_corrected(
     return claim
 
 
-@router.post("/api/claims/{claim_id}/rewrite")
+class RewriteResponse(BaseModel):
+    original: str
+    suggestions: str
+
+
+@router.post("/api/claims/{claim_id}/rewrite", response_model=RewriteResponse)
 async def rewrite_claim(
     claim_id: UUID,
     user: User = Depends(require_pro),
