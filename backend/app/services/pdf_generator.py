@@ -535,11 +535,11 @@ def _build_styles(primary: colors.Color, secondary: colors.Color):
 # Page templates avec header/footer
 # ---------------------------------------------------------------------------
 
-def _build_doc(filepath: str, partner: Partner) -> BaseDocTemplate:
-    primary = _hex(partner.brand_primary_color)
-    company = partner.name or ""
-    email = partner.contact_email or ""
-    phone = partner.contact_phone or ""
+def _build_doc(filepath: str, partner: Partner, is_starter: bool = False) -> BaseDocTemplate:
+    primary = _hex(partner.brand_primary_color) if not is_starter else colors.HexColor("#1B5E20")
+    company = "GreenAudit" if is_starter else (partner.name or "")
+    email = "contact@green-audit.fr" if is_starter else (partner.contact_email or "")
+    phone = "" if is_starter else (partner.contact_phone or "")
 
     def _header_footer(canvas, doc):
         canvas.saveState()
@@ -578,7 +578,7 @@ def _build_doc(filepath: str, partner: Partner) -> BaseDocTemplate:
 # Sections du rapport
 # ---------------------------------------------------------------------------
 
-def _cover_elements(audit: Audit, partner: Partner, styles: dict) -> list:
+def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bool = False) -> list:
     """Page 1 : page de garde avec jauge et pastilles résumé."""
     elements = []
     elements.append(Spacer(1, 40 * mm))
@@ -633,8 +633,22 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict) -> list:
         ))
 
     elements.append(Spacer(1, 8 * mm))
+
+    # Logo en bas de page de garde
+    from reportlab.platypus import Image as RLImage
+    greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.jpg"
+    if is_starter and greenaudit_logo.exists():
+        try:
+            img = RLImage(str(greenaudit_logo), width=80, height=40)
+            img_table = Table([[img]], colWidths=[80])
+            img_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
+            elements.append(img_table)
+            elements.append(Spacer(1, 3 * mm))
+        except Exception:
+            pass
+
     elements.append(Paragraph(
-        f"Audit réalisé le {_format_date(audit.completed_at)} par {partner.name}",
+        f"Audit réalisé le {_format_date(audit.completed_at)} par {'GreenAudit' if is_starter else partner.name}",
         styles["cover_small"],
     ))
     elements.append(NextPageTemplate("content"))
@@ -824,7 +838,7 @@ def _radar_elements(claims: list, styles: dict) -> list:
     return elements
 
 
-def _claims_detail_elements(claims: list, styles: dict) -> list:
+def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False) -> list:
     """Section détail des allégations avec barres de progression et alertes."""
     elements = []
     elements.append(Paragraph("3. Détail des allégations", styles["h1"]))
@@ -877,26 +891,43 @@ def _claims_detail_elements(claims: list, styles: dict) -> list:
             claim_elements.append(Spacer(1, 3 * mm))
 
         # Tableau des critères
-        data = [[
-            Paragraph("<b>Critère</b>", styles["small"]),
-            Paragraph("<b>Verdict</b>", styles["small"]),
-            Paragraph("<b>Explication</b>", styles["small"]),
-            Paragraph("<b>Recommandation</b>", styles["small"]),
-        ]]
+        if is_starter:
+            data = [[
+                Paragraph("<b>Critère</b>", styles["small"]),
+                Paragraph("<b>Verdict</b>", styles["small"]),
+                Paragraph("<b>Explication</b>", styles["small"]),
+            ]]
+        else:
+            data = [[
+                Paragraph("<b>Critère</b>", styles["small"]),
+                Paragraph("<b>Verdict</b>", styles["small"]),
+                Paragraph("<b>Explication</b>", styles["small"]),
+                Paragraph("<b>Recommandation</b>", styles["small"]),
+            ]]
         sorted_results = sorted(
             claim.results,
             key=lambda r: CRITERION_ORDER.index(r.criterion) if r.criterion in CRITERION_ORDER else 99,
         )
         for r in sorted_results:
-            data.append([
-                Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
-                Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), styles["small"]),
-                Paragraph(r.explanation or "", styles["small"]),
-                Paragraph(r.recommendation or "—", styles["small"]),
-            ])
+            if is_starter:
+                data.append([
+                    Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
+                    Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), styles["small"]),
+                    Paragraph(r.explanation or "", styles["small"]),
+                ])
+            else:
+                data.append([
+                    Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
+                    Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), styles["small"]),
+                    Paragraph(r.explanation or "", styles["small"]),
+                    Paragraph(r.recommendation or "—", styles["small"]),
+                ])
 
         page_width = A4[0] - 40 * mm
-        col_widths = [page_width * 0.17, page_width * 0.13, page_width * 0.40, page_width * 0.30]
+        if is_starter:
+            col_widths = [page_width * 0.20, page_width * 0.15, page_width * 0.65]
+        else:
+            col_widths = [page_width * 0.17, page_width * 0.13, page_width * 0.40, page_width * 0.30]
         t = Table(data, colWidths=col_widths, repeatRows=1)
         t.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1B5E20")),
@@ -1121,6 +1152,35 @@ def _labels_checklist_elements(claims: list, styles: dict) -> list:
     return elements
 
 
+def _upgrade_banner_elements(section_title: str, styles: dict) -> list:
+    """Encadré 'Disponible en plan Pro' pour les sections bridées en Starter."""
+    elements = []
+    elements.append(Paragraph(section_title, styles["h1"]))
+    page_width = A4[0] - 40 * mm
+    banner_data = [[
+        Paragraph(
+            "<b>Disponible avec le plan Pro</b><br/>"
+            "Cette section est réservée aux partenaires Pro et Enterprise. "
+            "Passez au plan Pro pour accéder au rapport complet : plan de correction priorisé, "
+            "risque financier estimé, références réglementaires détaillées et checklist labels.",
+            ParagraphStyle("upgrade_text", parent=styles["body"], fontSize=9,
+                           textColor=colors.HexColor("#1B5E20"), leading=13),
+        )
+    ]]
+    t = Table(banner_data, colWidths=[page_width])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F0FDF4")),
+        ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#1B5E20")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 12),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 6 * mm))
+    return elements
+
+
 def _references_elements(styles: dict) -> list:
     """Section références réglementaires."""
     elements = []
@@ -1152,7 +1212,7 @@ def _references_elements(styles: dict) -> list:
     return elements
 
 
-def _disclaimer_elements(partner: Partner, styles: dict) -> list:
+def _disclaimer_elements(partner: Partner, styles: dict, is_starter: bool = False) -> list:
     """Section avertissement final."""
     elements = []
     elements.append(Spacer(1, 10 * mm))
@@ -1163,9 +1223,18 @@ def _disclaimer_elements(partner: Partner, styles: dict) -> list:
         "conformité réglementaire de vos communications environnementales.",
         styles["disclaimer"],
     ))
-    contact_parts = [p for p in [partner.name, partner.contact_name, partner.contact_phone, partner.contact_email] if p]
-    elements.append(Spacer(1, 4 * mm))
-    elements.append(Paragraph(" — ".join(contact_parts), styles["disclaimer"]))
+    if is_starter:
+        elements.append(Spacer(1, 4 * mm))
+        elements.append(Paragraph(
+            "Ce rapport est une version d'aperçu (plan Starter). Le rapport complet inclut les recommandations "
+            "de correction, le plan d'action priorisé, le risque financier estimé et les références réglementaires détaillées. "
+            "Contactez-nous sur green-audit.fr pour passer au plan Pro.",
+            styles["disclaimer"],
+        ))
+    else:
+        contact_parts = [p for p in [partner.name, partner.contact_name, partner.contact_phone, partner.contact_email] if p]
+        elements.append(Spacer(1, 4 * mm))
+        elements.append(Paragraph(" — ".join(contact_parts), styles["disclaimer"]))
     return elements
 
 
@@ -1180,6 +1249,8 @@ def generate_audit_pdf(audit: Audit, partner: Partner) -> Tuple[str, str]:
     Returns:
         Tuple (nom du fichier PDF, hash SHA-256 du fichier).
     """
+    is_starter = (partner.subscription_plan or "starter") in ("starter", "free")
+
     claims = sorted(audit.claims, key=lambda c: c.created_at)
     primary = _hex(partner.brand_primary_color)
     secondary = _hex(partner.brand_secondary_color, "#2E7D32")
@@ -1191,18 +1262,23 @@ def generate_audit_pdf(audit: Audit, partner: Partner) -> Tuple[str, str]:
     filename = f"greenaudit_{audit.id}.pdf"
     filepath = str(storage_path / filename)
 
-    doc = _build_doc(filepath, partner)
+    doc = _build_doc(filepath, partner, is_starter=is_starter)
 
     elements = []
-    elements.extend(_cover_elements(audit, partner, styles))       # 1. Page de garde avec jauge + pastilles
-    elements.extend(_summary_elements(audit, styles))               # Synthèse exécutive
-    elements.extend(_radar_elements(claims, styles))                # 2. Radar chart
-    elements.extend(_claims_detail_elements(claims, styles))        # 3. Détail + barres + alertes
-    elements.extend(_correction_plan_elements(claims, styles))      # 4. Plan de correction + échéances
-    elements.extend(_financial_risk_elements(audit, styles))        # 5. Risque financier
-    elements.extend(_labels_checklist_elements(claims, styles))     # 6. Checklist labels
-    elements.extend(_references_elements(styles))                   # 7. Références réglementaires
-    elements.extend(_disclaimer_elements(partner, styles))          # Avertissement
+    elements.extend(_cover_elements(audit, partner, styles, is_starter=is_starter))
+    elements.extend(_summary_elements(audit, styles))
+    elements.extend(_radar_elements(claims, styles))
+    elements.extend(_claims_detail_elements(claims, styles, is_starter=is_starter))
+    if is_starter:
+        elements.extend(_upgrade_banner_elements("4. Plan de correction priorisé", styles))
+        elements.extend(_upgrade_banner_elements("5. Risque financier estimé", styles))
+        elements.extend(_upgrade_banner_elements("7. Références réglementaires", styles))
+    else:
+        elements.extend(_correction_plan_elements(claims, styles))
+        elements.extend(_financial_risk_elements(audit, styles))
+        elements.extend(_labels_checklist_elements(claims, styles))
+        elements.extend(_references_elements(styles))
+    elements.extend(_disclaimer_elements(partner, styles, is_starter=is_starter))
 
     doc.build(elements)
 
