@@ -585,8 +585,41 @@ def _build_doc(filepath: str, partner: Partner, is_starter: bool = False) -> Bas
 
 def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bool = False) -> list:
     """Page 1 : page de garde avec jauge et pastilles résumé."""
+    from io import BytesIO
+    from reportlab.platypus import Image as RLImage
+    from reportlab.lib.utils import ImageReader
+
+    def _make_logo_table(data: bytes, max_w_mm: float = 120, max_h_mm: float = 100):
+        reader = ImageReader(BytesIO(data))
+        iw, ih = reader.getSize()
+        ratio = min((max_w_mm * mm) / iw, (max_h_mm * mm) / ih)
+        w, h = iw * ratio, ih * ratio
+        img = RLImage(BytesIO(data), width=w, height=h)
+        tbl = Table([[img]], colWidths=[w])
+        tbl.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
+        return tbl
+
+    greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.png"
+
     elements = []
-    elements.append(Spacer(1, 40 * mm))
+    elements.append(Spacer(1, 20 * mm))
+
+    # Logo en haut de page de garde
+    logo_added = False
+    if not is_starter and partner.logo_data:
+        try:
+            elements.append(_make_logo_table(partner.logo_data))
+            elements.append(Spacer(1, 6 * mm))
+            logo_added = True
+        except Exception as e:
+            logger.error("Erreur logo partenaire PDF: %s", e)
+    if not logo_added and greenaudit_logo.exists():
+        try:
+            elements.append(_make_logo_table(greenaudit_logo.read_bytes()))
+            elements.append(Spacer(1, 6 * mm))
+        except Exception as e:
+            logger.error("Erreur logo GreenAudit PDF: %s", e)
+
     elements.append(Paragraph("Rapport d'audit anti-greenwashing", styles["title"]))
     elements.append(Paragraph("Directive EmpCo (EU 2024/825)", styles["cover_center"]))
     elements.append(Spacer(1, 8 * mm))
@@ -638,40 +671,6 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
         ))
 
     elements.append(Spacer(1, 8 * mm))
-
-    # Logo en bas de page de garde
-    from io import BytesIO
-    from reportlab.platypus import Image as RLImage
-    from reportlab.lib.utils import ImageReader
-
-    def _make_logo_table(data: bytes, max_w_mm: float = 60, max_h_mm: float = 50):
-        reader = ImageReader(BytesIO(data))
-        iw, ih = reader.getSize()
-        ratio = min((max_w_mm * mm) / iw, (max_h_mm * mm) / ih)
-        w, h = iw * ratio, ih * ratio
-        img = RLImage(BytesIO(data), width=w, height=h)
-        tbl = Table([[img]], colWidths=[w])
-        tbl.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
-        return tbl
-
-    greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.png"
-    logo_added = False
-
-    if not is_starter and partner.logo_data:
-        try:
-            elements.append(_make_logo_table(partner.logo_data))
-            elements.append(Spacer(1, 3 * mm))
-            logo_added = True
-        except Exception as e:
-            logger.error("Erreur logo partenaire PDF: %s", e)
-
-    if not logo_added and greenaudit_logo.exists():
-        try:
-            logo_bytes = greenaudit_logo.read_bytes()
-            elements.append(_make_logo_table(logo_bytes))
-            elements.append(Spacer(1, 3 * mm))
-        except Exception as e:
-            logger.error("Erreur logo GreenAudit PDF: %s", e)
 
     elements.append(Paragraph(
         f"Audit réalisé le {_format_date(audit.completed_at)} par {'GreenAudit' if is_starter else partner.name}",
