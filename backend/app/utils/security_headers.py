@@ -1,33 +1,46 @@
 from __future__ import annotations
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+from typing import Callable
+
+_SECURITY_HEADERS = [
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (b"strict-transport-security", b"max-age=31536000; includeSubDomains"),
+    (b"referrer-policy", b"strict-origin-when-cross-origin"),
+    (b"content-security-policy", b"default-src 'none'"),
+    (b"x-xss-protection", b"0"),
+]
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+class SecurityHeadersMiddleware:
     """
-    Ajoute les headers de sécurité HTTP sur toutes les réponses.
+    Middleware ASGI pur (pas BaseHTTPMiddleware) qui ajoute les headers
+    de sécurité HTTP sur toutes les réponses.
 
-    - X-Content-Type-Options : empêche le MIME-sniffing (ex : un JSON servi
-      comme HTML interprété par le navigateur).
-    - X-Frame-Options : empêche l'intégration dans une iframe (clickjacking).
-    - Strict-Transport-Security : force HTTPS pendant 1 an, y compris sous-domaines.
-    - Referrer-Policy : ne transmet que l'origine dans le header Referer.
-    - Content-Security-Policy : API pure → aucune ressource à charger depuis
-      le navigateur, on bloque tout par défaut.
-    - X-XSS-Protection: 0 : désactive le filtre XSS natif des vieux navigateurs
-      (il crée plus de failles qu'il n'en corrige sur les navigateurs modernes).
+    Implémenté en ASGI raw pour éviter les incompatibilités de BaseHTTPMiddleware
+    avec les streaming responses et certaines versions de Starlette.
+
+    Headers ajoutés :
+    - X-Content-Type-Options: nosniff         → empêche le MIME-sniffing
+    - X-Frame-Options: DENY                   → empêche le clickjacking
+    - Strict-Transport-Security               → force HTTPS 1 an
+    - Referrer-Policy                         → ne transmet que l'origine
+    - Content-Security-Policy: default-src 'none' → API pure, rien à charger
+    - X-XSS-Protection: 0                    → désactive le filtre XSS cassé
     """
 
-    async def dispatch(self, request: Request, call_next) -> Response:
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
-        )
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Content-Security-Policy"] = "default-src 'none'"
-        response.headers["X-XSS-Protection"] = "0"
-        return response
+    def __init__(self, app: Callable) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_security_headers(message: dict) -> None:
+            if message["type"] == "http.response.start":
+                existing = list(message.get("headers", []))
+                message = {**message, "headers": existing + _SECURITY_HEADERS}
+            await send(message)
+
+        await self.app(scope, receive, send_with_security_headers)
