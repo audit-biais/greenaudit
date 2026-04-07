@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user, oauth2_scheme
 from app.auth.jwt import create_access_token, decode_access_token, hash_password, verify_password
 from app.config import settings
 from app.database import get_db
+from app.limiter import limiter
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.user import OrgInfo, TokenResponse, UserResponse, UserSignup
@@ -17,7 +18,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/hour")
 async def signup(
+    request: Request,
     data: UserSignup,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -73,7 +76,9 @@ async def signup(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:

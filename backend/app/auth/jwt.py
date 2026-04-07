@@ -10,7 +10,7 @@ from app.config import settings
 
 # Source unique de vérité — settings.SECRET_KEY est validé au démarrage
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 jours
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.JWT_EXPIRATION_HOURS * 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

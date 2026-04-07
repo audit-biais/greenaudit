@@ -7,8 +7,11 @@ from typing import AsyncGenerator, Dict
 import sqlalchemy as sa
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.limiter import limiter
 from app.database import engine, Base
 from app.routers import auth, partners, audits, claims, reports
 from app.routers import monitoring, contact, organizations, admin, evidence, payment, members
@@ -82,6 +85,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 cors_origins = [s.strip() for s in settings.CORS_ORIGINS.split(",") if s.strip()]
 
