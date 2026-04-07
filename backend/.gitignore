@@ -1,9 +1,22 @@
 __pycache__/
 *.pyc
+
+# Variables d'environnement — NE JAMAIS COMMITTER
 .env
+.env.local
+.env.production
+.env.staging
+.env.test
+*.env
+
+# Virtualenv
 .venv/
 venv/
+
+# PDFs générés (données clients)
 reports/
+
+# Python build
 *.egg-info/
 .pytest_cache/
 .DS_Store
