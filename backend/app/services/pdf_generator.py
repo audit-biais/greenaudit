@@ -640,16 +640,26 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
     from io import BytesIO
     from reportlab.platypus import Image as RLImage
     from reportlab.lib.utils import ImageReader
-    greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.png"
 
+    def _logo_elements(img_reader, max_w_mm=60, max_h_mm=50):
+        """Retourne (img, col_w) en respectant le ratio, dans les limites max."""
+        iw, ih = img_reader.getSize()
+        max_w = max_w_mm * mm
+        max_h = max_h_mm * mm
+        ratio = min(max_w / iw, max_h / ih)
+        w, h = iw * ratio, ih * ratio
+        img = RLImage(img_reader, width=w, height=h)
+        tbl = Table([[img]], colWidths=[w])
+        tbl.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
+        return tbl
+
+    greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.png"
     logo_added = False
+
     if not is_starter and partner.logo_data:
         try:
             img_reader = ImageReader(BytesIO(partner.logo_data))
-            img = RLImage(img_reader, width=120, height=60)
-            img_table = Table([[img]], colWidths=[120])
-            img_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
-            elements.append(img_table)
+            elements.append(_logo_elements(img_reader))
             elements.append(Spacer(1, 3 * mm))
             logo_added = True
         except Exception:
@@ -657,10 +667,8 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
 
     if not logo_added and greenaudit_logo.exists():
         try:
-            img = RLImage(str(greenaudit_logo), width=120, height=60)
-            img_table = Table([[img]], colWidths=[120])
-            img_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
-            elements.append(img_table)
+            img_reader = ImageReader(str(greenaudit_logo))
+            elements.append(_logo_elements(img_reader))
             elements.append(Spacer(1, 3 * mm))
         except Exception:
             pass
