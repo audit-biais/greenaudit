@@ -17,12 +17,12 @@ export default function Layout({ children }) {
       {/* Navbar — style One Click LCA */}
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-32">
 
             {/* Logo */}
             <div className="flex items-center gap-8">
               <Link to="/landing" className="flex items-center gap-2 flex-shrink-0">
-                <img src="/logo.png" alt="GreenAudit" className="h-10 w-auto object-contain" />
+                <img src="/logo.png" alt="GreenAudit" className="h-28 w-auto object-contain" />
               </Link>
 
               {/* Nav links */}

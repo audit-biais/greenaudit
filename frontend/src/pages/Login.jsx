@@ -55,7 +55,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-2">
-            <img src="/logo.png" alt="GreenAudit" className="h-16 w-auto object-contain" />
+            <img src="/logo.png" alt="GreenAudit" className="h-48 w-auto object-contain" />
           </div>
           <p className="text-sm text-gray-500">Plateforme d'audit anti-greenwashing</p>
         </div>
