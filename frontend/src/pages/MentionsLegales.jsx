@@ -27,11 +27,10 @@ export default function MentionsLegales() {
             <h2 className="text-lg font-bold text-gray-900 mb-3">1. Éditeur du site</h2>
             <p>Le site <strong>green-audit.fr</strong> est édité par :</p>
             <ul className="mt-3 space-y-1 text-gray-600">
-              <li><strong>Raison sociale :</strong> [À COMPLÉTER]</li>
-              <li><strong>Forme juridique :</strong> [À COMPLÉTER]</li>
-              <li><strong>Capital social :</strong> [À COMPLÉTER]</li>
-              <li><strong>SIRET :</strong> [À COMPLÉTER]</li>
-              <li><strong>Adresse du siège social :</strong> [À COMPLÉTER]</li>
+              <li><strong>Raison sociale :</strong> Optimaflow</li>
+              <li><strong>Forme juridique :</strong> Micro-entreprise</li>
+              <li><strong>SIRET :</strong> 879 375 368 00039</li>
+              <li><strong>Adresse du siège social :</strong> 6 rue d'Armaillé, 75017 Paris, France</li>
               <li><strong>Directeur de la publication :</strong> Anthony Edmond</li>
               <li><strong>Email :</strong> contact@green-audit.fr</li>
             </ul>
