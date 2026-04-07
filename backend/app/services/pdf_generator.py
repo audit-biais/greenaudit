@@ -637,23 +637,27 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
     elements.append(Spacer(1, 8 * mm))
 
     # Logo en bas de page de garde
+    from io import BytesIO
     from reportlab.platypus import Image as RLImage
+    from reportlab.lib.utils import ImageReader
     greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.png"
-    if is_starter and greenaudit_logo.exists():
+
+    logo_added = False
+    if not is_starter and partner.logo_data:
         try:
-            img = RLImage(str(greenaudit_logo), width=80, height=40)
-            img_table = Table([[img]], colWidths=[80])
+            img_reader = ImageReader(BytesIO(partner.logo_data))
+            img = RLImage(img_reader, width=120, height=60)
+            img_table = Table([[img]], colWidths=[120])
             img_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
             elements.append(img_table)
             elements.append(Spacer(1, 3 * mm))
+            logo_added = True
         except Exception:
             pass
-    elif not is_starter and partner.logo_data:
+
+    if not logo_added and greenaudit_logo.exists():
         try:
-            from io import BytesIO
-            from reportlab.lib.utils import ImageReader
-            img_reader = ImageReader(BytesIO(partner.logo_data))
-            img = RLImage(img_reader, width=120, height=60)
+            img = RLImage(str(greenaudit_logo), width=120, height=60)
             img_table = Table([[img]], colWidths=[120])
             img_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
             elements.append(img_table)
