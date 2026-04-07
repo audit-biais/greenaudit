@@ -84,7 +84,7 @@ function AppRoutes() {
       <Route path="/scan" element={<ProtectedPage><ScanSite /></ProtectedPage>} />
       <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
       <Route path="/admin" element={<ProtectedPage><AdminPanel /></ProtectedPage>} />
-      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/success" element={<ProtectedPage><PaymentSuccess /></ProtectedPage>} />
       <Route path="/mentions-legales" element={<MentionsLegales />} />
       <Route path="/cgv" element={<CGV />} />
       <Route path="/politique-de-confidentialite" element={<PolitiqueConfidentialite />} />

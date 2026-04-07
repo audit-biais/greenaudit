@@ -13,7 +13,6 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.organization import (
     InviteRequest,
-    OrgCreate,
     OrgResponse,
     OrgSettings,
     OrgUserResponse,
@@ -23,40 +22,6 @@ router = APIRouter(prefix="/api/organizations", tags=["organizations"])
 
 MAX_LOGO_SIZE = 2 * 1024 * 1024  # 2 Mo
 
-
-@router.post("/create")
-async def create_organization(
-    data: OrgCreate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """Crée une organisation. L'utilisateur courant devient admin."""
-    if current_user.organization_id:
-        raise HTTPException(status_code=400, detail="Vous appartenez déjà à une organisation")
-
-    org = Organization(
-        name=data.name or current_user.company_name,
-        contact_email=current_user.email,
-        audits_limit=current_user.audits_limit,
-        audits_this_month=current_user.audits_this_month,
-        subscription_plan=current_user.subscription_plan,
-        subscription_status=current_user.subscription_status,
-        stripe_customer_id=current_user.stripe_customer_id,
-        stripe_subscription_id=current_user.stripe_subscription_id,
-    )
-    db.add(org)
-    await db.flush()
-
-    current_user.organization_id = org.id
-    current_user.role = "admin"
-    await db.commit()
-    await db.refresh(org)
-
-    return {
-        "status": "success",
-        "message": f"Organisation '{org.name}' créée",
-        "organization": await _org_to_response(org, db),
-    }
 
 
 @router.get("/me", response_model=OrgResponse)

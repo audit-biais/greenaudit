@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import stripe
+from datetime import datetime
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -123,7 +124,7 @@ async def stripe_webhook(
                 org.subscription_status = "active"
                 org.audits_limit = 15
                 org.audits_this_month = 0
-                org.audits_reset_month = None
+                org.audits_reset_month = datetime.utcnow().strftime("%Y-%m")
                 org.stripe_customer_id = getattr(session_obj, "customer", None)
                 org.stripe_subscription_id = getattr(session_obj, "subscription", None)
                 await db.commit()

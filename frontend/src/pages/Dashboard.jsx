@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { useAuth } from '../api/auth';
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -32,6 +33,8 @@ function scoreColor(score) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isPro = ['pro', 'enterprise'].includes(user?.subscription_plan);
   const [audits, setAudits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,15 +90,28 @@ export default function Dashboard() {
           <h1 className="text-2xl font-black text-gray-900">Tableau de bord</h1>
           <p className="mt-1 text-sm text-gray-500">Gérez vos audits anti-greenwashing</p>
         </div>
-        <button
-          onClick={() => navigate('/audits/new')}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
-        >
-          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
-          Nouvel audit
-        </button>
+        <div className="flex items-center gap-3">
+          {isPro && (
+            <button
+              onClick={() => navigate('/scan')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-[#1a5c3a] bg-[#eaf4ee] hover:bg-[#d4ecdd] transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Scan de site
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/audits/new')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+            Nouvel audit
+          </button>
+        </div>
       </div>
 
       {/* Error */}
