@@ -40,6 +40,7 @@ export default function Settings() {
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState(null);
 
@@ -60,6 +61,7 @@ export default function Settings() {
       setCompanyName(org.name || '');
       setContactName(org.contact_name || '');
       setContactPhone(org.contact_phone || '');
+      setContactEmail(org.contact_email || '');
       setPrimaryColor(org.brand_primary_color || '#1a5c3a');
       setSecondaryColor(org.brand_secondary_color || '#2E7D32');
       setHasLogo(org.has_logo || false);
@@ -88,6 +90,7 @@ export default function Settings() {
         name: companyName,
         contact_name: contactName || null,
         contact_phone: contactPhone || null,
+        contact_email: contactEmail || null,
       });
       setProfileMessage({ type: 'success', text: 'Profil mis à jour avec succès.' });
     } catch (err) {
@@ -163,6 +166,13 @@ export default function Settings() {
             <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700 mb-1.5">Téléphone</label>
             <input id="contactPhone" type="tel" value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)} placeholder="+33 6 12 34 56 78" className={inputCls} />
+          </div>
+          <div>
+            <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Email de contact <span className="text-xs text-gray-400 font-normal">(apparaît sur les rapports PDF)</span>
+            </label>
+            <input id="contactEmail" type="email" value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)} placeholder="contact@votreentreprise.com" className={inputCls} />
           </div>
           <div className="pt-2">
             <button type="submit" disabled={profileSaving}
