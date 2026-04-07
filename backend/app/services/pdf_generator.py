@@ -424,7 +424,7 @@ class RadarChartFlowable(Flowable):
 
         # Labels des axes
         c.saveState()
-        c.setFont("Helvetica", 7)
+        c.setFont("Helvetica", 9)
         c.setFillColor(colors.HexColor(_C_SLATE))
         label_offset = 20
         for i, a in enumerate(angles):
@@ -882,8 +882,6 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
 def _summary_elements(audit: Audit, styles: dict) -> list:
     """Section synthèse exécutive."""
     elements = []
-    elements.append(Paragraph("1. Synthèse exécutive", styles["h1"]))
-
     total = audit.total_claims or 1
     data = [
         ["Allégations", "Conformes", "À risque", "Non conformes"],
@@ -907,7 +905,7 @@ def _summary_elements(audit: Audit, styles: dict) -> list:
         ("TOPPADDING",    (0, 0), (-1, -1), 8),
         ("BACKGROUND",    (0, 1), (-1, 1),  colors.HexColor(_C_ALT)),
     ]))
-    elements.append(t)
+    elements.append(KeepTogether([Paragraph("1. Synthèse exécutive", styles["h1"]), t]))
     elements.append(Spacer(1, 4 * mm))
     elements.append(Paragraph(
         f"Score global : <b>{audit.global_score}/100</b> — Risque <b>{_risk_label(audit.risk_level)}</b>. "
@@ -1039,17 +1037,19 @@ def _compute_radar_scores(claims: list) -> Dict[str, float]:
 def _radar_elements(claims: list, styles: dict) -> list:
     """Section radar chart par critère."""
     elements = []
-    elements.append(Paragraph("2. Conformité par critère", styles["h1"]))
 
     scores = _compute_radar_scores(claims)
     if not scores:
-        elements.append(Paragraph("Données insuffisantes pour générer le graphique.", styles["body"]))
+        elements.append(KeepTogether([
+            Paragraph("2. Conformité par critère", styles["h1"]),
+            Paragraph("Données insuffisantes pour générer le graphique.", styles["body"]),
+        ]))
         return elements
 
     radar = RadarChartFlowable(scores, width=360, height=290)
     radar_table = Table([[radar]], colWidths=[360])
     radar_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
-    elements.append(radar_table)
+    elements.append(KeepTogether([Paragraph("2. Conformité par critère", styles["h1"]), radar_table]))
     elements.append(Spacer(1, 4 * mm))
     elements.append(Paragraph(
         "Score par critère : 100% = tous conformes · 50% = risque · 0% = non conforme. "
@@ -1062,11 +1062,12 @@ def _radar_elements(claims: list, styles: dict) -> list:
 def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False) -> list:
     """Section détail des allégations — blocs encadrés avec référence réglementaire."""
     elements = []
-    elements.append(Paragraph("3. Détail des allégations", styles["h1"]))
+    h1_title = Paragraph("3. Détail des allégations", styles["h1"])
 
     page_width   = A4[0] - 40 * mm
     inner_width  = page_width - 16   # padding 8pt de chaque côté dans le bloc
 
+    first_claim = True
     for i, claim in enumerate(claims, 1):
         verdict = VERDICT_LABELS.get(claim.overall_verdict or "", "—")
         support = SUPPORT_LABELS.get(claim.support_type, claim.support_type)
@@ -1295,7 +1296,11 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
             ("BACKGROUND",   (0, 0), (-1, -1), colors.white),
         ]))
 
-        elements.append(KeepTogether([claim_block]))
+        if first_claim:
+            elements.append(KeepTogether([h1_title, claim_block]))
+            first_claim = False
+        else:
+            elements.append(KeepTogether([claim_block]))
         elements.append(Spacer(1, 5 * mm))
 
     return elements
@@ -1304,8 +1309,6 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
 def _correction_plan_elements(claims: list, styles: dict) -> list:
     """Section plan de correction avec échéances."""
     elements = []
-    elements.append(Paragraph("4. Plan de correction priorisé", styles["h1"]))
-
     actions = []
     for claim in claims:
         if claim.overall_verdict == "conforme":
@@ -1326,8 +1329,10 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
                     deadline,
                 ))
 
+    title = Paragraph("4. Plan de correction priorisé", styles["h1"])
+
     if not actions:
-        elements.append(Paragraph("Aucune action corrective nécessaire.", styles["body"]))
+        elements.append(KeepTogether([title, Paragraph("Aucune action corrective nécessaire.", styles["body"])]))
         return elements
 
     actions.sort(key=lambda a: 0 if a[0] == "Critique" else 1)
@@ -1381,7 +1386,7 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
             ts.add("BACKGROUND", (0, row_i), (-1, row_i), colors.HexColor(_C_ALT))
     t.setStyle(ts)
 
-    elements.append(t)
+    elements.append(KeepTogether([title, t]))
     elements.append(Paragraph(
         "<b>Date limite de mise en conformité directive EmpCo : 27 septembre 2026</b>",
         styles["deadline_footer"],
@@ -1392,8 +1397,6 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
 def _financial_risk_elements(audit: Audit, styles: dict) -> list:
     """Section estimation du risque financier."""
     elements = []
-    elements.append(Paragraph("5. Exposition aux sanctions", styles["h1"]))
-
     nc_count = audit.non_conforming_claims or 0
     page_width = A4[0] - 40 * mm
 
@@ -1458,7 +1461,7 @@ def _financial_risk_elements(audit: Audit, styles: dict) -> list:
         ("TOPPADDING",    (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
-    elements.append(t)
+    elements.append(KeepTogether([Paragraph("5. Exposition aux sanctions", styles["h1"]), t]))
     return elements
 
 
@@ -1479,7 +1482,12 @@ def _labels_checklist_elements(claims: list, styles: dict) -> list:
         return []
 
     elements = []
-    elements.append(Paragraph("6. Checklist labels", styles["h1"]))
+    first_item = (
+        Paragraph("Labels à retirer (auto-décernés) :", styles["body"])
+        if to_remove
+        else Paragraph("Labels conformes à conserver :", styles["body"])
+    )
+    elements.append(KeepTogether([Paragraph("6. Checklist labels", styles["h1"]), first_item]))
     if to_remove:
         elements.append(Paragraph("Labels à retirer (auto-décernés) :", styles["body"]))
         for name in to_remove:
@@ -1525,7 +1533,6 @@ def _upgrade_banner_elements(section_title: str, styles: dict) -> list:
 def _references_elements(styles: dict) -> list:
     """Section références réglementaires."""
     elements = []
-    elements.append(Paragraph("7. Références réglementaires", styles["h1"]))
     page_width = A4[0] - 40 * mm
     data = [
         [
@@ -1600,7 +1607,7 @@ def _references_elements(styles: dict) -> list:
         if row_i % 2 == 1:
             ts.add("BACKGROUND", (0, row_i), (-1, row_i), colors.HexColor(_C_ALT))
     t.setStyle(ts)
-    elements.append(t)
+    elements.append(KeepTogether([Paragraph("7. Références réglementaires", styles["h1"]), t]))
     return elements
 
 
@@ -1667,19 +1674,30 @@ def generate_audit_pdf(audit: Audit, partner: Partner) -> Tuple[str, str]:
 
     doc = _build_doc(filepath, partner, is_starter=is_starter)
 
+    _sep = lambda: Spacer(1, 10 * mm)
+
     elements = []
     elements.extend(_cover_elements(audit, partner, styles, is_starter=is_starter))
+    elements.append(_sep())
     elements.extend(_summary_elements(audit, styles))
+    elements.append(_sep())
     elements.extend(_radar_elements(claims, styles))
+    elements.append(_sep())
     elements.extend(_claims_detail_elements(claims, styles, is_starter=is_starter))
+    elements.append(_sep())
     if is_starter:
         elements.extend(_upgrade_banner_elements("4. Plan de correction priorisé", styles))
+        elements.append(_sep())
         elements.extend(_upgrade_banner_elements("5. Exposition aux sanctions", styles))
+        elements.append(_sep())
         elements.extend(_upgrade_banner_elements("7. Références réglementaires", styles))
     else:
         elements.extend(_correction_plan_elements(claims, styles))
+        elements.append(_sep())
         elements.extend(_financial_risk_elements(audit, styles))
+        elements.append(_sep())
         elements.extend(_labels_checklist_elements(claims, styles))
+        elements.append(_sep())
         elements.extend(_references_elements(styles))
     elements.extend(_disclaimer_elements(partner, styles, is_starter=is_starter))
 
