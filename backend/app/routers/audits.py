@@ -200,10 +200,10 @@ async def analyze_audit(
 
     await db.commit()
 
-    # Recharger avec les résultats pour la réponse
+    # Recharger avec les résultats pour la réponse (filtre org conservé)
     result = await db.execute(
         select(Audit)
-        .where(Audit.id == audit_id)
+        .where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
         .options(selectinload(Audit.claims).selectinload(Claim.results))
     )
     audit = result.scalar_one()
@@ -347,10 +347,10 @@ async def scan_website_endpoint(
 
     await db.flush()
 
-    # Recharger avec les claims
+    # Recharger avec les claims (filtre org conservé)
     result = await db.execute(
         select(Audit)
-        .where(Audit.id == audit.id)
+        .where(Audit.id == audit.id, Audit.organization_id == user.organization_id)
         .options(selectinload(Audit.claims))
     )
     audit = result.scalar_one()
@@ -383,10 +383,10 @@ async def scan_website_endpoint(
 
     await db.commit()
 
-    # Recharger avec résultats complets
+    # Recharger avec résultats complets (filtre org conservé)
     result = await db.execute(
         select(Audit)
-        .where(Audit.id == audit.id)
+        .where(Audit.id == audit.id, Audit.organization_id == user.organization_id)
         .options(selectinload(Audit.claims).selectinload(Claim.results))
     )
     audit = result.scalar_one()

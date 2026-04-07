@@ -177,13 +177,14 @@ async def mark_alert_read(
     db: AsyncSession = Depends(get_db),
 ) -> MonitoringAlertResponse:
     """Marquer une alerte comme lue."""
+    # Filtre org_id directement en SQL via la chaîne de jointures
     result = await db.execute(
         select(MonitoringAlert)
-        .where(MonitoringAlert.id == alert_id)
-        .options(
-            selectinload(MonitoringAlert.monitoring_config).selectinload(
-                MonitoringConfig.audit
-            )
+        .join(MonitoringConfig, MonitoringAlert.monitoring_config_id == MonitoringConfig.id)
+        .join(Audit, Audit.id == MonitoringConfig.audit_id)
+        .where(
+            MonitoringAlert.id == alert_id,
+            Audit.organization_id == user.organization_id,
         )
     )
     alert = result.scalar_one_or_none()
@@ -191,11 +192,6 @@ async def mark_alert_read(
     if alert is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Alerte introuvable"
-        )
-
-    if alert.monitoring_config.audit.organization_id != user.organization_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé"
         )
 
     alert.is_read = True

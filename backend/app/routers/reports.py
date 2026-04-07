@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -61,11 +62,17 @@ async def generate_report(
     """Générer le rapport PDF pour un audit analysé."""
     audit = await _load_completed_audit(audit_id, user, db)
 
+    # Supprimer l'ancien PDF s'il existe (le nonce dans le nom change à chaque regénération)
+    if audit.pdf_url:
+        old_path = (Path(settings.PDF_STORAGE_PATH).resolve() / audit.pdf_url).resolve()
+        if str(old_path).startswith(str(Path(settings.PDF_STORAGE_PATH).resolve())) and old_path.is_file():
+            old_path.unlink(missing_ok=True)
+
     filename, sha256 = generate_audit_pdf(audit, audit.organization)
 
-    if not audit.share_token:
-        audit.share_token = secrets.token_urlsafe(32)
-
+    # Regénérer le token à chaque nouveau PDF (90 jours d'expiration)
+    audit.share_token = secrets.token_urlsafe(32)
+    audit.share_token_expires_at = datetime.now(timezone.utc) + timedelta(days=90)
     audit.pdf_url = filename
     audit.pdf_sha256 = sha256
     await db.commit()
@@ -126,9 +133,14 @@ async def shared_audit_results(
     Lien de partage client — lecture seule, pas d'authentification.
     Vérifie que le token correspond à l'audit.
     """
+    now = datetime.now(timezone.utc)
     result = await db.execute(
         select(Audit)
-        .where(Audit.id == audit_id, Audit.share_token == token)
+        .where(
+            Audit.id == audit_id,
+            Audit.share_token == token,
+            Audit.share_token_expires_at > now,
+        )
         .options(selectinload(Audit.claims).selectinload(Claim.results))
     )
     audit = result.scalar_one_or_none()

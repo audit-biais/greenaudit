@@ -125,7 +125,9 @@ async def update_claim(
     """Modifier une claim existante."""
     claim = await _get_user_claim(claim_id, user, db, load_results=True)
 
-    result = await db.execute(select(Audit).where(Audit.id == claim.audit_id))
+    result = await db.execute(
+        select(Audit).where(Audit.id == claim.audit_id, Audit.organization_id == user.organization_id)
+    )
     audit = result.scalar_one()
     if audit.status == "completed":
         raise HTTPException(
@@ -150,7 +152,9 @@ async def delete_claim(
     """Supprimer une claim."""
     claim = await _get_user_claim(claim_id, user, db)
 
-    result = await db.execute(select(Audit).where(Audit.id == claim.audit_id))
+    result = await db.execute(
+        select(Audit).where(Audit.id == claim.audit_id, Audit.organization_id == user.organization_id)
+    )
     audit = result.scalar_one()
     if audit.status == "completed":
         raise HTTPException(
@@ -192,8 +196,10 @@ async def rewrite_claim(
             detail="La réécriture n'est disponible que pour les allégations non conformes ou à risque",
         )
 
-    # Récupérer le secteur via l'audit
-    audit_result = await db.execute(select(Audit).where(Audit.id == claim.audit_id))
+    # Récupérer le secteur via l'audit (filtre org conservé)
+    audit_result = await db.execute(
+        select(Audit).where(Audit.id == claim.audit_id, Audit.organization_id == user.organization_id)
+    )
     audit = audit_result.scalar_one()
 
     # Collecter les raisons de non-conformité

@@ -1284,7 +1284,10 @@ def generate_audit_pdf(audit: Audit, partner: Partner) -> Tuple[str, str]:
     storage_path = Path(settings.PDF_STORAGE_PATH)
     storage_path.mkdir(parents=True, exist_ok=True)
 
-    filename = f"greenaudit_{audit.id}.pdf"
+    # Nonce aléatoire pour éviter l'énumération par audit_id seul
+    import secrets as _secrets
+    nonce = _secrets.token_hex(8)
+    filename = f"greenaudit_{audit.id}_{nonce}.pdf"
     filepath = str(storage_path / filename)
 
     doc = _build_doc(filepath, partner, is_starter=is_starter)
