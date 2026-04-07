@@ -68,7 +68,19 @@ async def create_checkout(
     else:
         params["customer_email"] = user.email
 
-    session = stripe.checkout.Session.create(**params)
+    try:
+        session = stripe.checkout.Session.create(**params)
+    except stripe.InvalidRequestError as e:
+        # Customer ID vient du mode test, invalide en live → on le supprime et on réessaie
+        if "No such customer" in str(e) and org.stripe_customer_id:
+            org.stripe_customer_id = None
+            await db.commit()
+            params.pop("customer", None)
+            params["customer_email"] = user.email
+            session = stripe.checkout.Session.create(**params)
+        else:
+            raise
+
     return {"checkout_url": session.url}
 
 
