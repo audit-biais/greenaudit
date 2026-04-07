@@ -6,9 +6,12 @@ Version améliorée : jauge visuelle, radar chart, alertes, échéances, risque 
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import os
 import tempfile
+
+logger = logging.getLogger(__name__)
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -641,14 +644,12 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
     from reportlab.platypus import Image as RLImage
     from reportlab.lib.utils import ImageReader
 
-    def _logo_elements(img_reader, max_w_mm=60, max_h_mm=50):
-        """Retourne (img, col_w) en respectant le ratio, dans les limites max."""
-        iw, ih = img_reader.getSize()
-        max_w = max_w_mm * mm
-        max_h = max_h_mm * mm
-        ratio = min(max_w / iw, max_h / ih)
+    def _make_logo_table(data: bytes, max_w_mm: float = 60, max_h_mm: float = 50):
+        reader = ImageReader(BytesIO(data))
+        iw, ih = reader.getSize()
+        ratio = min((max_w_mm * mm) / iw, (max_h_mm * mm) / ih)
         w, h = iw * ratio, ih * ratio
-        img = RLImage(img_reader, width=w, height=h)
+        img = RLImage(BytesIO(data), width=w, height=h)
         tbl = Table([[img]], colWidths=[w])
         tbl.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
         return tbl
@@ -658,20 +659,19 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
 
     if not is_starter and partner.logo_data:
         try:
-            img_reader = ImageReader(BytesIO(partner.logo_data))
-            elements.append(_logo_elements(img_reader))
+            elements.append(_make_logo_table(partner.logo_data))
             elements.append(Spacer(1, 3 * mm))
             logo_added = True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Erreur logo partenaire PDF: %s", e)
 
     if not logo_added and greenaudit_logo.exists():
         try:
-            img_reader = ImageReader(str(greenaudit_logo))
-            elements.append(_logo_elements(img_reader))
+            logo_bytes = greenaudit_logo.read_bytes()
+            elements.append(_make_logo_table(logo_bytes))
             elements.append(Spacer(1, 3 * mm))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Erreur logo GreenAudit PDF: %s", e)
 
     elements.append(Paragraph(
         f"Audit réalisé le {_format_date(audit.completed_at)} par {'GreenAudit' if is_starter else partner.name}",
