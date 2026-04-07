@@ -628,10 +628,10 @@ export default function Landing() {
                   'Pages illimitées par audit',
                   'Rapport PDF complet',
                   'White-label (logo + couleurs + coordonnées)',
-                  'Rewrite engine conforme EmpCo',
-                  'Evidence Vault (ZIP DGCCRF)',
+                  'Corrections suggérées conformes EmpCo',
+                  'Dossier de preuves (ZIP DGCCRF)',
                   'Monitoring continu du site',
-                  'Suivi des corrections claim par claim',
+                  'Suivi des corrections par allégation',
                   'Jusqu\'à 10 utilisateurs',
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
@@ -648,10 +648,10 @@ export default function Landing() {
               </button>
             </div>
 
-            {/* Enterprise */}
+            {/* Entreprise */}
             <div className="rounded-2xl border border-gray-200 p-8 flex flex-col bg-gray-50">
               <div className="mb-6">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Enterprise</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Entreprise</p>
                 <div className="text-4xl font-black text-gray-900 mb-1">Sur devis</div>
                 <p className="text-sm text-gray-400">À partir de 50 000 €/an</p>
               </div>
@@ -659,10 +659,9 @@ export default function Landing() {
                 {[
                   'Audits illimités',
                   'Utilisateurs illimités',
-                  'Branding full custom + URL dédiée',
-                  'Toutes les features Pro',
-                  'Intégration API',
-                  'Support dédié',
+                  'White-label (logo + couleurs + coordonnées)',
+                  'Toutes les features du plan Pro',
+                  'Support premium',
                   'Facturation sur mesure',
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
