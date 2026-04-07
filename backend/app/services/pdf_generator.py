@@ -589,7 +589,7 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
     from reportlab.platypus import Image as RLImage
     from reportlab.lib.utils import ImageReader
 
-    def _make_logo_table(data: bytes, max_w_mm: float = 120, max_h_mm: float = 100):
+    def _make_logo_table(data: bytes, max_w_mm: float = 100, max_h_mm: float = 65):
         reader = ImageReader(BytesIO(data))
         iw, ih = reader.getSize()
         ratio = min((max_w_mm * mm) / iw, (max_h_mm * mm) / ih)
@@ -602,30 +602,30 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
     greenaudit_logo = Path(__file__).parent.parent / "static" / "logo.png"
 
     elements = []
-    elements.append(Spacer(1, 20 * mm))
+    elements.append(Spacer(1, 10 * mm))
 
     # Logo en haut de page de garde
     logo_added = False
     if not is_starter and partner.logo_data:
         try:
             elements.append(_make_logo_table(partner.logo_data))
-            elements.append(Spacer(1, 6 * mm))
+            elements.append(Spacer(1, 4 * mm))
             logo_added = True
         except Exception as e:
             logger.error("Erreur logo partenaire PDF: %s", e)
     if not logo_added and greenaudit_logo.exists():
         try:
             elements.append(_make_logo_table(greenaudit_logo.read_bytes()))
-            elements.append(Spacer(1, 6 * mm))
+            elements.append(Spacer(1, 4 * mm))
         except Exception as e:
             logger.error("Erreur logo GreenAudit PDF: %s", e)
 
     elements.append(Paragraph("Rapport d'audit anti-greenwashing", styles["title"]))
     elements.append(Paragraph("Directive EmpCo (EU 2024/825)", styles["cover_center"]))
-    elements.append(Spacer(1, 8 * mm))
+    elements.append(Spacer(1, 5 * mm))
     elements.append(Paragraph(f"<b>{audit.company_name}</b>", styles["cover_center"]))
     elements.append(Paragraph(f"Secteur : {audit.sector}", styles["cover_center"]))
-    elements.append(Spacer(1, 8 * mm))
+    elements.append(Spacer(1, 5 * mm))
 
     # Jauge semi-circulaire
     score = float(audit.global_score or 0)
@@ -640,7 +640,7 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
     risk_text = f"Risque {_risk_label(audit.risk_level)}"
     risk_style = ParagraphStyle("risk", parent=styles["cover_center"], textColor=risk_color, fontSize=14, spaceAfter=6)
     elements.append(Paragraph(f"<b>{risk_text}</b>", risk_style))
-    elements.append(Spacer(1, 6 * mm))
+    elements.append(Spacer(1, 3 * mm))
 
     # Pastilles résumé
     dots = SummaryDotsFlowable(
@@ -670,7 +670,7 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
             correction_style,
         ))
 
-    elements.append(Spacer(1, 8 * mm))
+    elements.append(Spacer(1, 4 * mm))
 
     elements.append(Paragraph(
         f"Audit réalisé le {_format_date(audit.completed_at)} par {'GreenAudit' if is_starter else partner.name}",
