@@ -1,34 +1,33 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+SupportType = Literal["web", "packaging", "publicite", "reseaux_sociaux", "autre"]
+ScopeType = Literal["produit", "entreprise"]
+ProofType = Literal["certification_tierce", "rapport_interne", "donnees_fournisseur", "aucune"]
 
 
 # --- Request schemas ---
 
 class ClaimCreate(BaseModel):
     """Ajout d'une claim à un audit."""
-    claim_text: str = Field(min_length=1)
-    support_type: str = Field(
-        description="web, packaging, publicite, reseaux_sociaux, autre",
-    )
-    scope: str = Field(description="produit, entreprise")
-    product_name: Optional[str] = None
+    claim_text: str = Field(min_length=1, max_length=2000)
+    support_type: SupportType
+    scope: ScopeType
+    product_name: Optional[str] = Field(None, max_length=255)
 
     # Preuves
     has_proof: bool = False
-    proof_description: Optional[str] = None
-    proof_type: Optional[str] = Field(
-        None,
-        description="certification_tierce, rapport_interne, donnees_fournisseur, aucune",
-    )
+    proof_description: Optional[str] = Field(None, max_length=1000)
+    proof_type: Optional[ProofType] = None
 
     # Labels
     has_label: bool = False
-    label_name: Optional[str] = None
+    label_name: Optional[str] = Field(None, max_length=255)
     label_is_certified: Optional[bool] = None
 
     # Engagement futur
@@ -39,17 +38,17 @@ class ClaimCreate(BaseModel):
 
 class ClaimUpdate(BaseModel):
     """Modification d'une claim existante."""
-    claim_text: Optional[str] = Field(None, min_length=1)
-    support_type: Optional[str] = None
-    scope: Optional[str] = None
-    product_name: Optional[str] = None
+    claim_text: Optional[str] = Field(None, min_length=1, max_length=2000)
+    support_type: Optional[SupportType] = None
+    scope: Optional[ScopeType] = None
+    product_name: Optional[str] = Field(None, max_length=255)
 
     has_proof: Optional[bool] = None
-    proof_description: Optional[str] = None
-    proof_type: Optional[str] = None
+    proof_description: Optional[str] = Field(None, max_length=1000)
+    proof_type: Optional[ProofType] = None
 
     has_label: Optional[bool] = None
-    label_name: Optional[str] = None
+    label_name: Optional[str] = Field(None, max_length=255)
     label_is_certified: Optional[bool] = None
 
     is_future_commitment: Optional[bool] = None

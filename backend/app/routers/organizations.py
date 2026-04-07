@@ -22,6 +22,19 @@ router = APIRouter(prefix="/api/organizations", tags=["organizations"])
 
 MAX_LOGO_SIZE = 2 * 1024 * 1024  # 2 Mo
 
+# Magic bytes des formats image autorisés — vérification côté serveur indépendante du header Content-Type
+_PNG_MAGIC = b'\x89PNG\r\n\x1a\n'
+_JPEG_MAGIC = b'\xff\xd8\xff'
+
+
+def _verify_image_magic(data: bytes, content_type: str) -> bool:
+    """Vérifie que les premiers octets du fichier correspondent au type MIME déclaré."""
+    if content_type == "image/png":
+        return data[:8] == _PNG_MAGIC
+    if content_type == "image/jpeg":
+        return data[:3] == _JPEG_MAGIC
+    return False
+
 
 
 @router.get("/me", response_model=OrgResponse)
@@ -84,6 +97,9 @@ async def upload_logo(
     contents = await logo.read()
     if len(contents) > MAX_LOGO_SIZE:
         raise HTTPException(status_code=413, detail="Logo trop volumineux. Taille maximale : 2 Mo")
+
+    if not _verify_image_magic(contents, logo.content_type):
+        raise HTTPException(status_code=400, detail="Le contenu du fichier ne correspond pas au format déclaré.")
 
     result = await db.execute(
         select(Organization).where(Organization.id == current_user.organization_id)

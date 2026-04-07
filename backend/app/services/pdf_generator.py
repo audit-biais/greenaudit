@@ -92,6 +92,12 @@ SUPPORT_LABELS: Dict[str, str] = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _rl_escape(text: str) -> str:
+    """Échappe les caractères XML spéciaux pour ReportLab Paragraph.
+    Sans cela, un claim_text contenant '<', '>' ou '&' crashe le parser."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
 def _hex(color_str: Optional[str], fallback: str = "#1B5E20") -> colors.Color:
     try:
         return colors.HexColor(color_str or fallback)
@@ -623,8 +629,8 @@ def _cover_elements(audit: Audit, partner: Partner, styles: dict, is_starter: bo
     elements.append(Paragraph("Rapport d'audit anti-greenwashing", styles["title"]))
     elements.append(Paragraph("Directive EmpCo (EU 2024/825)", styles["cover_center"]))
     elements.append(Spacer(1, 5 * mm))
-    elements.append(Paragraph(f"<b>{audit.company_name}</b>", styles["cover_center"]))
-    elements.append(Paragraph(f"Secteur : {audit.sector}", styles["cover_center"]))
+    elements.append(Paragraph(f"<b>{_rl_escape(audit.company_name)}</b>", styles["cover_center"]))
+    elements.append(Paragraph(f"Secteur : {_rl_escape(audit.sector)}", styles["cover_center"]))
     elements.append(Spacer(1, 5 * mm))
 
     # Jauge semi-circulaire
@@ -890,7 +896,7 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
         else:
             claim_elements.append(Paragraph(f"Allégation #{i} — {verdict}", styles["h2"]))
 
-        claim_elements.append(Paragraph(f"<i>« {claim.claim_text} »</i>", styles["italic"]))
+        claim_elements.append(Paragraph(f"<i>« {_rl_escape(claim.claim_text)} »</i>", styles["italic"]))
         claim_elements.append(Paragraph(f"Support : {support} | Portée : {scope}", styles["small"]))
         claim_elements.append(Spacer(1, 2 * mm))
 
@@ -938,14 +944,14 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
                 data.append([
                     Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
                     Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), styles["small"]),
-                    Paragraph(r.explanation or "", styles["small"]),
+                    Paragraph(_rl_escape(r.explanation or ""), styles["small"]),
                 ])
             else:
                 data.append([
                     Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
                     Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), styles["small"]),
-                    Paragraph(r.explanation or "", styles["small"]),
-                    Paragraph(r.recommendation or "—", styles["small"]),
+                    Paragraph(_rl_escape(r.explanation or ""), styles["small"]),
+                    Paragraph(_rl_escape(r.recommendation or "—"), styles["small"]),
                 ])
 
         page_width = A4[0] - 40 * mm

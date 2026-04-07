@@ -14,8 +14,8 @@ class OrgCreate(BaseModel):
 class OrgSettings(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     contact_email: Optional[EmailStr] = None
-    contact_name: Optional[str] = None
-    contact_phone: Optional[str] = None
+    contact_name: Optional[str] = Field(None, max_length=255)
+    contact_phone: Optional[str] = Field(None, max_length=50)
     brand_primary_color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
     brand_secondary_color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
 

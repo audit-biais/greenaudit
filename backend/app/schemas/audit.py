@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # --- Request schemas ---
@@ -18,9 +18,18 @@ class AuditCreate(BaseModel):
         max_length=100,
         description="e-commerce, cosmetiques, alimentaire, textile, services, autre",
     )
-    website_url: Optional[str] = None
+    website_url: Optional[str] = Field(None, max_length=2048)
     contact_email: Optional[EmailStr] = None
     country: str = Field(default="fr", max_length=5, description="Code pays ISO (fr, de, es...)")
+
+    @field_validator("website_url")
+    @classmethod
+    def validate_website_url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("website_url doit commencer par http:// ou https://")
+        return v
 
 
 # --- Response schemas ---
