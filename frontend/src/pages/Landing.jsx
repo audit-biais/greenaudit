@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api/auth';
+import api from '../api/client';
 
 /* ─── Données ──────────────────────────────────────────────────────────────── */
 
@@ -237,6 +238,19 @@ function AppMockup() {
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const handleProCheckout = async () => {
+    if (!user) { navigate('/login'); return; }
+    setCheckoutLoading(true);
+    try {
+      const res = await api.post('/payment/create-checkout');
+      window.location.href = res.data.checkout_url;
+    } catch {
+      alert('Erreur lors de la redirection vers le paiement. Réessayez.');
+      setCheckoutLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -607,10 +621,11 @@ export default function Landing() {
                 ))}
               </ul>
               <button
-                onClick={() => navigate('/contact')}
-                className="w-full rounded-full py-3 text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
+                onClick={handleProCheckout}
+                disabled={checkoutLoading}
+                className="w-full rounded-full py-3 text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Demander un devis
+                {checkoutLoading ? 'Redirection...' : 'Souscrire au plan Pro'}
               </button>
             </div>
 
