@@ -13,12 +13,101 @@ from app.auth.dependencies import get_current_user, require_pro
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
+from app.models.claim_result import ClaimResult
 from app.models.evidence import EvidenceFile
 from app.models.user import User
+from app.services.scoring import calculate_global_score, compute_verdict_counts
 
 router = APIRouter(tags=["evidence"])
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 Mo
+
+# Priorité des types de document pour la règle 6
+_VAULT_STRONG = {"ecolabel", "certification"}   # → conforme
+_VAULT_WEAK   = {"rapport_interne", "autre"}     # → risque
+
+
+async def _refresh_justification_from_vault(claim_id: UUID, db: AsyncSession) -> None:
+    """
+    Réévalue le critère 'justification' (règle 6) d'après le vault.
+    Met à jour ClaimResult, overall_verdict de la claim et score global de l'audit.
+    Appelé après chaque upload ou suppression de preuve.
+    """
+    # Charger la claim avec résultats et fichiers vault
+    result = await db.execute(
+        select(Claim)
+        .where(Claim.id == claim_id)
+        .options(
+            selectinload(Claim.evidence_files),
+            selectinload(Claim.results),
+        )
+    )
+    claim = result.scalar_one_or_none()
+    if not claim:
+        return
+
+    # Trouver le ClaimResult justification — si absent l'audit n'a pas encore été analysé
+    just_result = next((r for r in claim.results if r.criterion == "justification"), None)
+    if not just_result:
+        return
+
+    evidence_files = claim.evidence_files
+    doc_types = {ef.document_type for ef in evidence_files}
+
+    if doc_types & _VAULT_STRONG:
+        just_result.verdict = "conforme"
+        just_result.explanation = (
+            "L'allégation est étayée par une preuve de qualité élevée "
+            "(certification tierce ou écolabel reconnu) déposée dans le vault. "
+            "Ce niveau de justification est conforme à l'Art. 6.1(b) EmpCo."
+        )
+        just_result.recommendation = None
+    elif doc_types & _VAULT_WEAK:
+        just_result.verdict = "risque"
+        just_result.explanation = (
+            "L'allégation est étayée par un document interne ou non certifié. "
+            "Cette preuve est considérée comme faible car non vérifiée par un tiers."
+        )
+        just_result.recommendation = (
+            "Obtenir une certification tierce ou un écolabel reconnu "
+            "pour renforcer la défendabilité de cette allégation."
+        )
+    else:
+        # Vault vide — revenir à la logique originale (claim.has_proof / proof_type)
+        from app.services.analysis_engine import rule_justification
+        original = rule_justification(claim, scan_mode=False)
+        just_result.verdict = original.verdict
+        just_result.explanation = original.explanation
+        just_result.recommendation = original.recommendation
+
+    # Recompute overall_verdict de la claim
+    verdicts = [r.verdict for r in claim.results]
+    nc = sum(1 for v in verdicts if v == "non_conforme")
+    rq = sum(1 for v in verdicts if v == "risque")
+    claim.overall_verdict = "non_conforme" if nc > 0 else ("risque" if rq >= 2 else "conforme")
+
+    # Recompute score global de l'audit
+    audit_result = await db.execute(
+        select(Audit)
+        .where(Audit.id == claim.audit_id)
+        .options(selectinload(Audit.claims))
+    )
+    audit = audit_result.scalar_one_or_none()
+    if audit:
+        all_verdicts = [c.overall_verdict for c in audit.claims if c.overall_verdict]
+        counts = compute_verdict_counts(all_verdicts)
+        score, risk_level = calculate_global_score(
+            conforming=counts["conforme"],
+            at_risk=counts["risque"],
+            non_conforming=counts["non_conforme"],
+        )
+        audit.global_score = score
+        audit.risk_level = risk_level
+        audit.conforming_claims = counts["conforme"]
+        audit.at_risk_claims = counts["risque"]
+        audit.non_conforming_claims = counts["non_conforme"]
+
+    await db.commit()
 
 ALLOWED_TYPES = {
     "application/pdf",
@@ -86,6 +175,9 @@ async def upload_evidence(
     db.add(evidence)
     await db.commit()
     await db.refresh(evidence)
+
+    # Réévaluer règle 6 + score global en fonction du vault mis à jour
+    await _refresh_justification_from_vault(claim_id, db)
 
     return {
         "id": str(evidence.id),
@@ -166,8 +258,12 @@ async def delete_evidence(
     if not evidence:
         raise HTTPException(status_code=404, detail="Fichier introuvable")
 
+    deleted_claim_id = evidence.claim_id
     await db.delete(evidence)
     await db.commit()
+
+    # Réévaluer règle 6 + score global après suppression de la preuve
+    await _refresh_justification_from_vault(deleted_claim_id, db)
 
 
 @router.get("/api/audits/{audit_id}/evidence/download-zip")
