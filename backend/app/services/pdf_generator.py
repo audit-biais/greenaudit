@@ -1241,18 +1241,22 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
                 Paragraph("<b>Pièce justificative</b>", styles["small"]),
                 Paragraph("<b>Type</b>",                styles["small"]),
                 Paragraph("<b>Taille</b>",              styles["small"]),
+                Paragraph("<b>Déposée le</b>",          styles["small"]),
             ]]
             for ef in evidence_files:
                 size_kb   = round(getattr(ef, "file_size", 0) / 1024, 1)
                 doc_label = DOC_TYPE_LABELS.get(getattr(ef, "document_type", "autre"), "Autre")
+                uploaded_at = getattr(ef, "uploaded_at", None)
+                date_label = uploaded_at.strftime("%d/%m/%Y %H:%M") if uploaded_at else "—"
                 ev_data.append([
                     Paragraph(getattr(ef, "filename", "—"), styles["small"]),
                     Paragraph(doc_label,                    styles["small"]),
                     Paragraph(f"{size_kb} Ko",              styles["small"]),
+                    Paragraph(date_label,                   styles["small"]),
                 ])
             ev_table = Table(
                 ev_data,
-                colWidths=[inner_width * 0.55, inner_width * 0.25, inner_width * 0.20],
+                colWidths=[inner_width * 0.42, inner_width * 0.22, inner_width * 0.14, inner_width * 0.22],
                 repeatRows=1,
             )
             ev_table.setStyle(TableStyle([
