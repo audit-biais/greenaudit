@@ -52,8 +52,8 @@ Réponds UNIQUEMENT avec les 3 formulations numérotées, format strict :
 
 Sans explication, sans guillemets, sans préambule."""
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-    message = client.messages.create(
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    message = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=400,
         messages=[{"role": "user", "content": prompt}],
