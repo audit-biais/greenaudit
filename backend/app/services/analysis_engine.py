@@ -517,7 +517,11 @@ def rule_future_commitment(claim: Claim) -> ClaimResult:
 # Règle 6 — Preuve et traçabilité (Art. 6.1(b) + Art. 7)
 # ---------------------------------------------------------------------------
 
-def rule_justification(claim: Claim, scan_mode: bool = False) -> ClaimResult:
+def rule_justification(
+    claim: Claim,
+    scan_mode: bool = False,
+    specificity_verdict: str = "non_conforme",
+) -> ClaimResult:
     """
     Vérifie la présence et la qualité des preuves.
 
@@ -525,8 +529,12 @@ def rule_justification(claim: Claim, scan_mode: bool = False) -> ClaimResult:
     du produit font partie des informations ne devant pas être trompeuses.
     Art. 7 : omettre une information substantielle est une omission trompeuse.
 
-    En mode scan, les preuves ne peuvent pas être évaluées (allégation extraite
-    automatiquement, aucune déclaration de preuves). → non_applicable.
+    En mode scan → non_applicable (preuves non évaluables automatiquement).
+    Quand has_proof = False, la recommandation est différenciée selon la qualité
+    de la formulation (verdict spécificité transmis par analyze_claim) :
+    - conforme / non_applicable → formulation OK, action = Documenter
+    - risque                    → formulation perfectible, action = Documenter et préciser
+    - non_conforme              → formulation vague, action = Reformuler puis documenter
     """
     if not claim.has_proof or claim.proof_type == "aucune":
         if scan_mode:
@@ -548,6 +556,30 @@ def rule_justification(claim: Claim, scan_mode: bool = False) -> ClaimResult:
                     "Art. 6, paragraphe 1, point b) + Art. 7"
                 ),
             )
+
+        # Recommandation différenciée selon la qualité de la formulation
+        if specificity_verdict in ("conforme", "non_applicable"):
+            recommendation = (
+                "La formulation est suffisamment précise. "
+                "Action requise : documenter l'allégation en fournissant une preuve "
+                "vérifiable (certification tierce, données fournisseur traçables "
+                "ou rapport d'audit indépendant)."
+            )
+        elif specificity_verdict == "risque":
+            recommendation = (
+                "La formulation est acceptable mais perfectible. "
+                "Action requise : (1) préciser davantage l'allégation si possible, "
+                "(2) la documenter avec une preuve vérifiable (certification tierce "
+                "ou données fournisseur traçables)."
+            )
+        else:  # non_conforme
+            recommendation = (
+                "La formulation est trop vague ou générique. "
+                "Action requise : (1) reformuler l'allégation de façon spécifique "
+                "et mesurable, (2) la documenter avec une preuve vérifiable "
+                "(certification tierce ou données fournisseur traçables)."
+            )
+
         return ClaimResult(
             claim_id=claim.id,
             criterion="justification",
@@ -558,10 +590,7 @@ def rule_justification(claim: Claim, scan_mode: bool = False) -> ClaimResult:
                 "des preuves vérifiables sous peine de constituer une action "
                 "trompeuse (Art. 6.1(b)) ou une omission trompeuse (Art. 7)."
             ),
-            recommendation=(
-                "Fournir une preuve vérifiable : certification tierce, "
-                "données fournisseur traçables ou rapport d'audit indépendant."
-            ),
+            recommendation=recommendation,
             regulation_reference=(
                 "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
                 "Art. 6, paragraphe 1, point b) + Art. 7 — justification des "
@@ -760,12 +789,17 @@ def analyze_claim(
     results: List[ClaimResult] = []
 
     # Règles avec paramètres spécifiques
-    results.append(rule_specificity(claim, has_ecolabel_evidence=has_ecolabel_evidence))
+    specificity_result = rule_specificity(claim, has_ecolabel_evidence=has_ecolabel_evidence)
+    results.append(specificity_result)
     results.append(rule_compensation(claim))
     results.append(rule_labels(claim))
     results.append(rule_proportionality(claim))
     results.append(rule_future_commitment(claim))
-    results.append(rule_justification(claim, scan_mode=scan_mode))
+    results.append(rule_justification(
+        claim,
+        scan_mode=scan_mode,
+        specificity_verdict=specificity_result.verdict,
+    ))
     results.append(rule_legal_requirement(claim))
     results.append(rule_agec_france(claim, country=country))
 
