@@ -184,7 +184,7 @@ async def mark_claim_corrected(
 
 class RewriteResponse(BaseModel):
     original: str
-    suggestions: str
+    suggestions: List[str]
 
 
 @router.post("/api/claims/{claim_id}/rewrite", response_model=RewriteResponse)
