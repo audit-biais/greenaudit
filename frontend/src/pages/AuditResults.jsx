@@ -64,6 +64,7 @@ export default function AuditResults() {
   const [evidenceUploading, setEvidenceUploading] = useState({});
   const [evidenceOpen, setEvidenceOpen] = useState({});
   const [evidenceDocType, setEvidenceDocType] = useState({});
+  const [evidenceInputKey, setEvidenceInputKey] = useState({});
   const [correctedClaims, setCorrectedClaims] = useState({});
   const [correctingClaim, setCorrectingClaim] = useState({});
 
@@ -187,6 +188,9 @@ export default function AuditResults() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       await loadEvidence(claimId);
+      // Réinitialiser le sélecteur de type et l'input fichier pour le prochain document
+      setEvidenceDocType((prev) => ({ ...prev, [claimId]: 'autre' }));
+      setEvidenceInputKey((prev) => ({ ...prev, [claimId]: (prev[claimId] || 0) + 1 }));
     } catch (err) {
       alert(err.response?.data?.detail || "Erreur lors de l'upload");
     } finally {
@@ -569,6 +573,7 @@ export default function AuditResults() {
                       </select>
                       <label className="flex items-center gap-1 cursor-pointer text-xs text-[#1a5c3a] font-semibold hover:underline">
                         <input
+                          key={evidenceInputKey[claim.id] || 0}
                           type="file"
                           className="hidden"
                           accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
