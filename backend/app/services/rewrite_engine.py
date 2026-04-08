@@ -45,6 +45,7 @@ Propose EXACTEMENT 3 réécritures différentes de cette allégation, chacune :
 4. Concise : une phrase maximum
 5. D'un angle différent des deux autres (ex : une axée sur les chiffres, une sur la certification, une sur l'action concrète)
 
+Réponds TOUJOURS EN FRANÇAIS, quelle que soit la langue de l'allégation originale.
 Réponds UNIQUEMENT avec les 3 formulations numérotées, format strict :
 1. [première suggestion]
 2. [deuxième suggestion]
