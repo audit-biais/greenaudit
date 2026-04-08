@@ -87,7 +87,24 @@ async def extract_claims_with_claude(
             else "Aucune"
         )
 
-        prompt = f"""Analyse le texte suivant extrait d'un site web et identifie TOUTES les allégations environnementales ou de durabilité (ex: "produit éco-responsable", "neutre en carbone", "emballage recyclé", etc.).
+        prompt = f"""Tu es un expert en conformité à la directive EmpCo (EU 2024/825) sur les allégations environnementales.
+
+Analyse le texte suivant extrait d'un site web et identifie les allégations STRICTEMENT ENVIRONNEMENTALES, c'est-à-dire des affirmations sur l'impact écologique d'un produit ou d'une entreprise.
+
+CRITÈRES OBLIGATOIRES — une allégation doit :
+1. Porter sur l'environnement, le climat, l'écologie, la biodiversité, le recyclage, les émissions, l'emballage, l'énergie, les déchets, l'eau ou la nature
+2. Être une phrase ou expression COMPLÈTE d'au moins 4 mots (pas un fragment, pas un mot isolé)
+3. Contenir une affirmation vérifiable (pas un nom de produit, pas un slogan commercial)
+
+EXCLURE ABSOLUMENT :
+- Allégations sociales : équité, inclusion, don, emploi, conditions de travail, solidarité
+- Allégations commerciales ou qualité : goût, qualité, fraîcheur, prix, service client
+- Fragments de mots ou étiquettes produit seuls : "éco-recharge", "sacs engagés" sans contexte
+- Certifications non environnementales : labels qualité, labels sociaux
+- Simples noms de gamme ou de rayon contenant "bio" ou "eco" sans allégation associée
+
+EXEMPLES VALIDES : "Nos emballages sont fabriqués avec 40% de matières recyclées", "Neutre en carbone depuis 2022", "Produit respectueux de l'environnement certifié par un organisme indépendant"
+EXEMPLES INVALIDES : "don alimentaire", "favorise l'équité", "produits engagés pour le goût", "sacs engagés", "ménage plus propre", "éco-recharge"
 
 Allégations déjà connues (ne pas les répéter) :
 {existing_str}
@@ -95,10 +112,10 @@ Allégations déjà connues (ne pas les répéter) :
 Texte du site :
 {text}
 
-Retourne UNIQUEMENT les nouvelles allégations (absentes de la liste ci-dessus) au format JSON :
-{{"claims": ["allégation 1", "allégation 2"]}}
+Retourne UNIQUEMENT les nouvelles allégations environnementales complètes au format JSON :
+{{"claims": ["allégation complète 1", "allégation complète 2"]}}
 
-Si aucune nouvelle allégation, retourne : {{"claims": []}}
+Si aucune allégation environnementale valide, retourne : {{"claims": []}}
 Réponds UNIQUEMENT avec le JSON, sans texte autour."""
 
         message = await client.messages.create(
