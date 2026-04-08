@@ -361,7 +361,7 @@ async def scan_website_endpoint(
     # Analyser (scan = pas d'écolabel dans vault, country par défaut "fr")
     all_verdicts: List[str] = []
     for claim in audit.claims:
-        results, overall_verdict = analyze_claim(claim, has_ecolabel_evidence=False, country="fr")
+        results, overall_verdict = analyze_claim(claim, has_ecolabel_evidence=False, country="fr", scan_mode=True)
         claim.overall_verdict = overall_verdict
         all_verdicts.append(overall_verdict)
         for r in results:

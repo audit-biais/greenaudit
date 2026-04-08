@@ -517,15 +517,37 @@ def rule_future_commitment(claim: Claim) -> ClaimResult:
 # Règle 6 — Preuve et traçabilité (Art. 6.1(b) + Art. 7)
 # ---------------------------------------------------------------------------
 
-def rule_justification(claim: Claim) -> ClaimResult:
+def rule_justification(claim: Claim, scan_mode: bool = False) -> ClaimResult:
     """
     Vérifie la présence et la qualité des preuves.
 
     Art. 6, paragraphe 1, point b) : les « caractéristiques environnementales »
     du produit font partie des informations ne devant pas être trompeuses.
     Art. 7 : omettre une information substantielle est une omission trompeuse.
+
+    En mode scan, les preuves ne peuvent pas être évaluées (allégation extraite
+    automatiquement, aucune déclaration de preuves). → non_applicable.
     """
     if not claim.has_proof or claim.proof_type == "aucune":
+        if scan_mode:
+            return ClaimResult(
+                claim_id=claim.id,
+                criterion="justification",
+                verdict="non_applicable",
+                explanation=(
+                    "Preuves non évaluées — en attente. "
+                    "Cette allégation a été détectée automatiquement par scan. "
+                    "La vérification des preuves nécessite un audit manuel complet."
+                ),
+                recommendation=(
+                    "Lancer un audit manuel pour déclarer et évaluer les preuves "
+                    "associées à cette allégation."
+                ),
+                regulation_reference=(
+                    "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
+                    "Art. 6, paragraphe 1, point b) + Art. 7"
+                ),
+            )
         return ClaimResult(
             claim_id=claim.id,
             criterion="justification",
@@ -718,6 +740,7 @@ def analyze_claim(
     claim: Claim,
     has_ecolabel_evidence: bool = False,
     country: str = "fr",
+    scan_mode: bool = False,
 ) -> Tuple[List[ClaimResult], str]:
     """
     Applique les 8 règles sur une claim.
@@ -742,7 +765,7 @@ def analyze_claim(
     results.append(rule_labels(claim))
     results.append(rule_proportionality(claim))
     results.append(rule_future_commitment(claim))
-    results.append(rule_justification(claim))
+    results.append(rule_justification(claim, scan_mode=scan_mode))
     results.append(rule_legal_requirement(claim))
     results.append(rule_agec_france(claim, country=country))
 

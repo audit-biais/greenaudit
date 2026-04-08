@@ -15,6 +15,7 @@ from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
 from app.models.claim_result import ClaimResult
+from app.models.evidence import EvidenceFile
 from app.models.user import User
 from app.schemas.claim import ClaimCreate, ClaimResponse, ClaimUpdate
 from app.services.rewrite_engine import suggest_rewrite
@@ -175,6 +176,18 @@ async def mark_claim_corrected(
 ) -> Claim:
     """Marquer une allégation comme corrigée (toggle). Réservé aux plans Pro et Enterprise."""
     claim = await _get_user_claim(claim_id, user, db, load_results=True)
+
+    # Si on veut marquer comme corrigée, vérifier qu'au moins une preuve existe
+    if not claim.is_corrected:
+        evidence_result = await db.execute(
+            select(EvidenceFile).where(EvidenceFile.claim_id == claim_id).limit(1)
+        )
+        if evidence_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Impossible de marquer comme corrigée : aucune preuve n'a été uploadée pour cette allégation.",
+            )
+
     claim.is_corrected = not claim.is_corrected
     claim.corrected_at = datetime.now(timezone.utc) if claim.is_corrected else None
     await db.commit()
