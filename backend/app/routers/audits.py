@@ -199,6 +199,7 @@ async def analyze_audit(
     audit.rules_version = RULES_VERSION
     audit.completed_at = datetime.now(timezone.utc)
 
+
     await db.commit()
 
     # Recharger avec les résultats pour la réponse (filtre org conservé)
@@ -374,7 +375,8 @@ async def scan_website_endpoint(
         non_conforming=counts["non_conforme"],
     )
 
-    audit.status = "completed"
+    # Scan → in_progress pour permettre à l'utilisateur d'ajouter des allégations manuellement
+    audit.status = "in_progress"
     audit.total_claims = len(audit.claims)
     audit.conforming_claims = counts["conforme"]
     audit.non_conforming_claims = counts["non_conforme"]
@@ -382,7 +384,6 @@ async def scan_website_endpoint(
     audit.global_score = score
     audit.risk_level = risk_level
     audit.rules_version = RULES_VERSION
-    audit.completed_at = datetime.now(timezone.utc)
 
     await db.commit()
 

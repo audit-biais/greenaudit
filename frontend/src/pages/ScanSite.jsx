@@ -84,7 +84,7 @@ export default function ScanSite() {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Résultats de l'analyse</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Résultats du scan</h1>
           <div className="flex gap-3">
             <button
               onClick={() => { setStep('form'); setResults(null); setUrl(''); setCompanyName(''); }}
@@ -93,12 +93,23 @@ export default function ScanSite() {
               Nouveau scan
             </button>
             <button
-              onClick={() => navigate(`/audits/${results.audit_id}/results`)}
-              className="px-4 py-2 text-sm bg-green-700 text-white rounded-lg hover:bg-green-800"
+              onClick={() => navigate(`/audits/${results.audit_id}/claims`)}
+              className="px-4 py-2 text-sm bg-[#1a5c3a] text-white rounded-lg hover:bg-[#15803d]"
             >
-              Voir le rapport complet
+              Compléter et analyser →
             </button>
           </div>
+        </div>
+
+        {/* Bandeau informatif */}
+        <div className="bg-[#eff6ff] border border-blue-200 rounded-xl px-4 py-3 mb-5 flex items-start gap-3">
+          <svg className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-sm text-blue-800">
+            <span className="font-semibold">Scan terminé — première passe automatique.</span> Certaines allégations ont pu être manquées (images, PDFs, pages non standard).
+            Cliquez sur <strong>Compléter et analyser</strong> pour ajouter des allégations manuellement avant de générer le rapport final.
+          </p>
         </div>
 
         {/* Score global */}
