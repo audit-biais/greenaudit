@@ -134,24 +134,23 @@ async def extract_claims_with_claude(
 
         prompt = f"""Tu es un expert en conformité à la directive EmpCo (EU 2024/825) sur les allégations environnementales.
 
-Analyse le texte suivant extrait d'un site web et identifie toutes les allégations environnementales, même vagues ou génériques — surtout les vagues, car ce sont elles qui violent EmpCo.
+Analyse le texte suivant extrait d'un site web et identifie les allégations environnementales — y compris les vagues et génériques, car ce sont elles qui violent EmpCo.
 
-INCLURE OBLIGATOIREMENT ces types d'allégations :
-1. Termes génériques environnementaux, même seuls ou en phrase courte : "bon pour la planète", "éco-responsable", "durable", "vert", "green", "respectueux de l'environnement", "naturel", "écologique", "zéro déchet", "neutre en carbone", "climate friendly", "sustainable"
-2. Allégations sur les déchets, émissions, emballages, recyclage, énergie, eau, biodiversité, transport, circuit court présenté comme bénéfice environnemental
-3. Claims avec certification environnementale : bio, GOTS, Ecolabel, FSC, etc.
-4. Engagements environnementaux futurs ("d'ici 2030, nous serons...")
+INCLURE :
+1. Termes génériques environnementaux même en phrase courte : "bon pour la planète", "éco-responsable", "durable", "vert", "green", "respectueux de l'environnement", "naturel", "écologique", "zéro déchet", "neutre en carbone", "climate friendly", "sustainable"
+2. Allégations sur : déchets, émissions, emballages, recyclage, énergie, eau, biodiversité, forêts, carbone
+3. Circuit court ou local UNIQUEMENT si explicitement présenté comme bénéfice environnemental (ex: "circuit court pour réduire notre impact carbone") — PAS si c'est un argument de fraîcheur ou de qualité
+4. Anti-gaspillage UNIQUEMENT si présenté comme engagement environnemental explicite — PAS si c'est une promotion commerciale (ex: "prix réduits sur packaging abîmé")
+5. Certifications environnementales avec contexte d'allégation : bio, GOTS, Ecolabel, FSC, Rainforest Alliance
 
-EXCLURE :
-- Allégations purement sociales sans dimension environnementale : équité, inclusion, emploi, conditions de travail
-- Allégations purement commerciales sans lien environnemental : goût, fraîcheur, prix, qualité gustative, service client, livraison rapide
-- Mentions nutritionnelles sans dimension environnementale : Nutriscore, sans sucre, sans additifs
-- Simples noms de produit ou de gamme sans allégation associée
+EXCLURE ABSOLUMENT :
+- Social pur : équité, inclusion, emploi, conditions de travail, dons
+- Commercial pur : goût, fraîcheur, prix, qualité gustative, service client, livraison, Nutriscore, sans sucre, sans additifs
+- Noms de gamme ou rayons sans allégation : "rayon bio", "épicerie bio", "boulangerie naturelle"
+- Local ou circuit court présenté comme argument de fraîcheur/qualité uniquement
 
-EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "mode durable", "40% de matières recyclées", "neutre en carbone", "circuit court pour réduire notre empreinte carbone", "zéro déchet", "fabriqué de façon durable"
-EXEMPLES INVALIDES : "goût authentique", "livraison rapide", "Nutriscore A", "sans sucre ajouté", "service client disponible"
-
-RÈGLE IMPORTANTE : "bon pour la planète" ou "respectueux de l'environnement" même en 3-4 mots = allégation valide à inclure. Ne pas filtrer les expressions courtes si elles contiennent un terme environnemental.
+EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "40% de matières recyclées", "neutre en carbone depuis 2022", "fabriqué de façon durable", "zéro déchet d'ici 2025"
+EXEMPLES INVALIDES : "Primeur local pour plus de fraîcheur", "Pack Anti Gaspi - prix réduits", "Nutriscore A", "sans sucre ajouté", "100% français", "qualité artisanale"
 
 Allégations déjà connues (ne pas les répéter) :
 {existing_str}

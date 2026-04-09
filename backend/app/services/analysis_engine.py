@@ -809,9 +809,13 @@ def analyze_claim(
     non_conforme_count = sum(1 for r in results if r.verdict == "non_conforme")
     risque_count = sum(1 for r in results if r.verdict == "risque")
 
+    # En scan mode : 1 risque suffit (preuves non vérifiées = risque réel)
+    # En mode manuel : seuil à 2 risques (l'utilisateur a renseigné ses preuves)
+    risque_threshold = 1 if scan_mode else 2
+
     if non_conforme_count > 0:
         overall = "non_conforme"
-    elif risque_count >= 2:
+    elif risque_count >= risque_threshold:
         overall = "risque"
     else:
         overall = "conforme"
