@@ -54,10 +54,20 @@ async def _scrape_firecrawl(url: str) -> str:
             },
         )
 
-        pages = result.get("data", []) if isinstance(result, dict) else []
-        collected = "\n\n".join(
-            p.get("markdown", "") for p in pages if p.get("markdown")
-        )
+        # Firecrawl peut retourner un dict OU un objet selon la version du SDK
+        if isinstance(result, dict):
+            pages = result.get("data", [])
+        elif hasattr(result, "data"):
+            pages = result.data or []
+        else:
+            pages = []
+
+        def get_markdown(p):
+            if isinstance(p, dict):
+                return p.get("markdown", "")
+            return getattr(p, "markdown", "") or ""
+
+        collected = "\n\n".join(get_markdown(p) for p in pages if get_markdown(p))
 
         if not collected.strip():
             logger.warning(f"Firecrawl : aucun contenu pour {url}, fallback Jina")
