@@ -134,22 +134,24 @@ async def extract_claims_with_claude(
 
         prompt = f"""Tu es un expert en conformité à la directive EmpCo (EU 2024/825) sur les allégations environnementales.
 
-Analyse le texte suivant extrait d'un site web et identifie les allégations STRICTEMENT ENVIRONNEMENTALES, c'est-à-dire des affirmations sur l'impact écologique d'un produit ou d'une entreprise.
+Analyse le texte suivant extrait d'un site web et identifie toutes les allégations environnementales, même vagues ou génériques — surtout les vagues, car ce sont elles qui violent EmpCo.
 
-CRITÈRES OBLIGATOIRES — une allégation doit :
-1. Porter sur l'environnement, le climat, l'écologie, la biodiversité, le recyclage, les émissions, l'emballage, l'énergie, les déchets, l'eau ou la nature
-2. Être une phrase ou expression COMPLÈTE d'au moins 4 mots (pas un fragment, pas un mot isolé)
-3. Contenir une affirmation vérifiable (pas un nom de produit, pas un slogan commercial)
+INCLURE OBLIGATOIREMENT ces types d'allégations :
+1. Termes génériques environnementaux, même seuls ou en phrase courte : "bon pour la planète", "éco-responsable", "durable", "vert", "green", "respectueux de l'environnement", "naturel", "écologique", "zéro déchet", "neutre en carbone", "climate friendly", "sustainable"
+2. Allégations sur les déchets, émissions, emballages, recyclage, énergie, eau, biodiversité, transport, circuit court présenté comme bénéfice environnemental
+3. Claims avec certification environnementale : bio, GOTS, Ecolabel, FSC, etc.
+4. Engagements environnementaux futurs ("d'ici 2030, nous serons...")
 
-EXCLURE ABSOLUMENT :
-- Allégations sociales : équité, inclusion, don, emploi, conditions de travail, solidarité
-- Allégations commerciales ou qualité : goût, qualité, fraîcheur, prix, service client
-- Fragments de mots ou étiquettes produit seuls : "éco-recharge", "sacs engagés" sans contexte
-- Certifications non environnementales : labels qualité, labels sociaux
-- Simples noms de gamme ou de rayon contenant "bio" ou "eco" sans allégation associée
+EXCLURE :
+- Allégations purement sociales sans dimension environnementale : équité, inclusion, emploi, conditions de travail
+- Allégations purement commerciales sans lien environnemental : goût, fraîcheur, prix, qualité gustative, service client, livraison rapide
+- Mentions nutritionnelles sans dimension environnementale : Nutriscore, sans sucre, sans additifs
+- Simples noms de produit ou de gamme sans allégation associée
 
-EXEMPLES VALIDES : "Nos emballages sont fabriqués avec 40% de matières recyclées", "Neutre en carbone depuis 2022", "Produit respectueux de l'environnement certifié par un organisme indépendant"
-EXEMPLES INVALIDES : "don alimentaire", "favorise l'équité", "produits engagés pour le goût", "sacs engagés", "ménage plus propre", "éco-recharge"
+EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "mode durable", "40% de matières recyclées", "neutre en carbone", "circuit court pour réduire notre empreinte carbone", "zéro déchet", "fabriqué de façon durable"
+EXEMPLES INVALIDES : "goût authentique", "livraison rapide", "Nutriscore A", "sans sucre ajouté", "service client disponible"
+
+RÈGLE IMPORTANTE : "bon pour la planète" ou "respectueux de l'environnement" même en 3-4 mots = allégation valide à inclure. Ne pas filtrer les expressions courtes si elles contiennent un terme environnemental.
 
 Allégations déjà connues (ne pas les répéter) :
 {existing_str}
@@ -157,10 +159,10 @@ Allégations déjà connues (ne pas les répéter) :
 Texte du site :
 {text}
 
-Retourne UNIQUEMENT les nouvelles allégations environnementales complètes au format JSON :
-{{"claims": ["allégation complète 1", "allégation complète 2"]}}
+Retourne UNIQUEMENT les nouvelles allégations environnementales au format JSON :
+{{"claims": ["allégation 1", "allégation 2"]}}
 
-Si aucune allégation environnementale valide, retourne : {{"claims": []}}
+Si aucune allégation environnementale, retourne : {{"claims": []}}
 Réponds UNIQUEMENT avec le JSON, sans texte autour."""
 
         message = await client.messages.create(
