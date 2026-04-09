@@ -144,12 +144,14 @@ INCLURE :
 5. Certifications environnementales avec contexte d'allégation : bio, GOTS, Ecolabel, FSC, Rainforest Alliance
 
 EXCLURE ABSOLUMENT :
-- Social pur : équité, inclusion, emploi, conditions de travail, dons
-- Commercial pur : goût, fraîcheur, prix, qualité gustative, service client, livraison, Nutriscore, sans sucre, sans additifs
+- Social pur : équité, inclusion, emploi, conditions de travail, dons, reversement à une association, mécénat
+- Santé et bien-être : "sain", "équilibré", "bien-être", "bonne santé", "nutritif", "sans additifs", "sans sucre"
+- Éthique sans dimension environnementale : "éthique", "responsable" seul, "engagé" seul, sans mention explicite de l'environnement, du climat, des émissions ou de l'écologie
+- Commercial pur : goût, fraîcheur, prix, qualité gustative, service client, livraison, Nutriscore
 - Noms de gamme ou rayons sans allégation : "rayon bio", "épicerie bio", "boulangerie naturelle"
 - Provenance et origine sans lien environnemental explicite : "local", "fait sur place", "made in France", "produits français", "à moins de X km" quand l'argument est la fraîcheur ou la qualité
-- Slogans de fraîcheur ou de qualité : "du champ à l'assiette", "cuisinés du jour", "frais & locaux", "approvisionnements français"
-- "engagé" seul ou dans un slogan sans mention explicite de l'environnement, du climat, des émissions ou de l'écologie
+- Slogans de fraîcheur ou de qualité : "du champ à l'assiette", "cuisinés du jour", "frais & locaux"
+- Dons et actions sociales : "1% for the Planet", "reversé à", "nous soutenons", "partenaire de"
 
 RÈGLE CRITIQUE — FORMAT MINIMUM :
 Une allégation doit être une PHRASE ou EXPRESSION avec au minimum un verbe ou un adjectif qualificatif lié à l'environnement. Un mot seul, une abréviation seule ou un compteur ne sont PAS des allégations.
@@ -163,7 +165,7 @@ Une allégation doit être une PHRASE ou EXPRESSION avec au minimum un verbe ou 
 - "bon pour la planète" → allégation valide
 
 EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "40% de matières recyclées", "neutre en carbone depuis 2022", "fabriqué de façon durable", "zéro déchet d'ici 2025", "vêtements éco-responsables"
-EXEMPLES INVALIDES : "BIO", "HVE", "6 500 BIO", "ANTI-GASPI", "Boutique bio", "Primeur local pour plus de fraîcheur", "Nutriscore A", "sans sucre ajouté", "qualité artisanale", "frais, local, fait sur place", "made in France", "produits locaux cuisinés du jour", "du champ à l'assiette", "à moins de 50km de vos bureaux", "traiteur engagé"
+EXEMPLES INVALIDES : "BIO", "HVE", "6 500 BIO", "ANTI-GASPI", "Boutique bio", "Primeur local pour plus de fraîcheur", "Nutriscore A", "sans sucre ajouté", "qualité artisanale", "frais, local, fait sur place", "made in France", "produits locaux cuisinés du jour", "du champ à l'assiette", "à moins de 50km de vos bureaux", "traiteur engagé", "alimentation saine et éthique", "respectant votre bien-être", "1% reversé à 1% for the Planet", "nous soutenons l'association X"
 
 Allégations déjà connues (ne pas les répéter) :
 {existing_str}
