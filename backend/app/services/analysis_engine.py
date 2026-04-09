@@ -529,7 +529,7 @@ def rule_justification(
     du produit font partie des informations ne devant pas être trompeuses.
     Art. 7 : omettre une information substantielle est une omission trompeuse.
 
-    En mode scan → non_applicable (preuves non évaluables automatiquement).
+    En mode scan → risque (preuves non vérifiables automatiquement, risque réglementaire direct).
     Quand has_proof = False, la recommandation est différenciée selon la qualité
     de la formulation (verdict spécificité transmis par analyze_claim) :
     - conforme / non_applicable → formulation OK, action = Documenter
@@ -541,15 +541,18 @@ def rule_justification(
             return ClaimResult(
                 claim_id=claim.id,
                 criterion="justification",
-                verdict="non_applicable",
+                verdict="risque",
                 explanation=(
-                    "Preuves non évaluées — en attente. "
+                    "Preuves non vérifiées. "
                     "Cette allégation a été détectée automatiquement par scan. "
-                    "La vérification des preuves nécessite un audit manuel complet."
+                    "Toute allégation environnementale doit être étayée par des preuves "
+                    "vérifiables (Art. 6.1(b)). L'absence de preuve documentée constitue "
+                    "un risque réglementaire direct."
                 ),
                 recommendation=(
-                    "Lancer un audit manuel pour déclarer et évaluer les preuves "
-                    "associées à cette allégation."
+                    "Documenter cette allégation avec une preuve vérifiable : "
+                    "certification tierce, données fournisseur traçables ou rapport "
+                    "d'audit indépendant."
                 ),
                 regulation_reference=(
                     "Directive 2005/29/CE modifiée par EmpCo (EU 2024/825), "
