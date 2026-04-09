@@ -149,8 +149,19 @@ EXCLURE ABSOLUMENT :
 - Noms de gamme ou rayons sans allégation : "rayon bio", "épicerie bio", "boulangerie naturelle"
 - Local ou circuit court présenté comme argument de fraîcheur/qualité uniquement
 
-EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "40% de matières recyclées", "neutre en carbone depuis 2022", "fabriqué de façon durable", "zéro déchet d'ici 2025"
-EXEMPLES INVALIDES : "Primeur local pour plus de fraîcheur", "Pack Anti Gaspi - prix réduits", "Nutriscore A", "sans sucre ajouté", "100% français", "qualité artisanale"
+RÈGLE CRITIQUE — FORMAT MINIMUM :
+Une allégation doit être une PHRASE ou EXPRESSION avec au minimum un verbe ou un adjectif qualificatif lié à l'environnement. Un mot seul, une abréviation seule ou un compteur ne sont PAS des allégations.
+- "BIO" seul → pas une allégation (c'est une catégorie)
+- "6 500 BIO" → pas une allégation (c'est un compteur)
+- "HVE" seul → pas une allégation (c'est une abréviation)
+- "ANTI-GASPI" seul → pas une allégation (c'est un label)
+- "Boutique bio" → pas une allégation (c'est un nom de rayon)
+- "nos produits sont certifiés bio" → allégation valide
+- "éco-responsable" seul comme adjectif qualifiant une marque/produit → allégation valide
+- "bon pour la planète" → allégation valide
+
+EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "40% de matières recyclées", "neutre en carbone depuis 2022", "fabriqué de façon durable", "zéro déchet d'ici 2025", "vêtements éco-responsables"
+EXEMPLES INVALIDES : "BIO", "HVE", "6 500 BIO", "ANTI-GASPI", "Boutique bio", "Primeur local pour plus de fraîcheur", "Nutriscore A", "sans sucre ajouté", "qualité artisanale"
 
 Allégations déjà connues (ne pas les répéter) :
 {existing_str}
