@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -19,36 +20,70 @@ from app.models.monitoring_config import MonitoringConfig
 
 logger = logging.getLogger(__name__)
 
-# Pages RSE/durabilité à scraper via Jina
-_RSE_PATHS = [
-    "",
-    "/rse",
-    "/developpement-durable",
-    "/engagement",
-    "/sustainability",
-    "/environnement",
-]
-
 
 async def scrape_website(url: str) -> str:
     """
-    Scrape la page d'accueil + pages RSE via Jina Reader.
-    Jina exécute le JS et retourne du texte propre — fonctionne sur les sites React/Next.js/Shopify.
-    Retourne le texte concaténé, limité à 8 000 caractères.
+    Scrape le site via Firecrawl (crawl récursif automatique).
+    Firecrawl découvre les pages RSE peu importe leur URL, exécute le JS
+    et retourne du Markdown propre — fonctionne sur React/Next.js/Shopify.
+    Retourne le texte concaténé, limité à 15 000 caractères.
+    Fallback sur Jina Reader si FIRECRAWL_API_KEY non configurée.
     """
     if not url.startswith(("http://", "https://")):
         url = f"https://{url}"
 
+    if settings.FIRECRAWL_API_KEY:
+        return await _scrape_firecrawl(url)
+    return await _scrape_jina(url)
+
+
+async def _scrape_firecrawl(url: str) -> str:
+    """Crawl récursif via Firecrawl — trouve automatiquement les pages RSE."""
+    try:
+        from firecrawl import FirecrawlApp
+
+        app = FirecrawlApp(api_key=settings.FIRECRAWL_API_KEY)
+
+        result = await asyncio.to_thread(
+            app.crawl_url,
+            url,
+            {
+                "limit": 15,
+                "maxDepth": 2,
+                "scrapeOptions": {"formats": ["markdown"]},
+            },
+        )
+
+        pages = result.get("data", []) if isinstance(result, dict) else []
+        collected = "\n\n".join(
+            p.get("markdown", "") for p in pages if p.get("markdown")
+        )
+
+        if not collected.strip():
+            logger.warning(f"Firecrawl : aucun contenu pour {url}, fallback Jina")
+            return await _scrape_jina(url)
+
+        logger.info(f"Firecrawl : {len(pages)} page(s) scrapée(s) pour {url}")
+        return collected[:15000]
+
+    except Exception as exc:
+        logger.error(f"Erreur Firecrawl pour {url}: {exc} — fallback Jina")
+        return await _scrape_jina(url)
+
+
+async def _scrape_jina(url: str) -> str:
+    """Fallback Jina Reader — 6 chemins codés en dur."""
+    _RSE_PATHS = [
+        "", "/rse", "/developpement-durable",
+        "/engagement", "/sustainability", "/environnement",
+    ]
     base_url = url.rstrip("/")
     collected_text = ""
 
     async with httpx.AsyncClient(
         timeout=20.0,
         follow_redirects=True,
-        headers={
-            "Accept": "text/plain",
-            "X-Return-Format": "text",
-        },
+        headers={"Accept": "text/plain", "X-Return-Format": "text"},
     ) as client:
         for path in _RSE_PATHS:
             target = f"https://r.jina.ai/{base_url}{path}"
@@ -60,7 +95,7 @@ async def scrape_website(url: str) -> str:
                 if len(collected_text) >= 8000:
                     break
             except Exception as exc:
-                logger.debug(f"Impossible de scraper {base_url}{path} via Jina: {exc}")
+                logger.debug(f"Jina impossible pour {base_url}{path}: {exc}")
                 continue
 
     return collected_text[:8000]

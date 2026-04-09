@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # Claude API (monitoring continu)
     ANTHROPIC_API_KEY: Optional[str] = None
 
+    # Firecrawl (scraping pages web)
+    FIRECRAWL_API_KEY: Optional[str] = None
+
     # Super admin (email qui déclenche l'activation automatique du flag is_superadmin)
     SUPERADMIN_EMAIL: Optional[str] = None
 

@@ -19,3 +19,4 @@ apscheduler==3.10.4
 stripe>=7.0.0
 pypdf>=4.0.0
 slowapi>=0.1.9
+firecrawl-py>=1.0.0
