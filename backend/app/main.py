@@ -49,6 +49,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "ALTER TABLE claims ADD COLUMN IF NOT EXISTS corrected_at TIMESTAMPTZ"
         ))
         await conn.execute(sa.text(
+            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS is_false_positive BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(sa.text(
+            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS false_positive_reason VARCHAR(100)"
+        ))
+        await conn.execute(sa.text(
             "ALTER TABLE audits ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL"
         ))
         await conn.execute(sa.text(

@@ -24,6 +24,14 @@ const CRITERION_LABELS = {
   agec_france: 'Loi AGEC France (Art. 13)',
 };
 
+const FALSE_POSITIVE_REASONS = [
+  { value: 'description_produit', label: 'Description ou nom de produit' },
+  { value: 'argument_qualite', label: 'Argument qualité / fraîcheur' },
+  { value: 'claim_sociale', label: 'Claim sociale ou éthique' },
+  { value: 'provenance_origine', label: 'Provenance / origine géographique' },
+  { value: 'autre', label: 'Autre' },
+];
+
 const DOCUMENT_TYPE_LABELS = {
   ecolabel: 'Écolabel officiel',
   certification: 'Certification',
@@ -67,14 +75,21 @@ export default function AuditResults() {
   const [evidenceInputKey, setEvidenceInputKey] = useState({});
   const [correctedClaims, setCorrectedClaims] = useState({});
   const [correctingClaim, setCorrectingClaim] = useState({});
+  const [falsePositives, setFalsePositives] = useState({});
+  const [falsePositiveOpen, setFalsePositiveOpen] = useState({});
 
   useEffect(() => {
     api.get(`/audits/${auditId}/results`)
       .then((res) => {
         setResults(res.data);
         const corrected = {};
-        res.data.claims?.forEach((c) => { corrected[c.id] = c.is_corrected; });
+        const fp = {};
+        res.data.claims?.forEach((c) => {
+          corrected[c.id] = c.is_corrected;
+          fp[c.id] = { active: c.is_false_positive, reason: c.false_positive_reason };
+        });
         setCorrectedClaims(corrected);
+        setFalsePositives(fp);
       })
       .catch((err) => setError(err.response?.data?.detail || 'Erreur lors du chargement'))
       .finally(() => setLoading(false));
@@ -227,6 +242,17 @@ export default function AuditResults() {
     if (bytes < 1024) return `${bytes} o`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+  };
+
+  const handleMarkFalsePositive = async (claimId, reason) => {
+    try {
+      const res = await api.patch(`/claims/${claimId}/mark-false-positive`, { reason });
+      setFalsePositives((prev) => ({
+        ...prev,
+        [claimId]: { active: res.data.is_false_positive, reason: res.data.false_positive_reason },
+      }));
+      setFalsePositiveOpen((prev) => ({ ...prev, [claimId]: false }));
+    } catch { /* silent */ }
   };
 
   const handleMarkRead = async (alertId) => {
@@ -438,13 +464,23 @@ export default function AuditResults() {
       {/* Détail par claim */}
       <div className="space-y-4">
         <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a]">Détail des allégations</p>
-        {results.claims.map((claim, idx) => (
-          <div key={claim.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {results.claims.map((claim, idx) => {
+          const isFP = falsePositives[claim.id]?.active;
+          const fpReason = falsePositives[claim.id]?.reason;
+          const fpOpen = falsePositiveOpen[claim.id];
+          return (
+          <div key={claim.id} className={`bg-white rounded-2xl border overflow-hidden transition-opacity ${isFP ? 'border-gray-100 opacity-50' : 'border-gray-100'}`}>
             <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-xs text-gray-300 font-mono">#{idx + 1}</span>
-                <VerdictBadge verdict={claim.overall_verdict} />
-                {correctedClaims[claim.id] && (
+                {isFP ? (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-400">
+                    Faux positif — {FALSE_POSITIVE_REASONS.find(r => r.value === fpReason)?.label || fpReason}
+                  </span>
+                ) : (
+                  <VerdictBadge verdict={claim.overall_verdict} />
+                )}
+                {correctedClaims[claim.id] && !isFP && (
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#eaf4ee] text-[#1a5c3a]">
                     Corrigée
                   </span>
@@ -452,7 +488,44 @@ export default function AuditResults() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-400">{claim.support_type} · {claim.scope}</span>
-                {isPro && (
+
+                {/* Bouton Faux positif */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      if (isFP) {
+                        handleMarkFalsePositive(claim.id, fpReason);
+                      } else {
+                        setFalsePositiveOpen((prev) => ({ ...prev, [claim.id]: !prev[claim.id] }));
+                      }
+                    }}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
+                      isFP
+                        ? 'bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600'
+                        : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                    }`}
+                  >
+                    {isFP ? 'Annuler faux positif' : 'Faux positif ?'}
+                  </button>
+                  {fpOpen && !isFP && (
+                    <div className="absolute right-0 top-8 z-10 bg-white border border-gray-200 rounded-xl shadow-lg p-3 w-64">
+                      <p className="text-xs font-semibold text-gray-600 mb-2">Pourquoi est-ce un faux positif ?</p>
+                      <div className="space-y-1">
+                        {FALSE_POSITIVE_REASONS.map((r) => (
+                          <button
+                            key={r.value}
+                            onClick={() => handleMarkFalsePositive(claim.id, r.value)}
+                            className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                          >
+                            {r.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {isPro && !isFP && (
                   <button
                     onClick={() => handleMarkCorrected(claim.id)}
                     disabled={correctingClaim[claim.id]}
@@ -462,11 +535,7 @@ export default function AuditResults() {
                         : 'bg-gray-100 text-gray-600 hover:bg-[#eaf4ee] hover:text-[#1a5c3a]'
                     }`}
                   >
-                    {correctingClaim[claim.id]
-                      ? '...'
-                      : correctedClaims[claim.id]
-                        ? 'Corrigée'
-                        : 'Marquer corrigée'}
+                    {correctingClaim[claim.id] ? '...' : correctedClaims[claim.id] ? 'Corrigée' : 'Marquer corrigée'}
                   </button>
                 )}
               </div>
@@ -624,7 +693,8 @@ export default function AuditResults() {
               </table>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

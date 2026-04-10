@@ -82,6 +82,8 @@ class ClaimResponse(BaseModel):
     overall_verdict: Optional[str] = None
     is_corrected: bool = False
     corrected_at: Optional[datetime] = None
+    is_false_positive: bool = False
+    false_positive_reason: Optional[str] = None
     created_at: datetime
 
     results: List[ClaimResultInClaimResponse] = []

@@ -195,6 +195,33 @@ async def mark_claim_corrected(
     return claim
 
 
+class FalsePositiveRequest(BaseModel):
+    reason: str
+
+
+@router.patch("/api/claims/{claim_id}/mark-false-positive", response_model=ClaimResponse)
+async def mark_claim_false_positive(
+    claim_id: UUID,
+    data: FalsePositiveRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Claim:
+    """Marquer une allégation comme faux positif (toggle)."""
+    claim = await _get_user_claim(claim_id, user, db, load_results=True)
+
+    if claim.is_false_positive:
+        # Toggle off — réinitialiser
+        claim.is_false_positive = False
+        claim.false_positive_reason = None
+    else:
+        claim.is_false_positive = True
+        claim.false_positive_reason = data.reason
+
+    await db.commit()
+    await db.refresh(claim)
+    return claim
+
+
 class RewriteResponse(BaseModel):
     original: str
     suggestions: List[str]

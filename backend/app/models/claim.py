@@ -58,6 +58,10 @@ class Claim(Base):
     is_corrected: Mapped[bool] = mapped_column(Boolean, default=False)
     corrected_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Faux positif
+    is_false_positive: Mapped[bool] = mapped_column(Boolean, default=False)
+    false_positive_reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
