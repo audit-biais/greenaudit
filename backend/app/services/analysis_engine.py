@@ -68,11 +68,19 @@ def _find_blacklist_match(text: str) -> Optional[str]:
 
     La détection est insensible à la casse ET aux accents :
     'eco-responsable' matche 'éco-responsable' et vice versa.
+    Utilise des word boundaries pour éviter de matcher un terme
+    blacklisté à l'intérieur d'un nom de marque (ex: "natural" dans "Naturalia").
     """
     text_normalized = _normalize(text)
     for norm_term, original_term in BLACKLIST_TERMS_NORMALIZED:
-        if norm_term in text_normalized:
-            return original_term
+        # Termes composés (avec espace, tiret) : recherche simple suffit
+        # Termes simples : word boundary pour éviter faux positifs dans noms propres
+        if " " in norm_term or "-" in norm_term:
+            if norm_term in text_normalized:
+                return original_term
+        else:
+            if re.search(r'\b' + re.escape(norm_term) + r'\b', text_normalized):
+                return original_term
     return None
 
 
