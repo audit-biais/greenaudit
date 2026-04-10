@@ -176,11 +176,13 @@ async def analyze_audit(
             country=audit.country,
         )
         claim.overall_verdict = overall_verdict
-        all_verdicts.append(overall_verdict)
+        # Exclure les faux positifs du scoring
+        if not claim.is_false_positive:
+            all_verdicts.append(overall_verdict)
         for r in results:
             db.add(r)
 
-    # Calculer le scoring global
+    # Calculer le scoring global (hors faux positifs)
     counts = compute_verdict_counts(all_verdicts)
     score, risk_level = calculate_global_score(
         conforming=counts["conforme"],
@@ -188,9 +190,11 @@ async def analyze_audit(
         non_conforming=counts["non_conforme"],
     )
 
+    active_claims = [c for c in audit.claims if not c.is_false_positive]
+
     # Mettre à jour l'audit
     audit.status = "completed"
-    audit.total_claims = len(audit.claims)
+    audit.total_claims = len(active_claims)
     audit.conforming_claims = counts["conforme"]
     audit.non_conforming_claims = counts["non_conforme"]
     audit.at_risk_claims = counts["risque"]
@@ -364,7 +368,8 @@ async def scan_website_endpoint(
     for claim in audit.claims:
         results, overall_verdict = analyze_claim(claim, has_ecolabel_evidence=False, country="fr", scan_mode=True)
         claim.overall_verdict = overall_verdict
-        all_verdicts.append(overall_verdict)
+        if not claim.is_false_positive:
+            all_verdicts.append(overall_verdict)
         for r in results:
             db.add(r)
 
@@ -375,9 +380,11 @@ async def scan_website_endpoint(
         non_conforming=counts["non_conforme"],
     )
 
+    active_claims = [c for c in audit.claims if not c.is_false_positive]
+
     # Scan → in_progress pour permettre à l'utilisateur d'ajouter des allégations manuellement
     audit.status = "in_progress"
-    audit.total_claims = len(audit.claims)
+    audit.total_claims = len(active_claims)
     audit.conforming_claims = counts["conforme"]
     audit.non_conforming_claims = counts["non_conforme"]
     audit.at_risk_claims = counts["risque"]

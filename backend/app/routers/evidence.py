@@ -94,7 +94,7 @@ async def _refresh_justification_from_vault(claim_id: UUID, db: AsyncSession) ->
     )
     audit = audit_result.scalar_one_or_none()
     if audit:
-        all_verdicts = [c.overall_verdict for c in audit.claims if c.overall_verdict]
+        all_verdicts = [c.overall_verdict for c in audit.claims if c.overall_verdict and not c.is_false_positive]
         counts = compute_verdict_counts(all_verdicts)
         score, risk_level = calculate_global_score(
             conforming=counts["conforme"],

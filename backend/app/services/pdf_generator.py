@@ -967,7 +967,7 @@ def _compute_corrected_score(audit: Audit) -> Optional[dict]:
     Les allégations marquées is_corrected=True sont traitées comme conformes.
     Retourne None si aucune allégation n'est corrigée.
     """
-    claims = audit.claims or []
+    claims = [c for c in (audit.claims or []) if not getattr(c, "is_false_positive", False)]
     corrected_count = sum(1 for c in claims if getattr(c, "is_corrected", False))
     if corrected_count == 0:
         return None
@@ -1067,6 +1067,7 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
     page_width   = A4[0] - 40 * mm
     inner_width  = page_width - 16   # padding 8pt de chaque côté dans le bloc
 
+    claims = [c for c in claims if not getattr(c, "is_false_positive", False)]
     first_claim = True
     for i, claim in enumerate(claims, 1):
         verdict = VERDICT_LABELS.get(claim.overall_verdict or "", "—")
@@ -1315,6 +1316,8 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
     elements = []
     actions = []
     for claim in claims:
+        if getattr(claim, "is_false_positive", False):
+            continue
         if claim.overall_verdict == "conforme":
             continue
         for r in claim.results:
