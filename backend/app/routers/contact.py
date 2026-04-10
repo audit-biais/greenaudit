@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/contact", tags=["contact"])
 
-RECIPIENT_EMAIL = "optimaflow.pro@gmail.com"
+RECIPIENT_EMAIL = "contact@green-audit.fr"
 
 
 class ContactForm(BaseModel):
