@@ -16,36 +16,41 @@ from app.config import settings
 from app.database import get_db
 from app.models.audit import Audit
 from app.models.claim import Claim
+from app.models.client_access import ClientAccess
 
 router = APIRouter(prefix="/api/share", tags=["share"])
 
 
-async def _get_audit_by_token(token: str, db: AsyncSession) -> Audit:
+async def _get_client_access(token: str, db: AsyncSession) -> tuple[ClientAccess, Audit]:
+    """Valide le token et retourne (ClientAccess, Audit). Lève 404 si invalide/révoqué/expiré."""
     now = datetime.now(timezone.utc)
     result = await db.execute(
-        select(Audit)
-        .where(
-            Audit.share_token == token,
-            Audit.share_token_expires_at > now,
-        )
+        select(ClientAccess)
+        .where(ClientAccess.token == token, ClientAccess.is_revoked == False)  # noqa: E712
         .options(
-            selectinload(Audit.claims).selectinload(Claim.results),
-            selectinload(Audit.claims).selectinload(Claim.evidence_files),
-            selectinload(Audit.organization),
+            selectinload(ClientAccess.audit).selectinload(Audit.claims).selectinload(Claim.results),
+            selectinload(ClientAccess.audit).selectinload(Audit.claims).selectinload(Claim.evidence_files),
+            selectinload(ClientAccess.audit).selectinload(Audit.organization),
         )
     )
-    audit = result.scalar_one_or_none()
-    if not audit:
-        raise HTTPException(status_code=404, detail="Lien invalide ou expiré")
-    return audit
+    ca = result.scalar_one_or_none()
+    if not ca:
+        raise HTTPException(status_code=404, detail="Lien invalide ou révoqué")
+    if ca.expires_at and ca.expires_at < now:
+        raise HTTPException(status_code=404, detail="Lien expiré")
+    return ca, ca.audit
 
 
 @router.get("/{token}")
 async def get_shared_audit(token: str, db: AsyncSession = Depends(get_db)) -> dict:
-    """Retourne les données de l'audit pour la page client (lecture seule, pas d'auth)."""
-    audit = await _get_audit_by_token(token, db)
-    org = audit.organization
+    """Page client — données audit en lecture seule. Met à jour last_opened_at."""
+    ca, audit = await _get_client_access(token, db)
 
+    # Tracking ouverture
+    ca.last_opened_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    org = audit.organization
     claims_data = []
     for c in audit.claims:
         if getattr(c, "is_false_positive", False):
@@ -85,8 +90,7 @@ async def get_shared_audit(token: str, db: AsyncSession = Depends(get_db)) -> di
 
 @router.get("/{token}/logo")
 async def get_shared_logo(token: str, db: AsyncSession = Depends(get_db)) -> Response:
-    """Sert le logo du cabinet pour la page client."""
-    audit = await _get_audit_by_token(token, db)
+    ca, audit = await _get_client_access(token, db)
     org = audit.organization
     if not org or not org.logo_data:
         raise HTTPException(status_code=404, detail="Aucun logo")
@@ -99,8 +103,8 @@ async def get_shared_logo(token: str, db: AsyncSession = Depends(get_db)) -> Res
 
 @router.get("/{token}/pdf")
 async def download_shared_pdf(token: str, db: AsyncSession = Depends(get_db)) -> Response:
-    """Téléchargement du PDF depuis le lien client (sans auth)."""
-    audit = await _get_audit_by_token(token, db)
+    """Téléchargement PDF client. Met à jour pdf_downloaded_at."""
+    ca, audit = await _get_client_access(token, db)
     if not audit.pdf_url:
         raise HTTPException(status_code=404, detail="Aucun rapport PDF disponible")
 
@@ -111,6 +115,9 @@ async def download_shared_pdf(token: str, db: AsyncSession = Depends(get_db)) ->
 
     with open(filepath, "rb") as f:
         content = f.read()
+
+    ca.pdf_downloaded_at = datetime.now(timezone.utc)
+    await db.commit()
 
     return Response(
         content=content,
@@ -123,8 +130,8 @@ async def download_shared_pdf(token: str, db: AsyncSession = Depends(get_db)) ->
 
 @router.get("/{token}/zip")
 async def download_shared_zip(token: str, db: AsyncSession = Depends(get_db)) -> Response:
-    """Téléchargement du dossier preuves ZIP depuis le lien client (sans auth)."""
-    audit = await _get_audit_by_token(token, db)
+    """Téléchargement ZIP client. Met à jour zip_downloaded_at."""
+    ca, audit = await _get_client_access(token, db)
     org = audit.organization
 
     claims_result = await db.execute(
@@ -172,6 +179,9 @@ async def download_shared_zip(token: str, db: AsyncSession = Depends(get_db)) ->
 
     zip_buffer.seek(0)
     filename = f"dossier_preuves_{audit.company_name.replace(' ', '_')}.zip"
+
+    ca.zip_downloaded_at = datetime.now(timezone.utc)
+    await db.commit()
 
     return Response(
         content=zip_buffer.read(),

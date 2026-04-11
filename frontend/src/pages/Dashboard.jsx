@@ -192,6 +192,11 @@ export default function Dashboard() {
                       {unreadCount} alerte{unreadCount > 1 ? 's' : ''}
                     </span>
                   )}
+                  {audit.client_access?.exists && !audit.client_access.is_revoked && (
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                      Coffre-fort actif
+                    </span>
+                  )}
                 </div>
 
                 {/* Stats */}
@@ -208,7 +213,24 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <p className="mt-4 text-xs text-gray-300">Créé le {formatDate(audit.created_at)}</p>
+                {/* Tracking coffre-fort */}
+                {audit.client_access?.exists && !audit.client_access.is_revoked && (
+                  <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-4 text-xs text-gray-400">
+                    <span title="Dernière ouverture">
+                      {audit.client_access.last_opened_at
+                        ? `Ouvert le ${new Date(audit.client_access.last_opened_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+                        : 'Pas encore ouvert'}
+                    </span>
+                    {audit.client_access.pdf_downloaded_at && (
+                      <span className="text-green-600">PDF ✓</span>
+                    )}
+                    {audit.client_access.zip_downloaded_at && (
+                      <span className="text-green-600">ZIP ✓</span>
+                    )}
+                  </div>
+                )}
+
+                <p className="mt-3 text-xs text-gray-300">Créé le {formatDate(audit.created_at)}</p>
               </div>
             );
           })}

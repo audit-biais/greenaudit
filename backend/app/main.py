@@ -14,6 +14,7 @@ from app.config import settings
 from app.limiter import limiter
 from app.utils.security_headers import SecurityHeadersMiddleware
 from app.database import engine, Base
+from app.models import client_access as _  # noqa: F401 — register ClientAccess with SQLAlchemy
 from app.routers import auth, audits, claims, reports
 from app.routers import monitoring, contact, organizations, admin, evidence, payment, members, share
 
@@ -63,6 +64,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.execute(sa.text(
             "ALTER TABLE audits ADD COLUMN IF NOT EXISTS share_token_expires_at TIMESTAMPTZ"
         ))
+        # Table coffre-fort client
+        await conn.execute(sa.text("""
+            CREATE TABLE IF NOT EXISTS client_accesses (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                audit_id UUID NOT NULL UNIQUE REFERENCES audits(id) ON DELETE CASCADE,
+                token VARCHAR(200) NOT NULL UNIQUE,
+                client_email VARCHAR(255) NOT NULL,
+                validity_days INTEGER,
+                expires_at TIMESTAMPTZ,
+                is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                last_opened_at TIMESTAMPTZ,
+                pdf_downloaded_at TIMESTAMPTZ,
+                zip_downloaded_at TIMESTAMPTZ
+            )
+        """))
     logger.info("Colonnes country + rules_version + document_type vérifiées/ajoutées")
 
     # Démarrer le scheduler APScheduler

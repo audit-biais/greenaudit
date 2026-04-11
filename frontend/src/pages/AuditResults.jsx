@@ -79,8 +79,12 @@ export default function AuditResults() {
   const [falsePositiveOpen, setFalsePositiveOpen] = useState({});
   const [clientAccessOpen, setClientAccessOpen] = useState(false);
   const [clientEmail, setClientEmail] = useState('');
+  const [clientValidityDays, setClientValidityDays] = useState(90);
+  const [clientCustomMessage, setClientCustomMessage] = useState('');
   const [clientAccessSending, setClientAccessSending] = useState(false);
   const [clientAccessResult, setClientAccessResult] = useState(null);
+  const [existingAccess, setExistingAccess] = useState(null);
+  const [revokingAccess, setRevokingAccess] = useState(false);
 
   useEffect(() => {
     api.get(`/audits/${auditId}/results`)
@@ -97,6 +101,10 @@ export default function AuditResults() {
         // Restaurer reportInfo si PDF déjà généré
         if (res.data.pdf_sha256) {
           setReportInfo({ pdf_sha256: res.data.pdf_sha256, share_token: res.data.share_token });
+          // Charger le statut coffre-fort client
+          api.get(`/audits/${auditId}/client-access`).then((r) => {
+            if (r.data.exists) setExistingAccess(r.data);
+          }).catch(() => {});
         }
       })
       .catch((err) => setError(err.response?.data?.detail || 'Erreur lors du chargement'))
@@ -276,13 +284,30 @@ export default function AuditResults() {
     if (!clientEmail.trim()) return;
     setClientAccessSending(true);
     try {
-      const res = await api.post(`/audits/${auditId}/client-access`, { client_email: clientEmail });
+      const res = await api.post(`/audits/${auditId}/client-access`, {
+        client_email: clientEmail,
+        validity_days: clientValidityDays === 0 ? null : clientValidityDays,
+        custom_message: clientCustomMessage.trim() || null,
+      });
       setClientAccessResult(res.data);
+      setExistingAccess({ ...res.data, exists: true });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Erreur lors de la création de l\'accès client');
+      setError(err.response?.data?.detail || "Erreur lors de la création de l'accès client");
       setClientAccessOpen(false);
     } finally {
       setClientAccessSending(false);
+    }
+  };
+
+  const handleRevokeAccess = async () => {
+    if (!window.confirm('Révoquer cet accès ? Le lien client sera immédiatement inaccessible.')) return;
+    setRevokingAccess(true);
+    try {
+      await api.delete(`/audits/${auditId}/client-access`);
+      setExistingAccess((prev) => ({ ...prev, is_revoked: true }));
+      setClientAccessOpen(false);
+    } catch { /* silent */ } finally {
+      setRevokingAccess(false);
     }
   };
 
@@ -363,76 +388,163 @@ export default function AuditResults() {
           </button>
           {reportInfo && (
             <button
-              onClick={() => { setClientAccessOpen(true); setClientAccessResult(null); setClientEmail(''); }}
-              className="px-4 py-2.5 rounded-full text-sm font-semibold text-[#1a5c3a] border border-[#1a5c3a]/30 hover:bg-[#eaf4ee] transition-colors"
+              onClick={() => { setClientAccessOpen(true); setClientAccessResult(null); setClientEmail(existingAccess?.client_email || ''); }}
+              className={`px-4 py-2.5 rounded-full text-sm font-semibold border transition-colors ${
+                existingAccess && !existingAccess.is_revoked
+                  ? 'text-[#1a5c3a] border-[#1a5c3a] bg-[#eaf4ee]'
+                  : 'text-[#1a5c3a] border-[#1a5c3a]/30 hover:bg-[#eaf4ee]'
+              }`}
             >
-              Accès client
+              {existingAccess && !existingAccess.is_revoked ? 'Coffre-fort actif' : 'Accès client'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Modal accès client */}
+      {/* Modal coffre-fort client */}
       {clientAccessOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             {clientAccessResult ? (
+              /* Écran confirmation */
               <>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Accès créé</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  <h3 className="text-lg font-bold text-gray-900">Coffre-fort activé</h3>
+                </div>
                 <p className="text-sm text-gray-500 mb-4">
                   {clientAccessResult.email_sent
-                    ? `Un email a été envoyé à ${clientEmail}.`
-                    : 'Le lien est prêt (email non configuré sur le serveur).'}
+                    ? `Lien envoyé à ${clientEmail}.`
+                    : 'Lien créé (email non configuré côté serveur).'}
                 </p>
                 <div className="bg-gray-50 rounded-xl p-3 mb-4">
-                  <p className="text-xs text-gray-400 mb-1">Lien client (valable 90 jours)</p>
-                  <a
-                    href={clientAccessResult.client_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-[#1a5c3a] underline break-all"
-                  >
-                    {clientAccessResult.client_url}
-                  </a>
+                  <p className="text-xs text-gray-400 mb-1">Lien client sécurisé</p>
+                  <p className="text-xs text-[#1a5c3a] break-all font-mono">{clientAccessResult.client_url}</p>
                 </div>
                 <button
-                  onClick={() => { navigator.clipboard.writeText(clientAccessResult.client_url); }}
+                  onClick={() => navigator.clipboard.writeText(clientAccessResult.client_url)}
                   className="w-full mb-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
                 >
                   Copier le lien
                 </button>
+                <button onClick={() => setClientAccessOpen(false)} className="w-full px-4 py-2 text-sm text-gray-400 hover:text-gray-600">
+                  Fermer
+                </button>
+              </>
+            ) : existingAccess && !existingAccess.is_revoked ? (
+              /* Écran statut accès existant */
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                    <h3 className="text-lg font-bold text-gray-900">Coffre-fort actif</h3>
+                  </div>
+                  <span className="text-xs text-gray-400">{existingAccess.client_email}</span>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Dernière ouverture</span>
+                    <span className="font-medium text-gray-800">
+                      {existingAccess.last_opened_at
+                        ? new Date(existingAccess.last_opened_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                        : 'Jamais ouvert'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">PDF téléchargé</span>
+                    <span className={`font-medium ${existingAccess.pdf_downloaded_at ? 'text-green-700' : 'text-gray-400'}`}>
+                      {existingAccess.pdf_downloaded_at
+                        ? new Date(existingAccess.pdf_downloaded_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+                        : 'Non'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">ZIP téléchargé</span>
+                    <span className={`font-medium ${existingAccess.zip_downloaded_at ? 'text-green-700' : 'text-gray-400'}`}>
+                      {existingAccess.zip_downloaded_at
+                        ? new Date(existingAccess.zip_downloaded_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+                        : 'Non'}
+                    </span>
+                  </div>
+                  {existingAccess.expires_at && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Expire le</span>
+                      <span className="font-medium text-gray-800">
+                        {new Date(existingAccess.expires_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <button
-                  onClick={() => setClientAccessOpen(false)}
-                  className="w-full px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+                  onClick={() => { setClientAccessResult(null); setExistingAccess(null); }}
+                  className="w-full mb-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
                 >
+                  Recréer un accès
+                </button>
+                <button
+                  onClick={handleRevokeAccess}
+                  disabled={revokingAccess}
+                  className="w-full mb-2 px-4 py-2.5 rounded-full text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {revokingAccess ? 'Révocation...' : 'Révoquer le lien'}
+                </button>
+                <button onClick={() => setClientAccessOpen(false)} className="w-full px-4 py-2 text-sm text-gray-400 hover:text-gray-600">
                   Fermer
                 </button>
               </>
             ) : (
+              /* Écran création */
               <>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Créer un accès client</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Le client recevra un lien sécurisé pour consulter et télécharger son rapport en lecture seule.
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Coffre-fort client</h3>
+                <p className="text-sm text-gray-500 mb-5">
+                  Lien sécurisé en lecture seule — le client consulte et télécharge, sans modifier.
                 </p>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Email du client</label>
+
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Email du client *</label>
                 <input
                   type="email"
                   value={clientEmail}
                   onChange={(e) => setClientEmail(e.target.value)}
-                  placeholder="client@entreprise.fr"
+                  placeholder="contact@entreprise.fr"
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/30"
                 />
+
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Durée de validité</label>
+                <div className="flex gap-2 mb-4">
+                  {[{ label: '30 jours', value: 30 }, { label: '90 jours', value: 90 }, { label: 'Illimité', value: 0 }].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setClientValidityDays(opt.value)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                        clientValidityDays === opt.value
+                          ? 'bg-[#1a5c3a] text-white border-[#1a5c3a]'
+                          : 'text-gray-600 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Message personnalisé <span className="text-gray-400 font-normal">(optionnel)</span>
+                </label>
+                <textarea
+                  value={clientCustomMessage}
+                  onChange={(e) => setClientCustomMessage(e.target.value)}
+                  placeholder="Bonjour, veuillez trouver ci-joint votre rapport d'audit..."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-5 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/30 resize-none"
+                />
+
                 <button
                   onClick={handleSendClientAccess}
                   disabled={clientAccessSending || !clientEmail.trim()}
                   className="w-full mb-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors disabled:opacity-50"
                 >
-                  {clientAccessSending ? 'Envoi...' : 'Envoyer le lien'}
+                  {clientAccessSending ? 'Création...' : 'Créer et envoyer le lien'}
                 </button>
-                <button
-                  onClick={() => setClientAccessOpen(false)}
-                  className="w-full px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
-                >
+                <button onClick={() => setClientAccessOpen(false)} className="w-full px-4 py-2 text-sm text-gray-400 hover:text-gray-600">
                   Annuler
                 </button>
               </>

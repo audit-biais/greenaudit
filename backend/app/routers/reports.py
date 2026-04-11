@@ -173,21 +173,46 @@ async def shared_audit_results(
     )
 
 
+import re
+
+from app.models.client_access import ClientAccess
+
+
+def _make_token(company_name: str) -> str:
+    """Génère un token lisible : naturalia-service-2026-{random22chars}"""
+    slug = re.sub(r"[^a-z0-9]+", "-", company_name.lower()).strip("-")[:25]
+    year = datetime.now(timezone.utc).year
+    return f"{slug}-{year}-{secrets.token_urlsafe(12)}"
+
+
+def _ca_to_dict(ca: ClientAccess, frontend_url: str) -> dict:
+    return {
+        "client_url": f"{frontend_url}/client/{ca.token}",
+        "client_email": ca.client_email,
+        "validity_days": ca.validity_days,
+        "expires_at": ca.expires_at.isoformat() if ca.expires_at else None,
+        "is_revoked": ca.is_revoked,
+        "created_at": ca.created_at.isoformat() if ca.created_at else None,
+        "last_opened_at": ca.last_opened_at.isoformat() if ca.last_opened_at else None,
+        "pdf_downloaded_at": ca.pdf_downloaded_at.isoformat() if ca.pdf_downloaded_at else None,
+        "zip_downloaded_at": ca.zip_downloaded_at.isoformat() if ca.zip_downloaded_at else None,
+    }
+
+
 class ClientAccessRequest(BaseModel):
     client_email: str
+    validity_days: int | None = 90  # None = illimité
+    custom_message: str | None = None
 
 
 @router.post("/{audit_id}/client-access")
-async def send_client_access(
+async def create_client_access(
     audit_id: UUID,
     data: ClientAccessRequest,
     user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """
-    Envoie un lien d'accès client par email.
-    Le token de partage doit déjà exister (généré lors de la création du PDF).
-    """
+    """Crée ou recrée un accès client sécurisé et envoie le lien par email."""
     result = await db.execute(
         select(Audit)
         .where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
@@ -196,53 +221,126 @@ async def send_client_access(
     audit = result.scalar_one_or_none()
     if not audit:
         raise HTTPException(status_code=404, detail="Audit introuvable")
-    if not audit.share_token:
+    if not audit.pdf_url:
         raise HTTPException(
             status_code=400,
-            detail="Générez d'abord le rapport PDF pour créer le lien d'accès.",
+            detail="Générez d'abord le rapport PDF avant de créer l'accès client.",
         )
 
-    client_url = f"{settings.FRONTEND_URL}/client/{audit.share_token}"
     cabinet_name = audit.organization.name if audit.organization else "GreenAudit"
+    now = datetime.now(timezone.utc)
+    expires_at = None
+    if data.validity_days:
+        from datetime import timedelta
+        expires_at = now + timedelta(days=data.validity_days)
 
+    # Supprimer l'accès existant s'il y en a un
+    existing = await db.execute(
+        select(ClientAccess).where(ClientAccess.audit_id == audit_id)
+    )
+    old_ca = existing.scalar_one_or_none()
+    if old_ca:
+        await db.delete(old_ca)
+        await db.flush()
+
+    ca = ClientAccess(
+        audit_id=audit_id,
+        token=_make_token(audit.company_name),
+        client_email=data.client_email,
+        validity_days=data.validity_days,
+        expires_at=expires_at,
+    )
+    db.add(ca)
+    await db.commit()
+    await db.refresh(ca)
+
+    client_url = f"{settings.FRONTEND_URL}/client/{ca.token}"
+
+    # Envoi email
+    validity_str = f"{data.validity_days} jours" if data.validity_days else "illimitée"
+    default_message = (
+        f"{cabinet_name} met à votre disposition le rapport d'audit de conformité "
+        f"anti-greenwashing pour {audit.company_name}.\n\n"
+        f"Accédez à votre espace sécurisé :\n{client_url}\n\n"
+        f"Depuis cet espace vous pouvez :\n"
+        f"- Consulter le résultat de l'analyse de vos allégations\n"
+        f"- Télécharger le rapport PDF\n"
+        f"- Télécharger le dossier de preuves (SHA-256 + traçabilité)\n\n"
+        f"Ce lien est valable {validity_str} et vous est réservé.\n\n"
+        f"Cordialement,\n{cabinet_name}"
+    )
+    body = data.custom_message or default_message
+    # Injecter le lien dans le message custom s'il n'y est pas déjà
+    if data.custom_message and client_url not in data.custom_message:
+        body = f"{data.custom_message}\n\n{client_url}"
+
+    email_sent = False
     smtp_user = settings.SMTP_USER
     smtp_password = settings.SMTP_PASSWORD
-
     if smtp_user and smtp_password:
         try:
             msg = MIMEMultipart()
             msg["From"] = smtp_user
             msg["To"] = data.client_email
             msg["Subject"] = f"Votre rapport d'audit anti-greenwashing — {audit.company_name}"
-            body = f"""Bonjour,
-
-{cabinet_name} met à votre disposition le rapport d'audit de conformité anti-greenwashing pour {audit.company_name}.
-
-Accédez à votre espace sécurisé en cliquant sur le lien ci-dessous :
-
-{client_url}
-
-Depuis cet espace, vous pouvez :
-- Consulter le résultat de l'analyse de vos allégations environnementales
-- Télécharger le rapport PDF complet
-- Télécharger le dossier de preuves (avec horodatage et empreintes SHA-256)
-
-Ce lien est valable 90 jours. Il vous est réservé et ne doit pas être partagé.
-
-Cordialement,
-{cabinet_name}
-"""
             msg.attach(MIMEText(body, "plain", "utf-8"))
             with smtplib.SMTP("smtp.zoho.eu", 587, timeout=10) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_password)
                 server.send_message(msg)
+            email_sent = True
             logger.info(f"Accès client envoyé à {data.client_email} pour audit {audit_id}")
         except Exception as e:
             logger.error(f"Erreur envoi email accès client: {e}")
 
-    return {
-        "client_url": client_url,
-        "email_sent": bool(smtp_user and smtp_password),
-        "share_token": audit.share_token,
-    }
+    result_dict = _ca_to_dict(ca, settings.FRONTEND_URL)
+    result_dict["email_sent"] = email_sent
+    return result_dict
+
+
+@router.get("/{audit_id}/client-access")
+async def get_client_access(
+    audit_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Retourne le statut de l'accès client (tracking inclus)."""
+    # Vérifier ownership
+    audit_result = await db.execute(
+        select(Audit).where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
+    )
+    if not audit_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Audit introuvable")
+
+    ca_result = await db.execute(
+        select(ClientAccess).where(ClientAccess.audit_id == audit_id)
+    )
+    ca = ca_result.scalar_one_or_none()
+    if not ca:
+        return {"exists": False}
+
+    result = _ca_to_dict(ca, settings.FRONTEND_URL)
+    result["exists"] = True
+    return result
+
+
+@router.delete("/{audit_id}/client-access", status_code=204)
+async def revoke_client_access(
+    audit_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Révoque l'accès client (le lien devient immédiatement inaccessible)."""
+    audit_result = await db.execute(
+        select(Audit).where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
+    )
+    if not audit_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Audit introuvable")
+
+    ca_result = await db.execute(
+        select(ClientAccess).where(ClientAccess.audit_id == audit_id)
+    )
+    ca = ca_result.scalar_one_or_none()
+    if ca:
+        ca.is_revoked = True
+        await db.commit()

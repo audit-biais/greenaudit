@@ -17,7 +17,8 @@ from app.models.user import User
 from pydantic import BaseModel, Field
 
 from app.models.organization import Organization
-from app.schemas.audit import AuditCreate, AuditDetailResponse, AuditSummaryResponse
+from app.models.client_access import ClientAccess
+from app.schemas.audit import AuditCreate, AuditDetailResponse, AuditSummaryResponse, ClientAccessSummary
 from app.schemas.claim_result import AuditResultsResponse
 from app.services.analysis_engine import analyze_claim, RULES_VERSION
 from app.services.monitoring_service import scrape_website, extract_claims_with_claude
@@ -91,16 +92,50 @@ async def create_audit(
 async def list_audits(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> List[Audit]:
-    """Lister les audits de l'organisation courante."""
+) -> list:
+    """Lister les audits de l'organisation courante avec statut coffre-fort client."""
     if not user.organization_id:
         return []
-    result = await db.execute(
+    audits_result = await db.execute(
         select(Audit)
         .where(Audit.organization_id == user.organization_id)
         .order_by(Audit.created_at.desc())
     )
-    return list(result.scalars().all())
+    audits = list(audits_result.scalars().all())
+
+    # Charger les client_accesses en une seule requête
+    audit_ids = [a.id for a in audits]
+    ca_result = await db.execute(
+        select(ClientAccess).where(ClientAccess.audit_id.in_(audit_ids))
+    )
+    ca_by_audit = {ca.audit_id: ca for ca in ca_result.scalars().all()}
+
+    response = []
+    for audit in audits:
+        ca = ca_by_audit.get(audit.id)
+        ca_summary = None
+        if ca:
+            ca_summary = ClientAccessSummary(
+                exists=True,
+                is_revoked=ca.is_revoked,
+                client_email=ca.client_email,
+                last_opened_at=ca.last_opened_at,
+                pdf_downloaded_at=ca.pdf_downloaded_at,
+                zip_downloaded_at=ca.zip_downloaded_at,
+            )
+        response.append(AuditSummaryResponse(
+            id=audit.id,
+            company_name=audit.company_name,
+            sector=audit.sector,
+            status=audit.status,
+            total_claims=audit.total_claims,
+            global_score=audit.global_score,
+            risk_level=audit.risk_level,
+            created_at=audit.created_at,
+            completed_at=audit.completed_at,
+            client_access=ca_summary,
+        ))
+    return response
 
 
 @router.get("/{audit_id}", response_model=AuditDetailResponse)

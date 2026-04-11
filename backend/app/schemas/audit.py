@@ -34,6 +34,18 @@ class AuditCreate(BaseModel):
 
 # --- Response schemas ---
 
+class ClientAccessSummary(BaseModel):
+    """Résumé du coffre-fort client pour le dashboard."""
+    exists: bool = False
+    is_revoked: bool = False
+    client_email: Optional[str] = None
+    last_opened_at: Optional[datetime] = None
+    pdf_downloaded_at: Optional[datetime] = None
+    zip_downloaded_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
 class AuditSummaryResponse(BaseModel):
     """Résumé d'un audit pour la liste du dashboard."""
     id: UUID
@@ -45,6 +57,7 @@ class AuditSummaryResponse(BaseModel):
     risk_level: Optional[str] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
+    client_access: Optional[ClientAccessSummary] = None
 
     model_config = {"from_attributes": True}
 
