@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import zipfile
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
@@ -15,6 +17,7 @@ from app.models.audit import Audit
 from app.models.claim import Claim
 from app.models.claim_result import ClaimResult
 from app.models.evidence import EvidenceFile
+from app.models.organization import Organization
 from app.models.user import User
 from app.services.scoring import calculate_global_score, compute_verdict_counts
 
@@ -291,17 +294,48 @@ async def download_evidence_zip(
     )
     claims = list(claims_result.scalars().all())
 
+    # Charger le nom du cabinet RSE
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == user.organization_id)
+    )
+    org = org_result.scalar_one_or_none()
+    cabinet_name = org.name if org else "Cabinet inconnu"
+
     zip_buffer = io.BytesIO()
+    now = datetime.now(timezone.utc)
+    tracability_lines: list[str] = []
+    total = 0
+
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        total = 0
         for i, claim in enumerate(claims, 1):
             for evidence in claim.evidence_files:
                 folder = f"allegation_{i}_{claim.claim_text[:30].replace('/', '_').replace(' ', '_')}"
                 zf.writestr(f"{folder}/{evidence.filename}", evidence.file_data)
+                sha256 = hashlib.sha256(evidence.file_data).hexdigest()
+                tracability_lines.append(
+                    f"  [{evidence.filename}]  SHA-256 : {sha256}"
+                )
                 total += 1
 
-    if total == 0:
-        raise HTTPException(status_code=404, detail="Aucune pièce justificative à télécharger")
+        if total == 0:
+            raise HTTPException(status_code=404, detail="Aucune pièce justificative à télécharger")
+
+        tracability_content = (
+            "DOSSIER DE PREUVES — TRACABILITE\n"
+            "=================================\n\n"
+            f"Entreprise auditee : {audit.company_name}\n"
+            f"Cabinet RSE        : {cabinet_name}\n"
+            f"Date               : {now.strftime('%d/%m/%Y')}\n"
+            f"Heure (UTC)        : {now.strftime('%H:%M:%S')}\n"
+            f"Nombre de fichiers : {total}\n\n"
+            "Empreintes SHA-256 des fichiers :\n"
+            "---------------------------------\n"
+            + "\n".join(tracability_lines)
+            + "\n\n"
+            "Ce fichier atteste de l'integrite des preuves deposees dans GreenAudit\n"
+            "et peut etre presente en cas de controle DGCCRF.\n"
+        )
+        zf.writestr("Tracabilite.txt", tracability_content.encode("utf-8"))
 
     zip_buffer.seek(0)
     filename = f"dossier_preuves_{audit.company_name.replace(' ', '_')}.zip"
