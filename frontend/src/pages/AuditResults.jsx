@@ -77,6 +77,10 @@ export default function AuditResults() {
   const [correctingClaim, setCorrectingClaim] = useState({});
   const [falsePositives, setFalsePositives] = useState({});
   const [falsePositiveOpen, setFalsePositiveOpen] = useState({});
+  const [clientAccessOpen, setClientAccessOpen] = useState(false);
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientAccessSending, setClientAccessSending] = useState(false);
+  const [clientAccessResult, setClientAccessResult] = useState(null);
 
   useEffect(() => {
     api.get(`/audits/${auditId}/results`)
@@ -90,6 +94,10 @@ export default function AuditResults() {
         });
         setCorrectedClaims(corrected);
         setFalsePositives(fp);
+        // Restaurer reportInfo si PDF déjà généré
+        if (res.data.pdf_sha256) {
+          setReportInfo({ pdf_sha256: res.data.pdf_sha256, share_token: res.data.share_token });
+        }
       })
       .catch((err) => setError(err.response?.data?.detail || 'Erreur lors du chargement'))
       .finally(() => setLoading(false));
@@ -264,6 +272,20 @@ export default function AuditResults() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
   };
 
+  const handleSendClientAccess = async () => {
+    if (!clientEmail.trim()) return;
+    setClientAccessSending(true);
+    try {
+      const res = await api.post(`/audits/${auditId}/client-access`, { client_email: clientEmail });
+      setClientAccessResult(res.data);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Erreur lors de la création de l\'accès client');
+      setClientAccessOpen(false);
+    } finally {
+      setClientAccessSending(false);
+    }
+  };
+
   const handleMarkFalsePositive = async (claimId, reason) => {
     try {
       const res = await api.patch(`/claims/${claimId}/mark-false-positive`, { reason });
@@ -339,8 +361,85 @@ export default function AuditResults() {
           >
             Dossier preuves ZIP
           </button>
+          {reportInfo && (
+            <button
+              onClick={() => { setClientAccessOpen(true); setClientAccessResult(null); setClientEmail(''); }}
+              className="px-4 py-2.5 rounded-full text-sm font-semibold text-[#1a5c3a] border border-[#1a5c3a]/30 hover:bg-[#eaf4ee] transition-colors"
+            >
+              Accès client
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Modal accès client */}
+      {clientAccessOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+            {clientAccessResult ? (
+              <>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Accès créé</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  {clientAccessResult.email_sent
+                    ? `Un email a été envoyé à ${clientEmail}.`
+                    : 'Le lien est prêt (email non configuré sur le serveur).'}
+                </p>
+                <div className="bg-gray-50 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-gray-400 mb-1">Lien client (valable 90 jours)</p>
+                  <a
+                    href={clientAccessResult.client_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[#1a5c3a] underline break-all"
+                  >
+                    {clientAccessResult.client_url}
+                  </a>
+                </div>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(clientAccessResult.client_url); }}
+                  className="w-full mb-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
+                >
+                  Copier le lien
+                </button>
+                <button
+                  onClick={() => setClientAccessOpen(false)}
+                  className="w-full px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Fermer
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Créer un accès client</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Le client recevra un lien sécurisé pour consulter et télécharger son rapport en lecture seule.
+                </p>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Email du client</label>
+                <input
+                  type="email"
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                  placeholder="client@entreprise.fr"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/30"
+                />
+                <button
+                  onClick={handleSendClientAccess}
+                  disabled={clientAccessSending || !clientEmail.trim()}
+                  className="w-full mb-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors disabled:opacity-50"
+                >
+                  {clientAccessSending ? 'Envoi...' : 'Envoyer le lien'}
+                </button>
+                <button
+                  onClick={() => setClientAccessOpen(false)}
+                  className="w-full px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Annuler
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">{error}</div>

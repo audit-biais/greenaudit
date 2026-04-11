@@ -47,4 +47,6 @@ class AuditResultsResponse(BaseModel):
     global_score: Optional[float] = None
     risk_level: Optional[str] = None
     rules_version: Optional[str] = None
+    pdf_sha256: Optional[str] = None
+    share_token: Optional[str] = None
     claims: List[ClaimWithResultsResponse] = []

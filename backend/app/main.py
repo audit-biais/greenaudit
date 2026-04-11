@@ -15,7 +15,7 @@ from app.limiter import limiter
 from app.utils.security_headers import SecurityHeadersMiddleware
 from app.database import engine, Base
 from app.routers import auth, audits, claims, reports
-from app.routers import monitoring, contact, organizations, admin, evidence, payment, members
+from app.routers import monitoring, contact, organizations, admin, evidence, payment, members, share
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +124,7 @@ app.include_router(monitoring.router)
 app.include_router(contact.router)
 app.include_router(payment.router)
 app.include_router(members.router)
+app.include_router(share.router)
 
 
 @app.get("/health")

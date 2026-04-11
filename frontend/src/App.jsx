@@ -18,6 +18,7 @@ import MentionsLegales from './pages/MentionsLegales';
 import CGV from './pages/CGV';
 import PolitiqueConfidentialite from './pages/PolitiqueConfidentialite';
 import DPA from './pages/DPA';
+import ClientView from './pages/ClientView';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -89,6 +90,7 @@ function AppRoutes() {
       <Route path="/cgv" element={<CGV />} />
       <Route path="/politique-de-confidentialite" element={<PolitiqueConfidentialite />} />
       <Route path="/dpa" element={<DPA />} />
+      <Route path="/client/:token" element={<ClientView />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

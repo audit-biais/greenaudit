@@ -226,6 +226,8 @@ async def analyze_audit(
         global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
         rules_version=audit.rules_version,
+        pdf_sha256=audit.pdf_sha256,
+        share_token=audit.share_token,
         claims=audit.claims,
     )
 
@@ -268,6 +270,8 @@ async def get_audit_results(
         global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
         rules_version=audit.rules_version,
+        pdf_sha256=audit.pdf_sha256,
+        share_token=audit.share_token,
         claims=audit.claims,
     )
 
@@ -414,5 +418,7 @@ async def scan_website_endpoint(
         global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
         rules_version=audit.rules_version,
+        pdf_sha256=audit.pdf_sha256,
+        share_token=audit.share_token,
         claims=audit.claims,
     )
