@@ -146,6 +146,21 @@ export default function AuditResults() {
     }
   };
 
+  const handleDownloadZip = async () => {
+    try {
+      const res = await api.get(`/audits/${auditId}/evidence/download-zip`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dossier_preuves_${results.company_name}.zip`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setError(detail || 'Erreur lors du téléchargement du ZIP');
+    }
+  };
+
   const handleEnableMonitoring = async () => {
     setMonitoringLoading(true);
     setMonitoringError('');
@@ -313,13 +328,12 @@ export default function AuditResults() {
               Télécharger →
             </button>
           )}
-          <a
-            href={`${api.defaults.baseURL}/audits/${auditId}/evidence/download-zip`}
+          <button
+            onClick={handleDownloadZip}
             className="px-4 py-2.5 rounded-full text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
-            download
           >
             Dossier preuves ZIP
-          </a>
+          </button>
         </div>
       </div>
 
