@@ -156,8 +156,13 @@ export default function AuditResults() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      setError(detail || 'Erreur lors du téléchargement du ZIP');
+      try {
+        const text = await err.response?.data?.text();
+        const json = JSON.parse(text);
+        setError(json.detail || 'Erreur lors du téléchargement du ZIP');
+      } catch {
+        setError('Erreur lors du téléchargement du ZIP');
+      }
     }
   };
 
