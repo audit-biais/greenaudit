@@ -1287,25 +1287,12 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
                 styles["reg_ref"],
             ))
 
-        # Encadré autour du bloc allégation (bordure fine)
-        claim_block = Table(
-            [[claim_elements]],
-            colWidths=[page_width],
-        )
-        claim_block.setStyle(TableStyle([
-            ("BOX",          (0, 0), (-1, -1), 0.5, colors.HexColor(_C_BORDER)),
-            ("LEFTPADDING",  (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING",   (0, 0), (-1, -1), 8),
-            ("BOTTOMPADDING",(0, 0), (-1, -1), 8),
-            ("BACKGROUND",   (0, 0), (-1, -1), colors.white),
-        ]))
-
         if first_claim:
-            elements.append(KeepTogether([h1_title, claim_block]))
+            elements.append(h1_title)
+            elements.append(Spacer(1, 3 * mm))
             first_claim = False
-        else:
-            elements.append(KeepTogether([claim_block]))
+
+        elements.extend(claim_elements)
         elements.append(Spacer(1, 5 * mm))
 
     return elements
