@@ -9,7 +9,7 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import FileResponse
 from typing import Optional
 
@@ -326,12 +326,12 @@ async def get_client_access(
     return result
 
 
-@router.delete("/{audit_id}/client-access", status_code=204)
+@router.delete("/{audit_id}/client-access", status_code=204, response_class=Response)
 async def revoke_client_access(
     audit_id: UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
+):
     """Révoque l'accès client (le lien devient immédiatement inaccessible)."""
     audit_result = await db.execute(
         select(Audit).where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
