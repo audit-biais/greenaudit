@@ -11,6 +11,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
+from typing import Optional
+
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -201,8 +203,8 @@ def _ca_to_dict(ca: ClientAccess, frontend_url: str) -> dict:
 
 class ClientAccessRequest(BaseModel):
     client_email: str
-    validity_days: int | None = 90  # None = illimité
-    custom_message: str | None = None
+    validity_days: Optional[int] = 90  # None = illimité
+    custom_message: Optional[str] = None
 
 
 @router.post("/{audit_id}/client-access")
