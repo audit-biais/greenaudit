@@ -18,7 +18,7 @@ from app.models.user import User
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 PLAN_LIMITS = {
-    "free": 1,
+    "starter": 1,
     "essentiel": 10,
     "pro": 9999,
     "enterprise": 9999,
@@ -90,7 +90,7 @@ async def get_overview(
             "org_id": None,
             "org_name": "— Sans organisation —",
             "admin_email": None,
-            "plan": "free",
+            "plan": "starter",
             "subscription_status": "inactive",
             "audits_this_month": sum(u.audits_this_month for u in solo_users),
             "audits_limit": 0,
@@ -127,7 +127,7 @@ async def set_org_plan(
         raise HTTPException(status_code=404, detail="Organisation introuvable")
 
     org.subscription_plan = data.plan
-    org.subscription_status = "active" if data.plan != "free" else "inactive"
+    org.subscription_status = "active" if data.plan != "starter" else "inactive"
     org.audits_limit = PLAN_LIMITS[data.plan]
     await db.commit()
     return {"message": f"Plan mis à jour : {data.plan}"}

@@ -42,7 +42,7 @@ class Organization(Base):
     # Abonnement Stripe (au niveau org — pool partagé)
     stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    subscription_plan: Mapped[str] = mapped_column(String(50), default="free")
+    subscription_plan: Mapped[str] = mapped_column(String(50), default="starter")
     subscription_status: Mapped[str] = mapped_column(String(50), default="inactive")
 
     # Quotas d'audits (pool partagé entre tous les membres)

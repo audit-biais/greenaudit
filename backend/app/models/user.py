@@ -44,7 +44,7 @@ class User(Base):
     # Stripe (retrocompat user sans org)
     stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    subscription_plan: Mapped[str] = mapped_column(String(50), default="free")
+    subscription_plan: Mapped[str] = mapped_column(String(50), default="starter")
     subscription_status: Mapped[str] = mapped_column(String(50), default="inactive")
 
     # Quotas (retrocompat user sans org)

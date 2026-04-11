@@ -1,11 +1,3 @@
-from app.schemas.partner import (
-    PartnerRegister,
-    PartnerLogin,
-    PartnerUpdate,
-    PartnerBrandingUpdate,
-    PartnerResponse,
-    TokenResponse,
-)
 from app.schemas.audit import (
     AuditCreate,
     AuditSummaryResponse,
@@ -22,12 +14,6 @@ from app.schemas.claim_result import (
 )
 
 __all__ = [
-    "PartnerRegister",
-    "PartnerLogin",
-    "PartnerUpdate",
-    "PartnerBrandingUpdate",
-    "PartnerResponse",
-    "TokenResponse",
     "AuditCreate",
     "AuditSummaryResponse",
     "AuditDetailResponse",

@@ -15,8 +15,8 @@ def get_user_or_ip(request: Request) -> str:
         try:
             from app.auth.jwt import decode_access_token
             payload = decode_access_token(token)
-            if payload and payload.get("user_id"):
-                return f"user:{payload['user_id']}"
+            if payload and payload.get("sub"):
+                return f"user:{payload['sub']}"
         except Exception:
             pass
     return get_remote_address(request)

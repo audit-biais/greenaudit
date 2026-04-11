@@ -28,7 +28,7 @@ class OrgInfo(BaseModel):
     has_logo: bool = False
     brand_primary_color: str = "#1B5E20"
     brand_secondary_color: str = "#2E7D32"
-    subscription_plan: str = "free"
+    subscription_plan: str = "starter"
     subscription_status: str = "inactive"
     audits_this_month: int = 0
     audits_limit: int = 1
