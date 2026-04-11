@@ -14,7 +14,7 @@ from app.config import settings
 from app.limiter import limiter
 from app.utils.security_headers import SecurityHeadersMiddleware
 from app.database import engine, Base
-from app.routers import auth, partners, audits, claims, reports
+from app.routers import auth, audits, claims, reports
 from app.routers import monitoring, contact, organizations, admin, evidence, payment, members
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,6 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(organizations.router)
 app.include_router(admin.router)
-app.include_router(partners.router)
 app.include_router(audits.router)
 app.include_router(claims.router)
 app.include_router(reports.router)
