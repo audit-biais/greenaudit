@@ -137,6 +137,8 @@ async def extract_claims_with_claude(
 Analyse le texte suivant extrait d'un site web et identifie les allégations environnementales — y compris les vagues et génériques, car ce sont elles qui violent EmpCo.
 
 INCLURE :
+RÈGLE D'AUTO-ATTRIBUTION : L'allégation doit être une promesse, un engagement ou une description de performance de l'entreprise auditée elle-même — pas d'un tiers, pas du secteur en général, pas d'un mécanisme physique ou économique.
+
 1. Termes génériques environnementaux même en phrase courte : "bon pour la planète", "éco-responsable", "durable", "vert", "green", "respectueux de l'environnement", "naturel", "écologique", "zéro déchet", "neutre en carbone", "climate friendly", "sustainable"
 2. Allégations sur : déchets, émissions, emballages, recyclage, énergie, eau, biodiversité, forêts, carbone
 3. Circuit court ou local UNIQUEMENT si explicitement présenté comme bénéfice environnemental (ex: "circuit court pour réduire notre impact carbone") — PAS si c'est un argument de fraîcheur ou de qualité
@@ -151,6 +153,9 @@ EXCLURE ABSOLUMENT :
 - Noms de gamme ou rayons sans allégation : "rayon bio", "épicerie bio", "boulangerie naturelle"
 - Provenance et origine sans lien environnemental explicite : "local", "fait sur place", "made in France", "produits français", "à moins de X km" quand l'argument est la fraîcheur ou la qualité
 - Slogans de fraîcheur ou de qualité : "du champ à l'assiette", "cuisinés du jour", "frais & locaux"
+- Mentions de tiers ou concurrents : allégations attribuées à d'autres marques ou entreprises que celle auditée ("Nike conçoit ses kits avec du polyester recyclé", "les marques font des efforts"). Seules les allégations auto-attribuées comptent (sujet = nous/notre marque/nos produits, ou absence de sujet tiers nommé)
+- Contenu éditorial, pédagogique ou narratif : explications générales sur un mécanisme environnemental, opinions sur le secteur, storytelling sans engagement de l'entreprise ("le recyclage évite la pollution", "éviter que des bouteilles terminent dans les océans", "les efforts des marques sont de vraies avancées"). Une allégation doit être une promesse ou une description de performance de l'entreprise auditée, pas une explication du monde
+- Noms de programmes, collections ou campagnes : marques, slogans déposés, noms de lignes de produits cités sans description du bénéfice environnemental concret ("Move to Zero", "Plan Planète", "Collection Green"). Si le nom est accompagné d'un engagement chiffré ou décrit dans la même phrase, l'engagement lui-même est une allégation, pas le nom
 - Dons et actions sociales : "1% for the Planet", "reversé à", "nous soutenons", "partenaire de"
 
 RÈGLE CRITIQUE — FORMAT MINIMUM :
@@ -165,7 +170,7 @@ Une allégation doit être une PHRASE ou EXPRESSION avec au minimum un verbe ou 
 - "bon pour la planète" → allégation valide
 
 EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "40% de matières recyclées", "neutre en carbone depuis 2022", "fabriqué de façon durable", "zéro déchet d'ici 2025", "vêtements éco-responsables"
-EXEMPLES INVALIDES : "BIO", "HVE", "6 500 BIO", "ANTI-GASPI", "Boutique bio", "Primeur local pour plus de fraîcheur", "Nutriscore A", "sans sucre ajouté", "qualité artisanale", "frais, local, fait sur place", "made in France", "produits locaux cuisinés du jour", "du champ à l'assiette", "à moins de 50km de vos bureaux", "traiteur engagé", "alimentation saine et éthique", "respectant votre bien-être", "1% reversé à 1% for the Planet", "nous soutenons l'association X"
+EXEMPLES INVALIDES : "BIO", "HVE", "6 500 BIO", "ANTI-GASPI", "Boutique bio", "Primeur local pour plus de fraîcheur", "Nutriscore A", "sans sucre ajouté", "qualité artisanale", "frais, local, fait sur place", "made in France", "produits locaux cuisinés du jour", "du champ à l'assiette", "à moins de 50km de vos bureaux", "traiteur engagé", "alimentation saine et éthique", "respectant votre bien-être", "1% reversé à 1% for the Planet", "nous soutenons l'association X", "Nike conçoit ses kits avec du polyester recyclé", "les efforts des marques sont de vraies avancées", "Move to Zero", "le recyclage réduit la pollution liée au polyester", "éviter que des bouteilles terminent dans les océans"
 
 Allégations déjà connues (ne pas les répéter) :
 {existing_str}
