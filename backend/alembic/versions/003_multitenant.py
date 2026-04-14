@@ -22,7 +22,7 @@ import uuid
 
 # revision identifiers
 revision = '003_multitenant'
-down_revision = '002_monitoring'
+down_revision = '002'
 branch_labels = None
 depends_on = None
 
