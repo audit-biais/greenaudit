@@ -19,10 +19,12 @@ def _normalize(text: str) -> str:
 BLACKLIST_TERMS: list = [
     # --- Annexe I, point 4bis + considérant 9 de la directive EmpCo ---
     "écologique",
+    "écoresponsable",
     "éco-responsable",
     "éco responsable",
     "eco-responsable",
     "eco responsable",
+    "ecoresponsable",
     "éco-friendly",
     "eco-friendly",
     "vert",

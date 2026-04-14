@@ -1,0 +1,13 @@
+{
+  "_comment": "Copier ce fichier pour chaque site. scraped_text = markdown figé capturé une fois (ne pas rescaper).",
+  "site": "exemple.fr",
+  "scraped_at": "2026-04-12",
+  "scraped_text": "...coller ici le markdown retourné par scrape_website()...",
+  "true_claims": [
+    "allégation 1 telle qu'extraite par Claude",
+    "allégation 2"
+  ],
+  "must_not_extract": [
+    "exemple de faux positif connu"
+  ]
+}

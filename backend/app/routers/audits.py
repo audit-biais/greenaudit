@@ -21,6 +21,7 @@ from app.models.client_access import ClientAccess
 from app.schemas.audit import AuditCreate, AuditDetailResponse, AuditSummaryResponse, ClientAccessSummary
 from app.schemas.claim_result import AuditResultsResponse
 from app.services.analysis_engine import analyze_claim, RULES_VERSION
+from app.services.regulatory_classifier import classify_claim_regime
 from app.services.monitoring_service import scrape_website, extract_claims_with_claude
 from app.limiter import limiter, get_user_or_ip
 from app.services.scoring import calculate_global_score, compute_verdict_counts
@@ -205,6 +206,21 @@ async def analyze_audit(
     all_verdicts: List[str] = []
     for claim in audit.claims:
         has_ecolabel = evidence_by_claim.get(claim.id, False)
+
+        # Étape 2 — Classification du régime juridique (avant les 8 règles)
+        metadata = {
+            "has_label": claim.has_label,
+            "label_is_certified": claim.label_is_certified,
+            "scope": claim.scope,
+            "is_future_commitment": claim.is_future_commitment,
+            "has_proof": claim.has_proof,
+            "proof_type": claim.proof_type,
+        }
+        classification = await classify_claim_regime(claim.claim_text, metadata)
+        claim.regulatory_basis = classification["regulatory_basis"]
+        claim.regime = classification["regime"]
+
+        # Étape 3 — Évaluation (8 règles existantes, inchangées)
         results, overall_verdict = analyze_claim(
             claim,
             has_ecolabel_evidence=has_ecolabel,
@@ -351,7 +367,12 @@ async def scan_website_endpoint(
             detail="Impossible de récupérer le contenu du site. Vérifiez l'URL.",
         )
 
-    claims_text = await extract_claims_with_claude(page_text, [])
+    claims_text = await extract_claims_with_claude(
+        page_text,
+        [],
+        audited_company_name=data.company_name,
+        audited_website_url=data.url,
+    )
     if not claims_text:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

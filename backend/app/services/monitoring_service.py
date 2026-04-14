@@ -112,11 +112,16 @@ async def _scrape_jina(url: str) -> str:
 
 
 async def extract_claims_with_claude(
-    text: str, existing_claims: List[str]
+    text: str,
+    existing_claims: List[str],
+    audited_company_name: str = "",
+    audited_website_url: str = "",
 ) -> List[str]:
     """
     Utilise Claude Haiku pour extraire les nouvelles allégations environnementales.
     Retourne uniquement les claims absentes de existing_claims.
+    audited_company_name et audited_website_url permettent à Haiku de discriminer
+    les allégations auto-attribuées des mentions de marques tierces.
     """
     if not settings.ANTHROPIC_API_KEY or not text.strip():
         return []
@@ -132,7 +137,26 @@ async def extract_claims_with_claude(
             else "Aucune"
         )
 
-        prompt = f"""Tu es un expert en conformité à la directive EmpCo (EU 2024/825) sur les allégations environnementales.
+        company_name = audited_company_name or "l'entreprise auditée"
+        company_url = audited_website_url or "inconnue"
+        company_header = f"""ENTREPRISE AUDITÉE : {company_name}
+SITE WEB AUDITÉ : {company_url}
+
+RÈGLE D'OR ABSOLUE — à appliquer AVANT toutes les autres règles :
+Tu n'extrais que les allégations environnementales faites par {company_name} sur ses propres produits, services, ou engagements.
+
+Tu EXCLUS SYSTÉMATIQUEMENT :
+- Toute allégation dont le sujet grammatical est une autre marque ou entreprise (Nike, adidas, un fournisseur, un partenaire, un concurrent cité en exemple)
+- Toute description d'un produit dont la marque n'est pas {company_name}
+- Toute explication générique du fonctionnement d'un mécanisme environnemental non attribuée à {company_name}
+
+En cas de doute sur l'attribution, EXCLUS plutôt qu'inclus.
+
+---
+
+"""
+
+        prompt = f"""{company_header}Tu es un expert en conformité à la directive EmpCo (EU 2024/825) sur les allégations environnementales.
 
 Analyse le texte suivant extrait d'un site web et identifie les allégations environnementales — y compris les vagues et génériques, car ce sont elles qui violent EmpCo.
 
@@ -238,7 +262,12 @@ async def run_monitoring_check(config_id: UUID, db: AsyncSession) -> int:
         await db.commit()
         return 0
 
-    new_claims = await extract_claims_with_claude(page_text, existing_claims)
+    new_claims = await extract_claims_with_claude(
+        page_text,
+        existing_claims,
+        audited_company_name=audit.company_name or "",
+        audited_website_url=audit.website_url or "",
+    )
 
     alerts_created = 0
     for claim_text in new_claims:

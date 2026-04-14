@@ -62,6 +62,13 @@ class Claim(Base):
     is_false_positive: Mapped[bool] = mapped_column(Boolean, default=False)
     false_positive_reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
+    # Classification du régime juridique EmpCo (renseigné par regulatory_classifier)
+    # Valeurs regulatory_basis : annexe_I_2bis, annexe_I_4bis, annexe_I_4ter,
+    #   annexe_I_4quater, annexe_I_10bis, article_6_1d, article_6_general
+    # Valeurs regime : liste_noire, cas_par_cas
+    regulatory_basis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    regime: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
