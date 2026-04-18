@@ -34,6 +34,25 @@ from app.utils.blacklist import (
     _normalize,
 )
 
+# Patterns lexicaux indiquant un engagement futur (fallback si metadata manquant)
+_FUTURE_COMMITMENT_PATTERNS = [
+    r"\bnous\s+visons\s+à\b",
+    r"\bnous\s+(nous\s+)?engageons\s+à\b",
+    r"\bd['']ici\s+20\d{2}\b",
+    r"\bobjectif\s+de\b",
+    r"\bambition\s+de\b",
+    r"\bhorizon\s+20\d{2}\b",
+    r"\bà\s+terme\b",
+]
+
+
+def _is_future_commitment_lexical(text: str) -> bool:
+    for pattern in _FUTURE_COMMITMENT_PATTERNS:
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+    return False
+
+
 # Patterns indiquant que la neutralité carbone est présentée hors compensation
 _NO_COMPENSATION_PATTERNS = [
     r"sans\s+compensation",
@@ -160,7 +179,8 @@ async def classify_claim_regime(
         }
 
     # ── Règle 5 : engagement futur (Art. 6, §2, point d) ─────────────────────
-    if claim_metadata.get("is_future_commitment"):
+    # Déclenché par metadata OU par détection lexicale (fallback scan mode)
+    if claim_metadata.get("is_future_commitment") or _is_future_commitment_lexical(text):
         return {
             "regulatory_basis": "article_6_1d",
             "regime": "cas_par_cas",

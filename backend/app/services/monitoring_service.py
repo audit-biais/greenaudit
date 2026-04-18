@@ -148,7 +148,8 @@ Tu n'extrais que les allégations environnementales faites par {company_name} su
 Tu EXCLUS SYSTÉMATIQUEMENT :
 - Toute allégation dont le sujet grammatical est une autre marque ou entreprise (Nike, adidas, un fournisseur, un partenaire, un concurrent cité en exemple)
 - Toute description d'un produit dont la marque n'est pas {company_name}
-- Toute explication générique du fonctionnement d'un mécanisme environnemental non attribuée à {company_name}
+- Toute explication générique du fonctionnement d'un mécanisme environnemental non attribuée à {company_name} : "le recyclage permet de", "en recyclant on évite", "la pollution est réduite quand on", "le compostage transforme". Ces phrases décrivent comment le monde fonctionne, pas ce que {company_name} fait ou promet.
+- Toute description factuelle d'activité industrielle ou commerciale sans affirmation de bénéfice environnemental : "création de X", "fabrication de X", "production de X", "construction de X", "installation de X" suivis d'un objet technique (réservoirs, usines, machines, équipements) sans qu'une incidence positive sur l'environnement soit explicitement affirmée. Une description de ce que l'entreprise FAIT n'est pas une allégation de ce qu'elle APPORTE à l'environnement.
 
 En cas de doute sur l'attribution, EXCLUS plutôt qu'inclus.
 
@@ -194,7 +195,7 @@ Une allégation doit être une PHRASE ou EXPRESSION avec au minimum un verbe ou 
 - "bon pour la planète" → allégation valide
 
 EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "40% de matières recyclées", "neutre en carbone depuis 2022", "fabriqué de façon durable", "zéro déchet d'ici 2025", "vêtements éco-responsables"
-EXEMPLES INVALIDES : "BIO", "HVE", "6 500 BIO", "ANTI-GASPI", "Boutique bio", "Primeur local pour plus de fraîcheur", "Nutriscore A", "sans sucre ajouté", "qualité artisanale", "frais, local, fait sur place", "made in France", "produits locaux cuisinés du jour", "du champ à l'assiette", "à moins de 50km de vos bureaux", "traiteur engagé", "alimentation saine et éthique", "respectant votre bien-être", "1% reversé à 1% for the Planet", "nous soutenons l'association X", "Nike conçoit ses kits avec du polyester recyclé", "les efforts des marques sont de vraies avancées", "Move to Zero", "le recyclage réduit la pollution liée au polyester", "éviter que des bouteilles terminent dans les océans"
+EXEMPLES INVALIDES : "BIO", "HVE", "6 500 BIO", "ANTI-GASPI", "Boutique bio", "Primeur local pour plus de fraîcheur", "Nutriscore A", "sans sucre ajouté", "qualité artisanale", "frais, local, fait sur place", "made in France", "produits locaux cuisinés du jour", "du champ à l'assiette", "à moins de 50km de vos bureaux", "traiteur engagé", "alimentation saine et éthique", "respectant votre bien-être", "1% reversé à 1% for the Planet", "nous soutenons l'association X", "Nike conçoit ses kits avec du polyester recyclé", "les efforts des marques sont de vraies avancées", "Move to Zero", "le recyclage réduit la pollution liée au polyester", "éviter que des bouteilles terminent dans les océans", "création de réservoirs de biocarburants", "construction d'une nouvelle usine", "installation de panneaux solaires" (sans affirmation de bénéfice), "le recyclage évite la pollution", "en le recyclant nul besoin de le produire", "la production de polyester est réduite en le recyclant"
 
 Allégations déjà connues (ne pas les répéter) :
 {existing_str}
