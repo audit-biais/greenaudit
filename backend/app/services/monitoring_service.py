@@ -162,18 +162,29 @@ En cas de doute sur l'attribution, EXCLUS plutôt qu'inclus.
 Analyse le texte suivant extrait d'un site web et identifie les allégations environnementales — y compris les vagues et génériques, car ce sont elles qui violent EmpCo.
 
 ══════════════════════════════════════════════════
-TEST PRÉALABLE OBLIGATOIRE — à appliquer avant toute extraction :
+TEST PRÉALABLE OBLIGATOIRE — à appliquer AVANT toute extraction
 ══════════════════════════════════════════════════
-Pour chaque phrase candidate, pose-toi cette question unique :
+Pour chaque phrase candidate, applique ce raisonnement en 2 étapes :
 
-  « Cette phrase AFFIRME-T-ELLE que {company_name} a, aura, ou produit un impact positif/neutre/réduit sur l'environnement ? »
+ÉTAPE 1 — La phrase est-elle une NOMINALISATION D'ACTION ?
+Une nominalisation d'action commence par : "création de", "construction de", "installation de", "fabrication de", "production de", "développement de", "mise en place de", "réalisation de" — suivis d'un objet.
+→ Si oui : c'est une description de ce que l'entreprise FAIT, pas de ce qu'elle APPORTE à l'environnement. EXCLURE systématiquement.
 
-Si la réponse est NON → NE PAS extraire, peu importe les mots environnementaux présents.
+EXEMPLES ÉTAPE 1 (à exclure sans exception) :
+• "création de réservoirs de biocarburants" → EXCLU. "Création de" = nominalisation. La phrase ne dit pas que les biocarburants améliorent le bilan carbone de l'entreprise. C'est une activité industrielle décrite, pas une allégation.
+• "installation de panneaux photovoltaïques" → EXCLU. Même logique.
+• "construction d'une chaufferie biomasse" → EXCLU. Même logique.
 
-Cas typiques qui échouent ce test et doivent être EXCLUS :
-• Descriptions d'activités industrielles : "création de X", "construction de X", "installation de X", "fabrication de X" suivis d'un objet technique. Le fait que l'objet soit "biocarburant", "panneau solaire" ou "réservoir vert" ne transforme pas une description d'activité en allégation environnementale. Ex. EXCLU : "création de réservoirs de biocarburants", "installation de panneaux photovoltaïques", "construction d'une usine à faible émission".
-• Descriptions de mécanismes physiques ou économiques : une phrase dont le sujet est un mécanisme général ("le recyclage", "la production", "la fermentation", "la photosynthèse") et non {company_name}. Ex. EXCLU : "le recyclage réduit la pollution", "les biocarburants émettent moins de CO2 que le pétrole".
-• Listes d'objectifs internes sans affirmation de résultat : "objectif de réduire", "nous travaillons à", "projet en cours de" sans engagement chiffré ni résultat annoncé.
+ÉTAPE 2 — Si ce n'est pas une nominalisation, la phrase AFFIRME-T-ELLE un impact environnemental positif/neutre/réduit de {company_name} ?
+→ Si non : EXCLURE.
+
+EXEMPLES ÉTAPE 2 (à exclure) :
+• "le recyclage réduit la pollution" → EXCLU. Le sujet est "le recyclage" (mécanisme général), pas {company_name}.
+• "les biocarburants émettent moins de CO2 que le pétrole" → EXCLU. Fait général, pas une allégation de l'entreprise.
+
+EXEMPLES À INCLURE (franchissent les 2 étapes) :
+• "nos biocarburants réduisent nos émissions de 30%" → INCLUS. Sujet = "nos", affirmation d'impact chiffré.
+• "grâce à nos réservoirs de biocarburants, nous réduisons notre empreinte carbone" → INCLUS. Affirmation d'impact attribuée à l'entreprise.
 ══════════════════════════════════════════════════
 
 INCLURE :
