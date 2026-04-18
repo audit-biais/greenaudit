@@ -161,6 +161,21 @@ En cas de doute sur l'attribution, EXCLUS plutôt qu'inclus.
 
 Analyse le texte suivant extrait d'un site web et identifie les allégations environnementales — y compris les vagues et génériques, car ce sont elles qui violent EmpCo.
 
+══════════════════════════════════════════════════
+TEST PRÉALABLE OBLIGATOIRE — à appliquer avant toute extraction :
+══════════════════════════════════════════════════
+Pour chaque phrase candidate, pose-toi cette question unique :
+
+  « Cette phrase AFFIRME-T-ELLE que {company_name} a, aura, ou produit un impact positif/neutre/réduit sur l'environnement ? »
+
+Si la réponse est NON → NE PAS extraire, peu importe les mots environnementaux présents.
+
+Cas typiques qui échouent ce test et doivent être EXCLUS :
+• Descriptions d'activités industrielles : "création de X", "construction de X", "installation de X", "fabrication de X" suivis d'un objet technique. Le fait que l'objet soit "biocarburant", "panneau solaire" ou "réservoir vert" ne transforme pas une description d'activité en allégation environnementale. Ex. EXCLU : "création de réservoirs de biocarburants", "installation de panneaux photovoltaïques", "construction d'une usine à faible émission".
+• Descriptions de mécanismes physiques ou économiques : une phrase dont le sujet est un mécanisme général ("le recyclage", "la production", "la fermentation", "la photosynthèse") et non {company_name}. Ex. EXCLU : "le recyclage réduit la pollution", "les biocarburants émettent moins de CO2 que le pétrole".
+• Listes d'objectifs internes sans affirmation de résultat : "objectif de réduire", "nous travaillons à", "projet en cours de" sans engagement chiffré ni résultat annoncé.
+══════════════════════════════════════════════════
+
 INCLURE :
 RÈGLE D'AUTO-ATTRIBUTION : L'allégation doit être une promesse, un engagement ou une description de performance de l'entreprise auditée elle-même — pas d'un tiers, pas du secteur en général, pas d'un mécanisme physique ou économique.
 
