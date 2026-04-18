@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from uuid import UUID
@@ -109,6 +110,67 @@ async def _scrape_jina(url: str) -> str:
                 continue
 
     return collected_text[:8000]
+
+
+# ---------------------------------------------------------------------------
+# Filtre post-extraction déterministe — descriptions factuelles industrielles
+# ---------------------------------------------------------------------------
+
+# Verbes d'action industrielle en début de phrase (nominalisations)
+_INDUSTRIAL_ACTION_PREFIXES = re.compile(
+    r"^(création|fabrication|production|construction|installation|"
+    r"mise en place|développement|déploiement|réalisation|"
+    r"ouverture|lancement|livraison)\b",
+    re.IGNORECASE,
+)
+
+# Objets techniques qui indiquent une description d'infrastructure
+_TECHNICAL_OBJECT_TERMS = re.compile(
+    r"\b(réservoir[s]?|usine[s]?|centrale[s]?|infrastructure[s]?|"
+    r"équipement[s]?|machine[s]?|borne[s]?|panneau[x]?|"
+    r"canalisation[s]?|tuyau[x]?|citerne[s]?|silo[s]?|"
+    r"entrepôt[s]?|bâtiment[s]?|site[s]?\s+industriel[s]?)\b",
+    re.IGNORECASE,
+)
+
+# Mots indiquant un bénéfice environnemental explicite
+_ENVIRONMENTAL_BENEFIT_TERMS = re.compile(
+    r"\b(réduire|réduction|limiter|limitation|préserver|protéger|"
+    r"durable[s]?|écologique[s]?|responsable[s]?|vert[s]?|verte[s]?|"
+    r"propre[s]?|recyclé[s]?|recyclée[s]?|bas.carbone|"
+    r"moins.d.émission|empreinte.réduite|impact.réduit|"
+    r"économie[s]?.d.énergie|économe[s]?.en)\b",
+    re.IGNORECASE,
+)
+
+
+def filter_false_positives(claims: List[str]) -> List[str]:
+    """
+    Filtre post-extraction déterministe — s'exécute après extract_claims_with_claude().
+
+    Supprime les claims qui décrivent une activité industrielle factuelle
+    sans affirmation de bénéfice environnemental. Ces phrases passent parfois
+    à travers le prompt Haiku malgré les instructions d'exclusion.
+
+    Critères de suppression (les 3 doivent être vrais) :
+    1. La phrase commence par un verbe d'action industrielle (création de, installation de...)
+    2. La phrase contient un objet technique (réservoirs, usine, panneaux...)
+    3. La phrase ne contient PAS de mot de bénéfice environnemental (réduire, durable...)
+    """
+    filtered = []
+    for claim in claims:
+        text = claim.strip()
+        is_industrial_action = bool(_INDUSTRIAL_ACTION_PREFIXES.search(text))
+        has_technical_object = bool(_TECHNICAL_OBJECT_TERMS.search(text))
+        has_env_benefit = bool(_ENVIRONMENTAL_BENEFIT_TERMS.search(text))
+
+        if is_industrial_action and has_technical_object and not has_env_benefit:
+            logger.info(f"filter_false_positives: claim exclue (description factuelle) — '{text}'")
+            continue
+
+        filtered.append(claim)
+
+    return filtered
 
 
 async def extract_claims_with_claude(
@@ -251,7 +313,8 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour."""
                 response_text = response_text[4:]
 
         data = json.loads(response_text)
-        return [str(c) for c in data.get("claims", [])]
+        raw_claims = [str(c) for c in data.get("claims", [])]
+        return filter_false_positives(raw_claims)
 
     except Exception as exc:
         logger.error(f"Erreur Claude API lors de l'extraction: {exc}")
