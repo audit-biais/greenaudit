@@ -100,6 +100,51 @@ def test_nhesite_pas_orienter_recherches_est_filtre() -> None:
     assert result == []
 
 
+def test_coton_cultive_sans_pesticides_est_filtre() -> None:
+    """Sujet matériau + pas d'attribution → filtré sans marqueur de mécanisme."""
+    result = filter_false_positives(
+        ["Le coton durable est cultivé sans pesticides, insecticides ou engrais chimiques"],
+        company_name="JD Sports",
+    )
+    assert result == []
+
+
+def test_polyester_recycle_ecoresponsable_est_filtre() -> None:
+    result = filter_false_positives(
+        ["Le polyester recyclé est pleinement écoresponsable"],
+        company_name="JD Sports",
+    )
+    assert result == []
+
+
+def test_polyester_recycle_limite_dechets_est_filtre() -> None:
+    result = filter_false_positives(
+        ["Le polyester recyclé limite les déchets liés au polyester"],
+        company_name="JD Sports",
+    )
+    assert result == []
+
+
+# ── Bloc 5 — Qualité produit sans dimension environnementale ─────────────────
+
+def test_coton_plus_solide_est_filtre() -> None:
+    result = filter_false_positives(
+        ["Le coton durable rend des vêtements plus solides et plus résistants"]
+    )
+    assert result == []
+
+
+def test_produit_plus_confortable_est_filtre() -> None:
+    result = filter_false_positives(["ces vêtements sont plus confortables et de meilleure qualité"])
+    assert result == []
+
+
+def test_stylé_ecoresponsable_est_garde() -> None:
+    """Contient terme environnemental → garder malgré qualité."""
+    claims = ["Tu peux rester stylé tout en étant écoresponsable"]
+    assert filter_false_positives(claims, company_name="JD Sports") == claims
+
+
 def test_decouvre_produits_ecoresponsables_chez_jd_est_garde() -> None:
     """Contient navigation ET allégation avec attribution → garder."""
     claims = ["découvre les produits écoresponsables chez JD"]

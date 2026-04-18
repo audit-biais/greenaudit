@@ -161,6 +161,19 @@ _ABSOLUTE_MECHANISM_MARKERS = re.compile(
     re.IGNORECASE,
 )
 
+# Bloc 5 — Qualité produit sans dimension environnementale
+_PRODUCT_QUALITY_TERMS = re.compile(
+    r"\b(plus solide[s]?|plus résistant[s]?|plus confortable[s]?|"
+    r"plus doux|plus souple[s]?|meilleure qualité|haute qualité|"
+    r"plus agréable[s]?|plus robuste[s]?|plus léger[s]?|plus légère[s]?)\b",
+    re.IGNORECASE,
+)
+_ENV_TERMS_SIMPLE = re.compile(
+    r"\b(environnement|écolog|recyclé|durable|carbone|émission|"
+    r"déchet|pollution|climate|biodiversité|écoresponsable)\b",
+    re.IGNORECASE,
+)
+
 # Bloc 3 — Collectifs génériques (les marques, elles deviennent...)
 _GENERIC_COLLECTIVE_SUBJECT = re.compile(
     r"^(elles|ils)\s+(deviennent|sont|font|vont|s['']engagent)\b"
@@ -210,10 +223,11 @@ def filter_false_positives(claims: List[str], company_name: str = "") -> List[st
         ):
             excluded = True
 
-        # Bloc 2a : sujet matériau + marqueur mécanisme + pas d'attribution
+        # Bloc 2a : sujet matériau/processus + pas d'attribution
+        # (le marqueur de mécanisme n'est plus requis : tout énoncé sur un matériau
+        # sans attribution à l'entreprise est une description générale, pas une allégation)
         elif (
             _IMPERSONAL_SUBJECT.search(text)
-            and _MECHANISM_MARKERS.search(text)
             and not attribution.search(text)
         ):
             excluded = True
@@ -242,6 +256,13 @@ def filter_false_positives(claims: List[str], company_name: str = "") -> List[st
 
         # Bloc 4 : navigation UI
         elif _UI_NAVIGATION.search(text):
+            excluded = True
+
+        # Bloc 5 : qualité produit sans dimension environnementale
+        elif (
+            _PRODUCT_QUALITY_TERMS.search(text)
+            and not _ENV_TERMS_SIMPLE.search(text)
+        ):
             excluded = True
 
         if excluded:
