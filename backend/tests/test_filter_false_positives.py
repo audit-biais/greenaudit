@@ -64,6 +64,47 @@ def test_liste_mixte_filtre_correctement() -> None:
     assert "réduire notre empreinte écologique" in result
 
 
+# ── Bloc 2 — Mécanismes physiques impersonnels (JD Sports) ───────────────────
+
+def test_coton_consomme_moins_eau_est_filtre() -> None:
+    """Sujet = matériau + comparaison → mécanisme impersonnel."""
+    result = filter_false_positives(
+        ['le coton durable consomme moins d\'eau que le coton "normal"']
+    )
+    assert result == []
+
+
+def test_polyester_pollution_reduite_est_filtre() -> None:
+    result = filter_false_positives([
+        "la pollution liée à la production de polyester est réduite, "
+        "car en le recyclant, nul besoin de le produire"
+    ])
+    assert result == []
+
+
+def test_materiau_limite_production_est_filtre() -> None:
+    result = filter_false_positives([
+        "ce matériau limite la production inutile de polyester"
+    ])
+    assert result == []
+
+
+def test_coton_durable_avec_attribution_jd_est_garde() -> None:
+    """Même sujet matériau mais avec attribution à JD → garder."""
+    result = filter_false_positives([
+        "chez JD, le coton durable consomme moins d'eau"
+    ])
+    assert result == ["chez JD, le coton durable consomme moins d'eau"]
+
+
+def test_notre_coton_recycle_est_garde() -> None:
+    """'notre' = attribution à l'entreprise → garder."""
+    result = filter_false_positives([
+        "notre coton recyclé consomme moins d'eau que le coton classique"
+    ])
+    assert result == ["notre coton recyclé consomme moins d'eau que le coton classique"]
+
+
 # ── Cas limites ───────────────────────────────────────────────────────────────
 
 def test_liste_vide_retourne_vide() -> None:
@@ -73,5 +114,4 @@ def test_liste_vide_retourne_vide() -> None:
 def test_claim_sans_objet_technique_est_garde() -> None:
     """Verbe d'action mais sans objet technique → pas filtré."""
     result = filter_false_positives(["création d'un programme de réduction carbone"])
-    # "programme" n'est pas dans _TECHNICAL_OBJECT_TERMS → gardé
     assert result == ["création d'un programme de réduction carbone"]

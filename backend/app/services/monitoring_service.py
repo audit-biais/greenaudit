@@ -116,7 +116,10 @@ async def _scrape_jina(url: str) -> str:
 # Filtre post-extraction déterministe — descriptions factuelles industrielles
 # ---------------------------------------------------------------------------
 
-# Verbes d'action industrielle en début de phrase (nominalisations)
+# ---------------------------------------------------------------------------
+# Bloc 1 — Nominalisations d'action industrielle sans bénéfice environnemental
+# ---------------------------------------------------------------------------
+
 _INDUSTRIAL_ACTION_PREFIXES = re.compile(
     r"^(création|fabrication|production|construction|installation|"
     r"mise en place|développement|déploiement|réalisation|"
@@ -124,7 +127,6 @@ _INDUSTRIAL_ACTION_PREFIXES = re.compile(
     re.IGNORECASE,
 )
 
-# Objets techniques qui indiquent une description d'infrastructure
 _TECHNICAL_OBJECT_TERMS = re.compile(
     r"\b(réservoir[s]?|usine[s]?|centrale[s]?|infrastructure[s]?|"
     r"équipement[s]?|machine[s]?|borne[s]?|panneau[x]?|"
@@ -133,7 +135,6 @@ _TECHNICAL_OBJECT_TERMS = re.compile(
     re.IGNORECASE,
 )
 
-# Mots indiquant un bénéfice environnemental explicite
 _ENVIRONMENTAL_BENEFIT_TERMS = re.compile(
     r"\b(réduire|réduction|limiter|limitation|préserver|protéger|"
     r"durable[s]?|écologique[s]?|responsable[s]?|vert[s]?|verte[s]?|"
@@ -143,29 +144,77 @@ _ENVIRONMENTAL_BENEFIT_TERMS = re.compile(
     re.IGNORECASE,
 )
 
+# ---------------------------------------------------------------------------
+# Bloc 2 — Mécanismes physiques impersonnels (sujet = matériau ou processus)
+# ---------------------------------------------------------------------------
+
+# Phrase dont le sujet est un article défini + nom de matériau/processus
+# et non l'entreprise auditée (pas de "nous", "notre", "chez [marque]")
+_IMPERSONAL_SUBJECT = re.compile(
+    r"^(le|la|l'|les|ce|cet|cette|ces)\s+"
+    r"(coton|polyester|plastique|recyclage|compostage|"
+    r"bioplastique|matériau|matière|produit|processus|procédé|"
+    r"carton|verre|aluminium|métal|textile|tissu|fibre)\b",
+    re.IGNORECASE,
+)
+
+# Marqueurs de mécanisme général (comparaison, causalité impersonnelle)
+_MECHANISM_MARKERS = re.compile(
+    r"\b(consomme moins (de|d')|émet moins|produit moins|"
+    r"nul besoin de|en le recyclant|en recyclant|"
+    r"que le .{1,20} normal|que le .{1,20} classique|"
+    r"par rapport au .{1,20} vierge|évite la production|"
+    r"limite la production|réduit la pollution)\b",
+    re.IGNORECASE,
+)
+
+# Marqueurs d'attribution à l'entreprise (protège contre le sur-filtrage)
+_COMPANY_ATTRIBUTION = re.compile(
+    r"\b(nous|notre|nos|chez\s+\w+|JD|la\s+marque|l'entreprise)\b",
+    re.IGNORECASE,
+)
+
 
 def filter_false_positives(claims: List[str]) -> List[str]:
     """
     Filtre post-extraction déterministe — s'exécute après extract_claims_with_claude().
 
-    Supprime les claims qui décrivent une activité industrielle factuelle
-    sans affirmation de bénéfice environnemental. Ces phrases passent parfois
-    à travers le prompt Haiku malgré les instructions d'exclusion.
+    Bloc 1 — Nominalisations industrielles :
+    Supprime si : début = verbe d'action industrielle + objet technique + pas de bénéfice.
 
-    Critères de suppression (les 3 doivent être vrais) :
-    1. La phrase commence par un verbe d'action industrielle (création de, installation de...)
-    2. La phrase contient un objet technique (réservoirs, usine, panneaux...)
-    3. La phrase ne contient PAS de mot de bénéfice environnemental (réduire, durable...)
+    Bloc 2 — Mécanismes impersonnels :
+    Supprime si : sujet = matériau/processus (article défini) + marqueur de mécanisme
+    ET pas d'attribution explicite à l'entreprise.
     """
     filtered = []
     for claim in claims:
         text = claim.strip()
-        is_industrial_action = bool(_INDUSTRIAL_ACTION_PREFIXES.search(text))
-        has_technical_object = bool(_TECHNICAL_OBJECT_TERMS.search(text))
-        has_env_benefit = bool(_ENVIRONMENTAL_BENEFIT_TERMS.search(text))
 
-        if is_industrial_action and has_technical_object and not has_env_benefit:
-            logger.info(f"filter_false_positives: claim exclue (description factuelle) — '{text}'")
+        # Bloc 1 : nominalisations d'action industrielle
+        if (
+            _INDUSTRIAL_ACTION_PREFIXES.search(text)
+            and _TECHNICAL_OBJECT_TERMS.search(text)
+            and not _ENVIRONMENTAL_BENEFIT_TERMS.search(text)
+        ):
+            logger.info(f"filter_false_positives [bloc1]: '{text}'")
+            continue
+
+        # Bloc 2a : sujet matériau/processus + marqueur mécanisme + pas d'attribution
+        if (
+            _IMPERSONAL_SUBJECT.search(text)
+            and _MECHANISM_MARKERS.search(text)
+            and not _COMPANY_ATTRIBUTION.search(text)
+        ):
+            logger.info(f"filter_false_positives [bloc2a]: '{text}'")
+            continue
+
+        # Bloc 2b : marqueurs de mécanisme absolu (nul besoin de, en le recyclant)
+        # suffisamment spécifiques pour exclure sans vérifier le sujet
+        if (
+            re.search(r"\bnul besoin de\b|\ben le recyclant\b|\ben les recyclant\b", text, re.IGNORECASE)
+            and not _COMPANY_ATTRIBUTION.search(text)
+        ):
+            logger.info(f"filter_false_positives [bloc2b]: '{text}'")
             continue
 
         filtered.append(claim)
