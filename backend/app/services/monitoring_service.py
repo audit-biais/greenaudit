@@ -113,20 +113,16 @@ async def _scrape_jina(url: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Filtre post-extraction déterministe — descriptions factuelles industrielles
+# Filtre post-extraction déterministe — faux positifs structurels
 # ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
 # Bloc 1 — Nominalisations d'action industrielle sans bénéfice environnemental
-# ---------------------------------------------------------------------------
-
 _INDUSTRIAL_ACTION_PREFIXES = re.compile(
     r"^(création|fabrication|production|construction|installation|"
     r"mise en place|développement|déploiement|réalisation|"
     r"ouverture|lancement|livraison)\b",
     re.IGNORECASE,
 )
-
 _TECHNICAL_OBJECT_TERMS = re.compile(
     r"\b(réservoir[s]?|usine[s]?|centrale[s]?|infrastructure[s]?|"
     r"équipement[s]?|machine[s]?|borne[s]?|panneau[x]?|"
@@ -134,7 +130,6 @@ _TECHNICAL_OBJECT_TERMS = re.compile(
     r"entrepôt[s]?|bâtiment[s]?|site[s]?\s+industriel[s]?)\b",
     re.IGNORECASE,
 )
-
 _ENVIRONMENTAL_BENEFIT_TERMS = re.compile(
     r"\b(réduire|réduction|limiter|limitation|préserver|protéger|"
     r"durable[s]?|écologique[s]?|responsable[s]?|vert[s]?|verte[s]?|"
@@ -144,80 +139,115 @@ _ENVIRONMENTAL_BENEFIT_TERMS = re.compile(
     re.IGNORECASE,
 )
 
-# ---------------------------------------------------------------------------
-# Bloc 2 — Mécanismes physiques impersonnels (sujet = matériau ou processus)
-# ---------------------------------------------------------------------------
-
-# Phrase dont le sujet est un article défini + nom de matériau/processus
-# et non l'entreprise auditée (pas de "nous", "notre", "chez [marque]")
+# Bloc 2 — Mécanismes physiques impersonnels
 _IMPERSONAL_SUBJECT = re.compile(
-    r"^(le|la|l'|les|ce|cet|cette|ces)\s+"
-    r"(coton|polyester|plastique|recyclage|compostage|"
+    r"^(le|la|l['']|les|ce|cet|cette|ces|il|on)\s+"
+    r"(coton|polyester|plastique|recyclage|compostage|pollution|"
     r"bioplastique|matériau|matière|produit|processus|procédé|"
-    r"carton|verre|aluminium|métal|textile|tissu|fibre)\b",
+    r"carton|verre|aluminium|métal|textile|tissu|fibre|"
+    r"production|fabrication|eau|énergie|laine|bois)\b",
     re.IGNORECASE,
 )
-
-# Marqueurs de mécanisme général (comparaison, causalité impersonnelle)
 _MECHANISM_MARKERS = re.compile(
-    r"\b(consomme moins (de|d')|émet moins|produit moins|"
-    r"nul besoin de|en le recyclant|en recyclant|"
+    r"\b(consomme moins (de|d[''])|émet moins|produit moins|"
+    r"nul besoin de|pas besoin de|en le recyclant|en recyclant|"
     r"que le .{1,20} normal|que le .{1,20} classique|"
     r"par rapport au .{1,20} vierge|évite la production|"
     r"limite la production|réduit la pollution)\b",
     re.IGNORECASE,
 )
+_ABSOLUTE_MECHANISM_MARKERS = re.compile(
+    r"\bnul besoin de\b|\bpas besoin de\b|\ben le recyclant\b|\ben les recyclant\b",
+    re.IGNORECASE,
+)
 
-# Marqueurs d'attribution à l'entreprise (protège contre le sur-filtrage)
-_COMPANY_ATTRIBUTION = re.compile(
-    r"\b(nous|notre|nos|chez\s+\w+|JD|la\s+marque|l'entreprise)\b",
+# Bloc 3 — Collectifs génériques (les marques, elles deviennent...)
+_GENERIC_COLLECTIVE_SUBJECT = re.compile(
+    r"^(elles|ils)\s+(deviennent|sont|font|vont|s['']engagent)\b"
+    r"|^(les marques|les entreprises|les acteurs|le secteur|l['']industrie)\b",
+    re.IGNORECASE,
+)
+
+# Bloc 4 — Navigation UI sans allégation environnementale
+_UI_NAVIGATION = re.compile(
+    r"\b(n['']hésite pas à|orienter (tes|vos) recherches|clique ici|"
+    r"tapant dans la barre|recherche sur (notre|le) site)\b",
     re.IGNORECASE,
 )
 
 
-def filter_false_positives(claims: List[str]) -> List[str]:
+def _build_attribution_pattern(company_name: str) -> re.Pattern:
+    """Construit le pattern d'attribution à l'entreprise de façon dynamique."""
+    base = r"\b(nous|notre|nos|chez\s+\w+)\b"
+    if company_name:
+        # Prend le premier mot du nom de l'entreprise (ex: "JD Sports" → "JD")
+        first_word = re.escape(company_name.split()[0])
+        return re.compile(base + rf"|\b{first_word}\b", re.IGNORECASE)
+    return re.compile(base, re.IGNORECASE)
+
+
+def filter_false_positives(claims: List[str], company_name: str = "") -> List[str]:
     """
     Filtre post-extraction déterministe — s'exécute après extract_claims_with_claude().
 
-    Bloc 1 — Nominalisations industrielles :
-    Supprime si : début = verbe d'action industrielle + objet technique + pas de bénéfice.
-
-    Bloc 2 — Mécanismes impersonnels :
-    Supprime si : sujet = matériau/processus (article défini) + marqueur de mécanisme
-    ET pas d'attribution explicite à l'entreprise.
+    Bloc 1 — Nominalisations industrielles sans bénéfice environnemental.
+    Bloc 2 — Mécanismes physiques impersonnels (sujet = matériau/processus).
+    Bloc 3 — Collectifs génériques (les marques, elles deviennent...).
+    Bloc 4 — Navigation UI sans allégation environnementale.
     """
+    attribution = _build_attribution_pattern(company_name)
     filtered = []
+
     for claim in claims:
         text = claim.strip()
+        excluded = False
 
-        # Bloc 1 : nominalisations d'action industrielle
+        # Bloc 1 : nominalisation industrielle
         if (
             _INDUSTRIAL_ACTION_PREFIXES.search(text)
             and _TECHNICAL_OBJECT_TERMS.search(text)
             and not _ENVIRONMENTAL_BENEFIT_TERMS.search(text)
         ):
-            logger.info(f"filter_false_positives [bloc1]: '{text}'")
-            continue
+            excluded = True
 
-        # Bloc 2a : sujet matériau/processus + marqueur mécanisme + pas d'attribution
-        if (
+        # Bloc 2a : sujet matériau + marqueur mécanisme + pas d'attribution
+        elif (
             _IMPERSONAL_SUBJECT.search(text)
             and _MECHANISM_MARKERS.search(text)
-            and not _COMPANY_ATTRIBUTION.search(text)
+            and not attribution.search(text)
         ):
-            logger.info(f"filter_false_positives [bloc2a]: '{text}'")
-            continue
+            excluded = True
 
-        # Bloc 2b : marqueurs de mécanisme absolu (nul besoin de, en le recyclant)
-        # suffisamment spécifiques pour exclure sans vérifier le sujet
-        if (
-            re.search(r"\bnul besoin de\b|\ben le recyclant\b|\ben les recyclant\b", text, re.IGNORECASE)
-            and not _COMPANY_ATTRIBUTION.search(text)
+        # Bloc 2b : marqueurs absolus de mécanisme sans attribution
+        elif (
+            _ABSOLUTE_MECHANISM_MARKERS.search(text)
+            and not attribution.search(text)
         ):
-            logger.info(f"filter_false_positives [bloc2b]: '{text}'")
-            continue
+            excluded = True
 
-        filtered.append(claim)
+        # Bloc 2c : pronom neutre (il/on) en sujet + marqueur mécanisme + pas attribution
+        elif (
+            re.match(r"^(il|on)\s+\w", text, re.IGNORECASE)
+            and _MECHANISM_MARKERS.search(text)
+            and not attribution.search(text)
+        ):
+            excluded = True
+
+        # Bloc 3 : collectif générique sans attribution
+        elif (
+            _GENERIC_COLLECTIVE_SUBJECT.search(text)
+            and not attribution.search(text)
+        ):
+            excluded = True
+
+        # Bloc 4 : navigation UI
+        elif _UI_NAVIGATION.search(text):
+            excluded = True
+
+        if excluded:
+            logger.info(f"filter_false_positives: exclu — '{text}'")
+        else:
+            filtered.append(claim)
 
     return filtered
 
@@ -363,7 +393,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour."""
 
         data = json.loads(response_text)
         raw_claims = [str(c) for c in data.get("claims", [])]
-        return filter_false_positives(raw_claims)
+        return filter_false_positives(raw_claims, company_name=audited_company_name)
 
     except Exception as exc:
         logger.error(f"Erreur Claude API lors de l'extraction: {exc}")
