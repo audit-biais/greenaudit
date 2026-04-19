@@ -1652,7 +1652,7 @@ def _disclaimer_elements(partner: Partner, styles: dict, is_starter: bool = Fals
         contact_parts = [
             p for p in [
                 partner.name, partner.contact_name,
-                partner.contact_phone, partner.contact_email,
+                _format_phone(partner.contact_phone or "") or None, partner.contact_email,
             ] if p
         ]
         elements.append(Spacer(1, 4 * mm))
