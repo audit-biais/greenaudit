@@ -186,6 +186,23 @@ def _format_date(dt: Optional[datetime]) -> str:
     return dt.strftime("%d/%m/%Y")
 
 
+def _format_phone(phone: str) -> str:
+    digits = "".join(c for c in phone if c.isdigit())
+    if len(digits) == 10 and digits.startswith("0"):
+        return " ".join(digits[i:i+2] for i in range(0, 10, 2))
+    return phone
+
+
+def _smart_truncate(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    truncated = text[:max_chars]
+    last_space = truncated.rfind(" ")
+    if last_space > max_chars // 2:
+        return truncated[:last_space] + "…"
+    return truncated + "…"
+
+
 def _summary_phrase(risk_level: Optional[str]) -> str:
     phrases = {
         "faible":   "La majorité des allégations sont conformes.",
@@ -649,7 +666,7 @@ def _build_doc(filepath: str, partner: Partner, is_starter: bool = False) -> Bas
     primary = _hex(partner.brand_primary_color) if not is_starter else colors.HexColor(_C_NAVY)
     company = "GreenAudit" if is_starter else (partner.name or "GreenAudit")
     email   = "contact@green-audit.fr" if is_starter else (partner.contact_email or "")
-    phone   = "" if is_starter else (partner.contact_phone or "")
+    phone   = "" if is_starter else _format_phone(partner.contact_phone or "")
 
     def _header_footer(canvas, doc):
         canvas.saveState()
@@ -908,7 +925,7 @@ def _summary_elements(audit: Audit, styles: dict) -> list:
     elements.append(KeepTogether([Paragraph("1. Synthèse exécutive", styles["h1"]), t]))
     elements.append(Spacer(1, 4 * mm))
     elements.append(Paragraph(
-        f"Score global : <b>{audit.global_score}/100</b> — Risque <b>{_risk_label(audit.risk_level)}</b>. "
+        f"Score global : <b>{float(audit.global_score or 0):.0f}/100</b> — Risque <b>{_risk_label(audit.risk_level)}</b>. "
         f"{_summary_phrase(audit.risk_level)}",
         styles["body"],
     ))
@@ -1317,7 +1334,7 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
                     deadline = "Court terme (< 90 jours)"
                 actions.append((
                     priority,
-                    claim.claim_text[:55] + "…",
+                    _smart_truncate(claim.claim_text, 55),
                     CRITERION_LABELS.get(r.criterion, r.criterion),
                     r.recommendation,
                     deadline,

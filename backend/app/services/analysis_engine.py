@@ -167,7 +167,7 @@ def rule_specificity(claim: Claim, has_ecolabel_evidence: bool = False) -> Claim
             explanation=(
                 f"Le terme « {matched_term} » est présent mais un Écolabel officiel "
                 f"(EU Ecolabel, ISO 14024 Type I ou équivalent) a été déposé dans "
-                f"l'Evidence Vault. Cela constitue la « performance environnementale "
+                f"le dossier de conformité. Cela constitue la « performance environnementale "
                 f"excellente reconnue » exigée par l'Art. 2(s) et l'Annexe I, point 4bis."
             ),
             recommendation=(
@@ -196,7 +196,7 @@ def rule_specificity(claim: Claim, has_ecolabel_evidence: bool = False) -> Claim
             ),
             recommendation=(
                 "Déposer un Écolabel officiel (EU Ecolabel, ISO 14024 Type I) "
-                "dans l'Evidence Vault pour sécuriser cette allégation, "
+                "et conserver la preuve dans un dossier de conformité accessible pour sécuriser cette allégation, "
                 "ou reformuler l'allégation de manière spécifique et mesurable."
             ),
             regulation_reference=(
@@ -217,7 +217,7 @@ def rule_specificity(claim: Claim, has_ecolabel_evidence: bool = False) -> Claim
         ),
         recommendation=(
             f"Supprimer le terme « {matched_term} » ou obtenir un Écolabel officiel "
-            f"(EU Ecolabel, Ange Bleu, ISO 14024 Type I) et le déposer dans l'Evidence Vault. "
+            f"(EU Ecolabel, Ange Bleu, ISO 14024 Type I) et conserver la preuve dans un dossier de conformité accessible. "
             f"Alternative : reformuler avec une allégation spécifique et mesurable, "
             f"ex : « contient 30 % de matières recyclées certifiées »."
         ),
