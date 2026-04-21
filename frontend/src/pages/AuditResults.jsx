@@ -149,7 +149,7 @@ export default function AuditResults() {
   };
 
   const handleDownload = async () => {
-    try {
+    const doDownload = async () => {
       const res = await api.get(`/audits/${auditId}/report/download`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(res.data);
       const a = document.createElement('a');
@@ -157,8 +157,26 @@ export default function AuditResults() {
       a.download = `rapport_greenaudit_${results.company_name}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch {
-      setError('Erreur lors du téléchargement du PDF');
+    };
+
+    try {
+      await doDownload();
+    } catch (err) {
+      // Le fichier PDF a disparu du serveur (redéploiement Railway) — on régénère automatiquement
+      if (err.response?.status === 404) {
+        try {
+          setGenerating(true);
+          const res = await api.post(`/audits/${auditId}/report`);
+          setReportInfo(res.data);
+          await doDownload();
+        } catch (err2) {
+          setError(err2.response?.data?.detail || 'Erreur lors de la génération du PDF');
+        } finally {
+          setGenerating(false);
+        }
+      } else {
+        setError(err.response?.data?.detail || 'Erreur lors du téléchargement du PDF');
+      }
     }
   };
 
