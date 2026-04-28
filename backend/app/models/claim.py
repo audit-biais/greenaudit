@@ -69,6 +69,11 @@ class Claim(Base):
     regulatory_basis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     regime: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
+    # Statut de traitement — "À traiter" | "En cours" | "Corrigé" | "À valider"
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="À traiter"
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

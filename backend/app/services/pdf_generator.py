@@ -163,6 +163,16 @@ SUPPORT_LABELS: Dict[str, str] = {
     "autre":          "Autre",
 }
 
+REGULATORY_BASIS_LABELS: Dict[str, str] = {
+    "annexe_I_2bis":     "Annexe I, pt 2 bis — Label sans certification tierce",
+    "annexe_I_4bis":     "Annexe I, pt 4 bis — Allégation environnementale générique",
+    "annexe_I_4ter":     "Annexe I, pt 4 ter — Proportionnalité ensemble vs aspect",
+    "annexe_I_4quater":  "Annexe I, pt 4 quater — Neutralité carbone par compensation",
+    "annexe_I_10bis":    "Annexe I, pt 10 bis — Caractéristique légale présentée comme distinctive",
+    "article_6_1d":      "Art. 6, §2, pt d — Engagement futur sans plan vérifiable",
+    "article_6_general": "Art. 6, §1, pt b — Justification des allégations",
+}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -245,6 +255,36 @@ def _count_issues(claim) -> int:
         if r.verdict in ("non_conforme", "risque"):
             count += 1
     return count
+
+
+def _reformulation_hint(regulatory_basis: Optional[str]) -> Optional[str]:
+    """Retourne une suggestion de reformulation pour les allégations liste_noire."""
+    hints: Dict[str, str] = {
+        "annexe_I_4bis": (
+            "Remplacez l'allégation générique par une formulation précise et mesurable. "
+            "Ex. : « Emballage composé à 40 % de plastique recyclé, certifié Recyclass » "
+            "plutôt que « produit écologique »."
+        ),
+        "annexe_I_4ter": (
+            "Restreignez la portée à l'aspect concerné. "
+            "Ex. : « Notre packaging est fabriqué à 80 % de carton issu de forêts gérées "
+            "durablement (PEFC) » plutôt qu'une formulation couvrant l'ensemble de l'activité."
+        ),
+        "annexe_I_4quater": (
+            "Les allégations de neutralité carbone par compensation sont interdites. "
+            "Privilegiez une réduction réelle des émissions avec données vérifiables. "
+            "Ex. : « Émissions réduites de 42 % depuis 2019, mesurées par un tiers indépendant (scope 1+2) »."
+        ),
+        "annexe_I_2bis": (
+            "Supprimez ou remplacez le label auto-décerné par un label certifié tiers reconnu "
+            "(Ecocert, EU Ecolabel, NF Environnement, etc.)."
+        ),
+        "annexe_I_10bis": (
+            "Cette caractéristique est une exigence légale — elle ne peut pas être présentée "
+            "comme un avantage distinctif. Supprimez la mention ou contextualisez-la clairement."
+        ),
+    }
+    return hints.get(regulatory_basis or "", None)
 
 
 # ---------------------------------------------------------------------------
@@ -1077,19 +1117,23 @@ def _radar_elements(claims: list, styles: dict) -> list:
 
 
 def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False) -> list:
-    """Section détail des allégations — blocs encadrés avec référence réglementaire."""
+    """Section détail des allégations — affichage différencié liste_noire / cas_par_cas."""
     elements = []
     h1_title = Paragraph("3. Détail des allégations", styles["h1"])
 
-    page_width   = A4[0] - 40 * mm
-    inner_width  = page_width - 16   # padding 8pt de chaque côté dans le bloc
+    page_width  = A4[0] - 40 * mm
+    inner_width = page_width - 16  # padding 8pt de chaque côté
 
     claims = [c for c in claims if not getattr(c, "is_false_positive", False)]
     first_claim = True
+
     for i, claim in enumerate(claims, 1):
-        verdict = VERDICT_LABELS.get(claim.overall_verdict or "", "—")
-        support = SUPPORT_LABELS.get(claim.support_type, claim.support_type)
-        scope   = "Entreprise" if claim.scope == "entreprise" else "Produit"
+        verdict          = VERDICT_LABELS.get(claim.overall_verdict or "", "—")
+        support          = SUPPORT_LABELS.get(claim.support_type, claim.support_type)
+        scope            = "Entreprise" if claim.scope == "entreprise" else "Produit"
+        is_liste_noire   = getattr(claim, "regime", None) == "liste_noire"
+        regulatory_basis = getattr(claim, "regulatory_basis", None)
+        article_label    = REGULATORY_BASIS_LABELS.get(regulatory_basis or "", "")
 
         c_conf = sum(1 for r in claim.results if r.verdict == "conforme")
         c_risk = sum(1 for r in claim.results if r.verdict == "risque")
@@ -1101,15 +1145,23 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
 
         claim_elements = []
 
-        # Titre de l'allégation
-        if is_alert:
-            claim_elements.append(Paragraph(
-                f"Allégation #{i} — {verdict}", styles["h2_alert"],
-            ))
+        # --- Titre (TÂCHE 1 + 2) ---
+        if is_liste_noire:
+            interdit_label = (
+                f"Allégation #{i} — [INTERDIT] {article_label}"
+                if article_label else f"Allégation #{i} — [INTERDIT]"
+            )
+            claim_elements.append(Paragraph(interdit_label, styles["h2_alert"]))
+        elif is_alert:
+            title_text = f"Allégation #{i} — {verdict}"
+            if article_label:
+                title_text += f" · {article_label}"
+            claim_elements.append(Paragraph(title_text, styles["h2_alert"]))
         else:
-            claim_elements.append(Paragraph(
-                f"Allégation #{i} — {verdict}", styles["h2"],
-            ))
+            title_text = f"Allégation #{i} — {verdict}"
+            if article_label:
+                title_text += f" · {article_label}"
+            claim_elements.append(Paragraph(title_text, styles["h2"]))
 
         claim_elements.append(Paragraph(
             f"<i>« {_rl_escape(claim.claim_text)} »</i>", styles["italic"],
@@ -1124,119 +1176,174 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
         claim_elements.append(bar)
         claim_elements.append(Spacer(1, 2 * mm))
 
-        # Encadré alerte si 3+ problèmes
-        if is_alert:
-            issues = []
-            sorted_results = sorted(
-                claim.results,
-                key=lambda r: CRITERION_ORDER.index(r.criterion)
-                if r.criterion in CRITERION_ORDER else 99,
-            )
-            for r in sorted_results:
-                if r.verdict in ("non_conforme", "risque"):
-                    label         = CRITERION_LABELS.get(r.criterion, r.criterion)
-                    verdict_label = VERDICT_LABELS.get(r.verdict, r.verdict)
-                    issues.append(f"[{verdict_label}] {label} : {r.explanation or ''}")
-            alert = AlertBoxFlowable(claim.claim_text, issues, width=inner_width)
-            claim_elements.append(alert)
-            claim_elements.append(Spacer(1, 3 * mm))
-
-        # Tableau des critères
-        if is_starter:
-            header_row = [
-                Paragraph("<b>Critère</b>",     styles["small"]),
-                Paragraph("<b>Verdict</b>",     styles["small"]),
-                Paragraph("<b>Explication</b>", styles["small"]),
-            ]
-        else:
-            header_row = [
-                Paragraph("<b>Critère</b>",          styles["small"]),
-                Paragraph("<b>Verdict</b>",           styles["small"]),
-                Paragraph("<b>Explication</b>",       styles["small"]),
-                Paragraph("<b>Recommandation</b>",    styles["small"]),
-            ]
-
-        data = [header_row]
         sorted_results = sorted(
             claim.results,
-            key=lambda r: CRITERION_ORDER.index(r.criterion)
-            if r.criterion in CRITERION_ORDER else 99,
+            key=lambda r: CRITERION_ORDER.index(r.criterion) if r.criterion in CRITERION_ORDER else 99,
         )
 
-        # Collecter les références réglementaires pour le pied de bloc
-        reg_refs: set = set()
+        if is_liste_noire:
+            # --- TÂCHE 1 : tableau simplifié liste_noire (règles violées uniquement) ---
+            data = [[
+                Paragraph("<b>Règle violée</b>",  styles["small"]),
+                Paragraph("<b>Explication</b>",   styles["small"]),
+            ]]
+            for r in sorted_results:
+                if r.verdict == "non_applicable":
+                    continue
+                crit_label = CRITERION_LABELS.get(r.criterion, r.criterion)
+                v_label    = VERDICT_LABELS.get(r.verdict, r.verdict)
+                data.append([
+                    Paragraph(
+                        f"<b>{_rl_escape(crit_label)}</b> — "
+                        f"<font color='{_C_CRITIQUE}'>{_rl_escape(v_label)}</font>",
+                        styles["small"],
+                    ),
+                    Paragraph(_rl_escape(r.explanation or ""), styles["small"]),
+                ])
+            if len(data) > 1:
+                t = Table(data, colWidths=[inner_width * 0.30, inner_width * 0.70], repeatRows=1)
+                t.setStyle(TableStyle([
+                    ("BACKGROUND",    (0, 0), (-1, 0),  colors.HexColor(_C_CRITIQUE)),
+                    ("TEXTCOLOR",     (0, 0), (-1, 0),  colors.white),
+                    ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
+                    ("FONTSIZE",      (0, 0), (-1, -1), 8),
+                    ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+                    ("GRID",          (0, 0), (-1, -1), 0.5, colors.HexColor(_C_BORDER)),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING",    (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+                    ("BACKGROUND",    (0, 1), (-1, -1), colors.HexColor("#fff1f2")),
+                ]))
+                claim_elements.append(t)
+                claim_elements.append(Spacer(1, 2 * mm))
 
-        for row_i, r in enumerate(sorted_results, 1):
-            if r.regulation_reference:
-                reg_refs.add(r.regulation_reference)
+            # --- TÂCHE 5 : bloc exemple de reformulation ---
+            hint = _reformulation_hint(regulatory_basis)
+            if hint:
+                hint_style = ParagraphStyle(
+                    f"hint_{i}", parent=styles["small"],
+                    fontSize=8, textColor=colors.HexColor(_C_STEEL), leading=11,
+                )
+                hint_table = Table(
+                    [
+                        [Paragraph("<b>Exemple de reformulation :</b>", hint_style)],
+                        [Paragraph(_rl_escape(hint), hint_style)],
+                    ],
+                    colWidths=[inner_width - 8],
+                )
+                hint_table.setStyle(TableStyle([
+                    ("BACKGROUND",    (0, 0), (-1, -1), colors.HexColor("#f0f9ff")),
+                    ("LINEBEFORE",    (0, 0), (0, -1),  3, colors.HexColor(_C_STEEL)),
+                    ("BOX",           (0, 0), (-1, -1), 0.5, colors.HexColor(_C_STEEL)),
+                    ("TOPPADDING",    (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("LEFTPADDING",   (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+                ]))
+                claim_elements.append(hint_table)
+                claim_elements.append(Spacer(1, 2 * mm))
 
-            # Couleur de cellule selon verdict
-            if r.verdict == "conforme":
-                verdict_color = colors.HexColor("#dcfce7")
-                text_color    = colors.HexColor(_C_CONFORME)
-            elif r.verdict == "risque":
-                verdict_color = colors.HexColor("#fef3c7")
-                text_color    = colors.HexColor(_C_RISQUE)
-            elif r.verdict == "non_conforme":
-                verdict_color = colors.HexColor("#fee2e2")
-                text_color    = colors.HexColor(_C_CRITIQUE)
-            else:
-                verdict_color = colors.HexColor(_C_ALT)
-                text_color    = colors.HexColor(_C_SLATE)
-
-            verdict_style = ParagraphStyle(
-                f"v_{r.criterion}_{row_i}",
-                parent=styles["small"],
-                textColor=text_color,
-                fontName="Helvetica-Bold",
-            )
+        else:
+            # --- TÂCHE 6 : tableau cas_par_cas sans les N/A ---
+            # Encadré alerte si 3+ problèmes
+            if is_alert:
+                issues = []
+                for r in sorted_results:
+                    if r.verdict in ("non_conforme", "risque"):
+                        label         = CRITERION_LABELS.get(r.criterion, r.criterion)
+                        verdict_label = VERDICT_LABELS.get(r.verdict, r.verdict)
+                        issues.append(f"[{verdict_label}] {label} : {r.explanation or ''}")
+                alert = AlertBoxFlowable(claim.claim_text, issues, width=inner_width)
+                claim_elements.append(alert)
+                claim_elements.append(Spacer(1, 3 * mm))
 
             if is_starter:
-                data.append([
-                    Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
-                    Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), verdict_style),
-                    Paragraph(_rl_escape(r.explanation or ""), styles["small"]),
-                ])
+                header_row = [
+                    Paragraph("<b>Critère</b>",     styles["small"]),
+                    Paragraph("<b>Verdict</b>",     styles["small"]),
+                    Paragraph("<b>Explication</b>", styles["small"]),
+                ]
             else:
-                data.append([
-                    Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
-                    Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), verdict_style),
-                    Paragraph(_rl_escape(r.explanation or ""), styles["small"]),
-                    Paragraph(_rl_escape(r.recommendation or "—"), styles["small"]),
+                header_row = [
+                    Paragraph("<b>Critère</b>",       styles["small"]),
+                    Paragraph("<b>Verdict</b>",        styles["small"]),
+                    Paragraph("<b>Explication</b>",    styles["small"]),
+                    Paragraph("<b>Recommandation</b>", styles["small"]),
+                ]
+            data = [header_row]
+            reg_refs: set = set()
+
+            for row_i, r in enumerate(sorted_results, 1):
+                if r.verdict == "non_applicable":
+                    continue  # filtrer les N/A (TÂCHE 6)
+                if r.regulation_reference:
+                    reg_refs.add(r.regulation_reference)
+
+                if r.verdict == "conforme":
+                    text_color = colors.HexColor(_C_CONFORME)
+                elif r.verdict == "risque":
+                    text_color = colors.HexColor(_C_RISQUE)
+                elif r.verdict == "non_conforme":
+                    text_color = colors.HexColor(_C_CRITIQUE)
+                else:
+                    text_color = colors.HexColor(_C_SLATE)
+
+                verdict_style = ParagraphStyle(
+                    f"v_{r.criterion}_{row_i}",
+                    parent=styles["small"],
+                    textColor=text_color,
+                    fontName="Helvetica-Bold",
+                )
+                if is_starter:
+                    data.append([
+                        Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
+                        Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), verdict_style),
+                        Paragraph(_rl_escape(r.explanation or ""), styles["small"]),
+                    ])
+                else:
+                    data.append([
+                        Paragraph(CRITERION_LABELS.get(r.criterion, r.criterion), styles["small"]),
+                        Paragraph(VERDICT_LABELS.get(r.verdict, r.verdict), verdict_style),
+                        Paragraph(_rl_escape(r.explanation or ""), styles["small"]),
+                        Paragraph(_rl_escape(r.recommendation or "—"), styles["small"]),
+                    ])
+
+            if len(data) > 1:
+                if is_starter:
+                    col_widths = [inner_width * 0.20, inner_width * 0.15, inner_width * 0.65]
+                else:
+                    col_widths = [inner_width * 0.17, inner_width * 0.13, inner_width * 0.40, inner_width * 0.30]
+                t = Table(data, colWidths=col_widths, repeatRows=1)
+                ts = TableStyle([
+                    ("BACKGROUND",    (0, 0), (-1, 0),  colors.HexColor(_C_NAVY)),
+                    ("TEXTCOLOR",     (0, 0), (-1, 0),  colors.white),
+                    ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
+                    ("FONTSIZE",      (0, 0), (-1, 0),  8),
+                    ("FONTSIZE",      (0, 1), (-1, -1), 8),
+                    ("ALIGN",         (0, 0), (-1, 0),  "LEFT"),
+                    ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+                    ("GRID",          (0, 0), (-1, -1), 0.5, colors.HexColor(_C_BORDER)),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING",    (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
                 ])
+                for row_i in range(1, len(data)):
+                    if row_i % 2 == 1:
+                        ts.add("BACKGROUND", (0, row_i), (-1, row_i), colors.HexColor(_C_ALT))
+                t.setStyle(ts)
+                claim_elements.append(t)
+                claim_elements.append(Spacer(1, 2 * mm))
 
-        if is_starter:
-            col_widths = [inner_width * 0.20, inner_width * 0.15, inner_width * 0.65]
-        else:
-            col_widths = [inner_width * 0.17, inner_width * 0.13, inner_width * 0.40, inner_width * 0.30]
+            if reg_refs:
+                ref_text = " · ".join(sorted(reg_refs)[:4])
+                claim_elements.append(Paragraph(
+                    f"Réf. réglementaire{'s' if len(reg_refs) > 1 else ''} : {ref_text}",
+                    styles["reg_ref"],
+                ))
 
-        t = Table(data, colWidths=col_widths, repeatRows=1)
-
-        # Style de base
-        ts = TableStyle([
-            ("BACKGROUND",    (0, 0), (-1, 0),  colors.HexColor(_C_NAVY)),
-            ("TEXTCOLOR",     (0, 0), (-1, 0),  colors.white),
-            ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
-            ("FONTSIZE",      (0, 0), (-1, 0),  8),
-            ("FONTSIZE",      (0, 1), (-1, -1), 8),
-            ("ALIGN",         (0, 0), (-1, 0),  "LEFT"),
-            ("VALIGN",        (0, 0), (-1, -1), "TOP"),
-            ("GRID",          (0, 0), (-1, -1), 0.5, colors.HexColor(_C_BORDER)),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING",    (0, 0), (-1, -1), 6),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 5),
-            ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
-        ])
-        # Lignes alternées subtiles (impaires = ALT, paires = blanc)
-        for row_i in range(1, len(data)):
-            if row_i % 2 == 1:
-                ts.add("BACKGROUND", (0, row_i), (-1, row_i), colors.HexColor(_C_ALT))
-        t.setStyle(ts)
-
-        claim_elements.append(t)
-        claim_elements.append(Spacer(1, 2 * mm))
-
-        # Badge "Corrigée"
+        # --- Badge "Corrigée" (commun) ---
         if getattr(claim, "is_corrected", False):
             corrected_at = getattr(claim, "corrected_at", None)
             date_str = f" le {corrected_at.strftime('%d/%m/%Y')}" if corrected_at else ""
@@ -1246,14 +1353,14 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
             ))
             claim_elements.append(Spacer(1, 1 * mm))
 
-        # Pièces justificatives
+        # --- Pièces justificatives (commun) ---
         evidence_files = getattr(claim, "evidence_files", [])
         if evidence_files:
             DOC_TYPE_LABELS = {
-                "ecolabel":      "Écolabel",
-                "certification": "Certification",
+                "ecolabel":        "Écolabel",
+                "certification":   "Certification",
                 "rapport_interne": "Rapport interne",
-                "autre":         "Autre",
+                "autre":           "Autre",
             }
             ev_data = [[
                 Paragraph("<b>Pièce justificative</b>", styles["small"]),
@@ -1262,10 +1369,10 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
                 Paragraph("<b>Déposée le</b>",          styles["small"]),
             ]]
             for ef in evidence_files:
-                size_kb   = round(getattr(ef, "file_size", 0) / 1024, 1)
-                doc_label = DOC_TYPE_LABELS.get(getattr(ef, "document_type", "autre"), "Autre")
+                size_kb     = round(getattr(ef, "file_size", 0) / 1024, 1)
+                doc_label   = DOC_TYPE_LABELS.get(getattr(ef, "document_type", "autre"), "Autre")
                 uploaded_at = getattr(ef, "uploaded_at", None)
-                date_label = uploaded_at.strftime("%d/%m/%Y %H:%M") if uploaded_at else "—"
+                date_label  = uploaded_at.strftime("%d/%m/%Y %H:%M") if uploaded_at else "—"
                 ev_data.append([
                     Paragraph(getattr(ef, "filename", "—"), styles["small"]),
                     Paragraph(doc_label,                    styles["small"]),
@@ -1274,7 +1381,7 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
                 ])
             ev_table = Table(
                 ev_data,
-                colWidths=[inner_width * 0.42, inner_width * 0.22, inner_width * 0.14, inner_width * 0.22],
+                colWidths=[inner_width*0.42, inner_width*0.22, inner_width*0.14, inner_width*0.22],
                 repeatRows=1,
             )
             ev_table.setStyle(TableStyle([
@@ -1296,14 +1403,6 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
             claim_elements.append(ev_table)
             claim_elements.append(Spacer(1, 2 * mm))
 
-        # Référence réglementaire en pied de bloc
-        if reg_refs:
-            ref_text = " · ".join(sorted(reg_refs)[:4])
-            claim_elements.append(Paragraph(
-                f"Réf. réglementaire{'s' if len(reg_refs) > 1 else ''} : {ref_text}",
-                styles["reg_ref"],
-            ))
-
         if first_claim:
             elements.append(h1_title)
             elements.append(Spacer(1, 3 * mm))
@@ -1316,88 +1415,121 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
 
 
 def _correction_plan_elements(claims: list, styles: dict) -> list:
-    """Section plan de correction avec échéances."""
+    """Plan de correction structuré en 3 niveaux selon le régime juridique."""
     elements = []
-    actions = []
+
+    DOCUMENTATION_CRITERIA = {"specificity", "justification", "compensation", "labels"}
+    GOVERNANCE_CRITERIA     = {"future_commitment", "proportionality"}
+
+    niveau1: list = []  # liste_noire — corrections immédiates
+    niveau2: list = []  # cas_par_cas — documentation
+    niveau3: list = []  # cas_par_cas — gouvernance
+
     for claim in claims:
         if getattr(claim, "is_false_positive", False):
             continue
         if claim.overall_verdict == "conforme":
             continue
-        for r in claim.results:
-            if r.verdict in ("non_conforme", "risque") and r.recommendation:
-                if r.verdict == "non_conforme":
-                    priority = "Critique"
-                    deadline = "Immédiat (< 30 jours)"
-                else:
-                    priority = "Élevé"
-                    deadline = "Court terme (< 90 jours)"
-                actions.append((
-                    priority,
-                    _smart_truncate(claim.claim_text, 55),
+
+        is_liste_noire   = getattr(claim, "regime", None) == "liste_noire"
+        regulatory_basis = getattr(claim, "regulatory_basis", None)
+        article_label    = REGULATORY_BASIS_LABELS.get(regulatory_basis or "", "Annexe I")
+        claim_short      = _smart_truncate(claim.claim_text, 55)
+
+        if is_liste_noire:
+            first_nc = next(
+                (r for r in claim.results if r.verdict in ("non_conforme", "risque")), None
+            )
+            action = first_nc.recommendation if first_nc else "Supprimer ou reformuler l'allégation"
+            niveau1.append((claim_short, article_label, action))
+        else:
+            for r in claim.results:
+                if r.verdict not in ("non_conforme", "risque") or not r.recommendation:
+                    continue
+                entry = (
+                    claim_short,
                     CRITERION_LABELS.get(r.criterion, r.criterion),
                     r.recommendation,
-                    deadline,
-                ))
+                )
+                if r.criterion in GOVERNANCE_CRITERIA:
+                    niveau3.append(entry)
+                else:
+                    niveau2.append(entry)
 
     title = Paragraph("4. Plan de correction priorisé", styles["h1"])
 
-    if not actions:
-        elements.append(KeepTogether([title, Paragraph("Aucune action corrective nécessaire.", styles["body"])]))
+    if not niveau1 and not niveau2 and not niveau3:
+        elements.append(KeepTogether([
+            title, Paragraph("Aucune action corrective nécessaire.", styles["body"])
+        ]))
         return elements
 
-    actions.sort(key=lambda a: 0 if a[0] == "Critique" else 1)
-
-    data = [[
-        Paragraph("<b>Priorité</b>",        styles["small"]),
-        Paragraph("<b>Allégation</b>",      styles["small"]),
-        Paragraph("<b>Critère</b>",         styles["small"]),
-        Paragraph("<b>Action corrective</b>", styles["small"]),
-        Paragraph("<b>Échéance</b>",        styles["small"]),
-    ]]
-    for row_i, a in enumerate(actions, 1):
-        # Couleur priorité
-        p_color = colors.HexColor(_C_CRITIQUE) if a[0] == "Critique" else colors.HexColor(_C_ELEVE)
-        p_style = ParagraphStyle(
-            f"prio_{row_i}", parent=styles["small"],
-            textColor=p_color, fontName="Helvetica-Bold",
-        )
-        data.append([
-            Paragraph(a[0], p_style),
-            Paragraph(a[1], styles["small"]),
-            Paragraph(a[2], styles["small"]),
-            Paragraph(a[3], styles["small"]),
-            Paragraph(a[4], styles["small"]),
-        ])
+    elements.append(title)
+    elements.append(Spacer(1, 3 * mm))
 
     page_width = A4[0] - 40 * mm
-    t = Table(
-        data,
-        colWidths=[
-            page_width * 0.10, page_width * 0.22,
-            page_width * 0.14, page_width * 0.36,
-            page_width * 0.18,
-        ],
-        repeatRows=1,
-    )
-    ts = TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, 0),  colors.HexColor(_C_NAVY)),
-        ("TEXTCOLOR",     (0, 0), (-1, 0),  colors.white),
-        ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
-        ("FONTSIZE",      (0, 0), (-1, -1), 8),
-        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
-        ("GRID",          (0, 0), (-1, -1), 0.5, colors.HexColor(_C_BORDER)),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING",    (0, 0), (-1, -1), 6),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
-    ])
-    for row_i in range(1, len(data)):
-        if row_i % 2 == 1:
-            ts.add("BACKGROUND", (0, row_i), (-1, row_i), colors.HexColor(_C_ALT))
-    t.setStyle(ts)
 
-    elements.append(KeepTogether([title, t]))
+    def _render_niveau(num: str, description: str, color_hex: str, rows: list, col2_header: str):
+        niveau_elements = []
+        label_style = ParagraphStyle(
+            f"niveau_lbl_{num}", parent=styles["body"],
+            fontSize=9, fontName="Helvetica-Bold",
+            textColor=colors.HexColor(color_hex),
+        )
+        niveau_elements.append(Paragraph(f"NIVEAU {num} — {description}", label_style))
+        niveau_elements.append(Spacer(1, 1 * mm))
+        data = [[
+            Paragraph("<b>Allégation</b>",        styles["small"]),
+            Paragraph(f"<b>{col2_header}</b>",    styles["small"]),
+            Paragraph("<b>Action corrective</b>", styles["small"]),
+        ]]
+        for row in rows:
+            data.append([
+                Paragraph(row[0], styles["small"]),
+                Paragraph(row[1], styles["small"]),
+                Paragraph(row[2], styles["small"]),
+            ])
+        t = Table(
+            data,
+            colWidths=[page_width * 0.30, page_width * 0.22, page_width * 0.48],
+            repeatRows=1,
+        )
+        ts = TableStyle([
+            ("BACKGROUND",    (0, 0), (-1, 0),  colors.HexColor(color_hex)),
+            ("TEXTCOLOR",     (0, 0), (-1, 0),  colors.white),
+            ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
+            ("FONTSIZE",      (0, 0), (-1, -1), 8),
+            ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+            ("GRID",          (0, 0), (-1, -1), 0.5, colors.HexColor(_C_BORDER)),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING",    (0, 0), (-1, -1), 6),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+        ])
+        for row_i in range(1, len(data)):
+            if row_i % 2 == 1:
+                ts.add("BACKGROUND", (0, row_i), (-1, row_i), colors.HexColor(_C_ALT))
+        t.setStyle(ts)
+        niveau_elements.append(t)
+        niveau_elements.append(Spacer(1, 4 * mm))
+        return niveau_elements
+
+    if niveau1:
+        elements.extend(_render_niveau(
+            "1", "Corrections immédiates — Pratiques interdites Annexe I",
+            _C_CRITIQUE, niveau1, "Article EmpCo",
+        ))
+    if niveau2:
+        elements.extend(_render_niveau(
+            "2", "Documentation — Dossier de conformité à compléter",
+            _C_RISQUE, niveau2, "Critère",
+        ))
+    if niveau3:
+        elements.extend(_render_niveau(
+            "3", "Gouvernance — Suivi et périmètre",
+            _C_STEEL, niveau3, "Critère",
+        ))
+
     elements.append(Paragraph(
         "<b>Date limite de mise en conformité directive EmpCo : 27 septembre 2026</b>",
         styles["deadline_footer"],
