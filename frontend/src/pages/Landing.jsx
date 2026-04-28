@@ -8,18 +8,18 @@ import api from '../api/client';
 const STEPS = [
   {
     step: '01',
-    title: 'Saisissez les allégations',
-    desc: "Entrez les allégations environnementales de votre client : \"éco-responsable\", \"durable\", \"carbon neutral\"… telles qu'elles apparaissent sur son site, packaging ou publicité. 10 à 20 minutes suffisent.",
+    title: 'Saisissez ou scannez les allégations',
+    desc: "Analysez les formulations environnementales telles qu'elles apparaissent sur un site, une page produit, un packaging ou une publicité. La saisie manuelle ou le scan automatique prennent 10 à 20 minutes.",
   },
   {
     step: '02',
-    title: 'Analyse automatique en quelques secondes',
-    desc: "Notre moteur applique les 6 interdictions de l'Annexe I de la directive (UE) 2024/825 sur chaque allégation. Résultat immédiat : conforme, à risque ou non conforme — avec l'article exact violé.",
+    title: 'Classement automatique par niveau de risque',
+    desc: "GreenAudit applique une grille de lecture EmpCo pour classer chaque allégation : risque élevé, risque modéré, à documenter ou apparemment conforme — avec la référence réglementaire associée.",
   },
   {
     step: '03',
-    title: 'Rapport PDF prêt à facturer',
-    desc: "Téléchargez un rapport à votre logo et vos couleurs : verdict par allégation, références réglementaires, recommandations de correction. Revendez-le en marque blanche.",
+    title: 'Rapport PDF prêt à présenter',
+    desc: "Téléchargez un rapport à votre logo : synthèse, verdicts, références réglementaires, recommandations et dossier de preuves associé. Présentable à votre client sous votre marque.",
   },
 ];
 
@@ -27,60 +27,60 @@ const RULES = [
   {
     article: 'Annexe I, 4 bis',
     title: 'Allégations génériques',
-    desc: '"Écologique", "durable", "respectueux de l\'environnement"… Sans preuve de performance environnementale excellente reconnue, ces termes sont interdits.',
-    verdict: 'Interdit',
+    desc: '"Écologique", "durable", "respectueux de l\'environnement"… Ces termes peuvent devenir risqués lorsqu\'ils ne sont pas justifiés, contextualisés ou appuyés sur une performance environnementale excellente reconnue.',
+    verdict: 'Risque élevé',
   },
   {
     article: 'Annexe I, 4 quater',
-    title: 'Neutralité carbone par compensation',
-    desc: 'Affirmer qu\'un produit a un impact neutre, réduit ou positif sur les émissions de GES sur la base de la compensation carbone est interdit en toutes circonstances.',
-    verdict: 'Interdit',
+    title: 'Neutralité carbone et compensation',
+    desc: 'Affirmer qu\'un produit a un impact neutre ou positif sur les émissions de GES sur la seule base de la compensation carbone est fortement encadré par la directive et constitue un point de vigilance prioritaire.',
+    verdict: 'Risque élevé',
   },
   {
     article: 'Annexe I, 2 bis',
     title: 'Labels non certifiés',
-    desc: 'Afficher un label de développement durable qui n\'est pas fondé sur un système de certification par un tiers indépendant ou établi par une autorité publique est interdit.',
-    verdict: 'Interdit',
+    desc: 'Afficher un label de développement durable non fondé sur un système de certification par un tiers indépendant ou une autorité publique peut être qualifié de pratique commerciale trompeuse.',
+    verdict: 'Risque élevé',
   },
   {
     article: 'Annexe I, 4 ter',
-    title: 'Proportionnalité',
-    desc: 'Présenter une allégation concernant l\'ensemble du produit ou de l\'entreprise alors qu\'elle ne concerne qu\'un aspect spécifique est interdit.',
-    verdict: 'Interdit',
+    title: 'Allégations trop larges',
+    desc: 'Présenter une allégation concernant l\'ensemble du produit ou de l\'entreprise alors qu\'elle ne porte que sur un aspect spécifique peut nécessiter une vérification complémentaire et une reformulation.',
+    verdict: 'Risque élevé',
   },
   {
     article: 'Art. 6 §2, Dir. 2005/29/CE',
-    title: 'Engagements futurs',
-    desc: 'Les allégations de performance future doivent être étayées par des engagements clairs, un calendrier précis et un suivi indépendant vérifiable.',
+    title: 'Engagements environnementaux futurs',
+    desc: 'Les allégations de performance future doivent être étayées par des engagements clairs, un calendrier précis et un suivi indépendant vérifiable pour ne pas être qualifiées de trompeuses.',
     verdict: 'Encadré',
   },
   {
     article: 'Art. 6 §1, Dir. 2005/29/CE',
-    title: 'Preuve et traçabilité',
-    desc: 'Toute allégation environnementale doit être vérifiable. Sans preuve documentée (certification tierce, données mesurables), l\'allégation est considérée trompeuse.',
+    title: 'Preuve, traçabilité et documentation',
+    desc: 'Toute allégation environnementale doit pouvoir être documentée. Sans preuve vérifiable (certification tierce, données mesurables), l\'allégation peut être considérée comme insuffisamment justifiée.',
     verdict: 'Encadré',
   },
 ];
 
 const WHY = [
   {
-    title: '100% white-label — votre marque, pas la nôtre',
+    title: '100 % white-label — votre marque, pas la nôtre',
     desc: 'Votre logo, vos couleurs, vos coordonnées sur chaque rapport. Le client final ne voit que votre cabinet. Vous restez l\'expert.',
   },
   {
-    title: 'Références réglementaires exactes',
-    desc: 'Chaque verdict cite l\'article précis de la directive (UE) 2024/825. Le rapport est défendable juridiquement face à un contrôle DGCCRF ou un contentieux client.',
+    title: 'Références réglementaires identifiables',
+    desc: 'Chaque verdict s\'appuie sur une référence réglementaire identifiable afin d\'aider votre cabinet à documenter l\'analyse, structurer les recommandations et préparer un dossier exploitable en cas de contrôle ou de discussion avec le client.',
   },
   {
-    title: 'Premier rapport en moins d\'une heure',
-    desc: 'Un audit manuel prend 2 à 4 semaines. GreenAudit produit le même niveau d\'analyse en moins d\'une heure. Vos clients attendent une réponse rapide — donnez-la leur.',
+    title: 'Première analyse structurée en moins d\'une heure',
+    desc: 'La collecte et la préqualification manuelle peuvent prendre plusieurs jours. GreenAudit produit une première analyse structurée en moins d\'une heure, pour que vous puissiez vous concentrer sur le conseil à valeur ajoutée.',
   },
 ];
 
 const FAQ = [
   {
     q: 'Combien puis-je facturer un audit à mon client ?',
-    a: 'Les partenaires facturent généralement entre 1 500 € et 3 000 € par audit selon leur positionnement et la taille du client. Un cabinet RSE ou un avocat peut justifier facilement 2 000 € pour un rapport complet avec références réglementaires et plan de correction. Sur 10 audits par mois, cela représente 240 000 € de revenu annuel pour une marge de 85 %.',
+    a: 'Les partenaires facturent généralement entre 1 500 € et 3 000 € par audit selon leur positionnement, la taille du client et le périmètre d\'accompagnement inclus. Un cabinet RSE ou un avocat peut justifier 2 000 € pour un rapport structuré avec références réglementaires et plan de correction. Ces chiffres sont indicatifs et dépendent de votre marché.',
   },
   {
     q: 'À qui s\'adresse GreenAudit ?',
@@ -92,11 +92,15 @@ const FAQ = [
   },
   {
     q: 'Les rapports sont-ils utilisables en cas de contrôle ?',
-    a: 'Oui. Chaque rapport cite les articles exacts de la directive (UE) 2024/825 et de la directive 2005/29/CE modifiée. Il constitue une base documentaire solide pour un contrôle DGCCRF ou un contentieux. Il ne remplace pas le conseil d\'un avocat mais le complète utilement.',
+    a: 'Les rapports GreenAudit ne constituent pas une garantie de conformité ni un avis juridique. Ils permettent de structurer l\'analyse, de conserver les éléments de preuve, d\'identifier les points de vigilance et de préparer un dossier exploitable en cas de contrôle, d\'échange avec un client ou de revue interne.',
   },
   {
-    q: 'Quelles allégations sont concernées par EmpCo ?',
-    a: 'Toute allégation environnementale destinée aux consommateurs dans l\'UE : "éco-responsable", "durable", "respectueux de l\'environnement", "carbon neutral", "zéro émission"… La directive interdit 4 pratiques via l\'Annexe I et renforce 2 exigences existantes. La majorité des marques utilisant ce type de formulations ne sont pas conformes.',
+    q: 'GreenAudit remplace-t-il un avocat ou un expert conformité ?',
+    a: 'Non. GreenAudit est un outil d\'aide à l\'audit et à la documentation. Il permet de gagner du temps sur la détection, la préqualification et la génération de rapports, mais la validation finale doit rester entre les mains du professionnel.',
+  },
+  {
+    q: 'Quelles allégations sont concernées ?',
+    a: 'GreenAudit analyse notamment les allégations génériques, les promesses environnementales futures, les allégations de neutralité carbone, les mentions liées à la compensation, les labels, les comparaisons environnementales et les formulations portant sur tout un produit ou toute une entreprise.',
   },
 ];
 
@@ -124,12 +128,10 @@ function GaugeMockup() {
   const cx = 200, cy = 210, r = 150, thick = 34;
   const score = 40;
   const toRad = d => d * Math.PI / 180;
-  // pt(d) : coordonnée sur le cercle à l'angle d (convention math standard, Y inversé SVG)
   const pt = d => [
     parseFloat((cx + r * Math.cos(toRad(d))).toFixed(2)),
     parseFloat((cy - r * Math.sin(toRad(d))).toFixed(2)),
   ];
-  // sweep=1 = sens horaire SVG = monte vers le haut depuis la gauche (correct pour jauge)
   const arcSeg = (d1, d2, color, i) => {
     const [x1, y1] = pt(d1);
     const [x2, y2] = pt(d2);
@@ -138,7 +140,6 @@ function GaugeMockup() {
         fill="none" stroke={color} strokeWidth={thick} strokeLinecap="butt" />
     );
   };
-  // 5 zones de 36° : rouge (score bas = risque élevé) → vert (score haut = conforme)
   const segments = [
     [180, 144, '#dc2626'],
     [144, 108, '#ea580c'],
@@ -146,7 +147,6 @@ function GaugeMockup() {
     [ 72,  36, '#a3e635'],
     [ 36,   0, '#22c55e'],
   ];
-  // Aiguille à 40% : angle = 180 - 40%*180 = 108°
   const needleDeg = 180 - (score / 100) * 180;
   const nr = r - 25;
   const [nx, ny] = [
@@ -166,22 +166,18 @@ function GaugeMockup() {
       <p style={{ fontSize: '0.7rem', color: '#6b7280', marginBottom: '0.5rem' }}>Secteur : alimentaire</p>
 
       <svg viewBox="30 40 340 195" style={{ width: '100%', display: 'block' }}>
-        {/* Arcs colorés : sweep=1 monte vers le haut */}
         {segments.map(([d1, d2, c], i) => arcSeg(d1, d2, c, i))}
-        {/* Aiguille */}
         <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#1f2937" strokeWidth="4" strokeLinecap="round" />
         <circle cx={cx} cy={cy} r="9" fill="#1f2937" />
-        {/* Score */}
         <text x={cx} y={cy - 18} textAnchor="middle" fontSize="38" fontWeight="900" fill="#f97316">{score}</text>
         <text x={cx} y={cy} textAnchor="middle" fontSize="13" fill="#9ca3af">/100</text>
-        {/* Labels 0 / 100 */}
         <text x={pt(180)[0] + 4} y={pt(180)[1] + 18} textAnchor="middle" fontSize="11" fill="#9ca3af">0</text>
         <text x={pt(0)[0] - 4}   y={pt(0)[1] + 18}   textAnchor="middle" fontSize="11" fill="#9ca3af">100</text>
       </svg>
 
       <p style={{ color: '#f97316', fontWeight: 700, fontSize: '1rem', marginBottom: '0.75rem' }}>Risque élevé</p>
       <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-        {[['#dc2626','3 non conformes'],['#f97316','0 à risque'],['#22c55e','2 conformes']].map(([color, label]) => (
+        {[['#dc2626','3 risque élevé'],['#f97316','0 à vérifier'],['#22c55e','2 documentés']].map(([color, label]) => (
           <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', color: '#6b7280' }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
             {label}
@@ -192,28 +188,26 @@ function GaugeMockup() {
   );
 }
 
-/* ─── Mockup UI (remplace la photo de l'équipe / screenshot) ──────────────── */
+/* ─── Mockup UI ─────────────────────────────────────────────────────────────── */
 function AppMockup() {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden text-xs font-mono">
-      {/* Barre titre */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-gray-100">
         <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
         <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
         <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
         <span className="ml-2 text-gray-400 text-[10px]">GreenAudit — Audit #042</span>
       </div>
-      {/* Contenu mockup */}
       <div className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-gray-500 text-[10px] uppercase tracking-wide">Allégation</span>
-          <span className="text-gray-500 text-[10px] uppercase tracking-wide">Verdict</span>
+          <span className="text-gray-500 text-[10px] uppercase tracking-wide">Niveau de risque</span>
         </div>
         {[
-          { claim: '"Produit écologique"', verdict: 'NON CONFORME', color: 'text-red-600 bg-red-50' },
-          { claim: '"Carbon neutral 2030"', verdict: 'NON CONFORME', color: 'text-red-600 bg-red-50' },
-          { claim: '"30% plastique recyclé"', verdict: 'RISQUE', color: 'text-amber-600 bg-amber-50' },
-          { claim: '"Label Ecocert certifié"', verdict: 'CONFORME', color: 'text-green-700 bg-green-50' },
+          { claim: '"Produit écologique"',    verdict: 'RISQUE ÉLEVÉ',   color: 'text-red-600 bg-red-50' },
+          { claim: '"Carbon neutral 2030"',   verdict: 'À VÉRIFIER',     color: 'text-amber-600 bg-amber-50' },
+          { claim: '"30% plastique recyclé"', verdict: 'RISQUE MODÉRÉ',  color: 'text-orange-600 bg-orange-50' },
+          { claim: '"Label Ecocert certifié"',verdict: 'DOCUMENTÉ',      color: 'text-green-700 bg-green-50' },
         ].map((item) => (
           <div key={item.claim} className="flex items-center justify-between py-1.5 border-b border-gray-50">
             <span className="text-gray-700 text-[11px]">{item.claim}</span>
@@ -223,7 +217,7 @@ function AppMockup() {
           </div>
         ))}
         <div className="pt-2 flex items-center justify-between">
-          <span className="text-gray-400 text-[10px]">Score global</span>
+          <span className="text-gray-400 text-[10px]">Score de risque</span>
           <span className="text-[#1a5c3a] font-bold text-sm">38 / 100</span>
         </div>
         <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
@@ -259,12 +253,10 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
 
-          {/* Logo */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <img src="/logo.png" alt="GreenAudit" className="h-32 w-auto object-contain" />
           </div>
 
-          {/* Nav links centre */}
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
             <a href="#fonctionnalites" className="hover:text-gray-900 transition-colors">Fonctionnalités</a>
             <a href="#regles" className="hover:text-gray-900 transition-colors">Règles EmpCo</a>
@@ -272,7 +264,6 @@ export default function Landing() {
             <button onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })} className="hover:text-gray-900 transition-colors">Tarifs</button>
           </div>
 
-          {/* CTA droite */}
           <div className="flex items-center gap-4">
             {user ? (
               <button
@@ -305,38 +296,37 @@ export default function Landing() {
       <section className="bg-[#eaf4ee]">
         <div className="max-w-7xl mx-auto px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
-          {/* Visuel gauche */}
           <div className="order-2 lg:order-1">
             <div className="bg-[#d4ecdb] rounded-3xl p-8">
               <GaugeMockup />
             </div>
           </div>
 
-          {/* Texte droite */}
           <div className="order-1 lg:order-2">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
-              Directive (UE) 2024/825 · Sanctions dès septembre 2026
+              Directive (UE) 2024/825 · Application prévue septembre 2026
             </p>
             <h1 className="text-4xl sm:text-5xl font-black text-gray-900 leading-tight mb-6">
-              La réglementation se durcit sur le greenwashing. Transformez-la en opportunité de conseil premium.
+              La réglementation se durcit sur les allégations environnementales. Transformez EmpCo en offre d'audit premium pour vos clients.
             </h1>
+            <p className="text-base text-gray-500 leading-relaxed mb-4 max-w-lg">
+              La directive EmpCo encadre fortement les allégations comme "éco-responsable", "durable", "vert" ou "neutre en carbone" lorsqu'elles ne sont pas clairement justifiées, vérifiables ou correctement contextualisées.
+            </p>
             <p className="text-base text-gray-500 leading-relaxed mb-8 max-w-lg">
-              La directive EmpCo interdit "éco-responsable", "durable", "carbon neutral" sans preuve.
-              GreenAudit analyse automatiquement chaque allégation, génère un rapport PDF conforme
-              à votre marque et vous permet de le revendre en marque blanche.
+              GreenAudit aide les cabinets RSE et agences de communication à détecter les allégations environnementales à risque, générer des rapports white-label et centraliser les preuves dans un dossier sécurisé.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/login')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
               >
-                Lancer un audit gratuit →
+                Lancer un audit test →
               </button>
               <button
                 onClick={() => navigate('/contact')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-[#1a5c3a] border-2 border-[#1a5c3a] hover:bg-[#eaf4ee] transition-colors"
               >
-                Voir une démo →
+                Voir une démo partenaire →
               </button>
             </div>
           </div>
@@ -348,15 +338,15 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
           <div>
             <p className="text-4xl font-black text-[#1a5c3a]">27 sept. 2026</p>
-            <p className="mt-2 text-sm text-gray-500">Deadline réglementaire — vos clients doivent être conformes avant cette date</p>
+            <p className="mt-2 text-sm text-gray-500">Date d'application prévue des mesures issues de la directive EmpCo dans les États membres.</p>
           </div>
           <div>
             <p className="text-4xl font-black text-[#1a5c3a]">2 000–5 000 €</p>
-            <p className="mt-2 text-sm text-gray-500">Fourchette de revente par audit — nouvelle source de revenus récurrents</p>
+            <p className="mt-2 text-sm text-gray-500">Fourchette indicative de revente possible par audit selon le périmètre, le secteur et l'accompagnement inclus.</p>
           </div>
           <div>
             <p className="text-4xl font-black text-[#1a5c3a]">10×</p>
-            <p className="mt-2 text-sm text-gray-500">Plus rapide qu'un audit manuel — résultat en moins d'une heure, pas en 3 semaines</p>
+            <p className="mt-2 text-sm text-gray-500">Préqualification plus rapide qu'un audit entièrement manuel — une première analyse structurée en moins d'une heure.</p>
           </div>
         </div>
       </section>
@@ -365,28 +355,27 @@ export default function Landing() {
       <section id="fonctionnalites" className="py-24">
         <div className="max-w-7xl mx-auto px-6">
 
-          {/* Bloc 1 — texte gauche, visuel droite */}
+          {/* Bloc 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mb-28">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
-                Détection automatique
+                Détection automatisée des allégations à risque
               </p>
               <h2 className="text-4xl font-black text-gray-900 leading-tight mb-6">
-                "Éco-responsable", "durable", "vert" — chaque allégation analysée en secondes
+                "Éco-responsable", "durable", "vert" — chaque allégation classée par niveau de risque
               </h2>
               <p className="text-gray-500 leading-relaxed mb-4">
-                La majorité des entreprises utilisent des allégations environnementales non conformes sans le savoir.
-                GreenAudit détecte immédiatement ce qui est interdit, ce qui est à risque et ce qui est conforme —
-                avec l'article exact de la directive (UE) 2024/825.
+                De nombreuses entreprises utilisent des formulations environnementales générales ou insuffisamment documentées sans mesurer leur niveau de risque.
+                GreenAudit identifie les allégations sensibles, les classe par niveau de priorité et les associe aux principaux points de vigilance issus de la directive (UE) 2024/825.
               </p>
               <p className="text-gray-500 leading-relaxed mb-8">
-                En moins d'une heure, votre client reçoit un rapport complet avec plan de correction priorisé.
+                En quelques secondes, vous visualisez ce qui semble conforme, ce qui est à risque et ce qui nécessite une vérification complémentaire — avec la référence réglementaire associée.
               </p>
               <button
                 onClick={() => navigate('/login')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
               >
-                Lancer un audit gratuit →
+                Lancer un audit test →
               </button>
             </div>
             <div className="bg-[#eaf4ee] rounded-3xl p-8">
@@ -394,10 +383,9 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Bloc 2 — visuel gauche, texte droite */}
+          {/* Bloc 2 — white-label */}
           <div id="partenaires" className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="bg-[#eaf4ee] rounded-3xl p-8 order-2 lg:order-1">
-              {/* Mockup rapport PDF */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 text-xs space-y-3">
                 <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
                   <div className="h-6 w-6 rounded bg-[#1a5c3a]" />
@@ -408,7 +396,7 @@ export default function Landing() {
                   <div className="h-2 bg-gray-100 rounded w-1/2" />
                 </div>
                 <div className="grid grid-cols-3 gap-2 pt-1">
-                  {['Conformes', 'À risque', 'Non conformes'].map((label, i) => (
+                  {['Documentés', 'À risque', 'À corriger'].map((label, i) => (
                     <div key={label} className="rounded-lg p-2 text-center" style={{ backgroundColor: ['#d4ecdb', '#fef3c7', '#fee2e2'][i] }}>
                       <p className="text-base font-black" style={{ color: ['#166534', '#92400e', '#991b1b'][i] }}>
                         {[4, 2, 3][i]}
@@ -418,9 +406,9 @@ export default function Landing() {
                   ))}
                 </div>
                 <div className="pt-1 space-y-1.5">
-                  {['Supprimer "écologique"', 'Remplacer "carbon neutral"', 'Documenter label Ecocert'].map((action, i) => (
+                  {['Reformuler "écologique"', 'Documenter neutralité carbone', 'Conserver label Ecocert'].map((action, i) => (
                     <div key={action} className="flex items-center gap-2">
-                      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${['bg-red-500', 'bg-red-500', 'bg-green-500'][i]}`} />
+                      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${['bg-red-500', 'bg-amber-500', 'bg-green-500'][i]}`} />
                       <span className="text-[10px] text-gray-600">{action}</span>
                     </div>
                   ))}
@@ -433,7 +421,7 @@ export default function Landing() {
                 White-label + monétisation
               </p>
               <h2 className="text-4xl font-black text-gray-900 leading-tight mb-6">
-                Votre marque sur chaque rapport. Vos revenus sur chaque audit.
+                Votre marque sur chaque rapport. Votre expertise au centre de la relation client.
               </h2>
               <div className="space-y-6">
                 {WHY.map((item) => (
@@ -446,6 +434,9 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
+              <p className="mt-6 text-sm text-gray-500 leading-relaxed">
+                GreenAudit vous permet de créer une offre d'audit EmpCo sous votre propre marque : rapport PDF personnalisé, recommandations structurées, dossier de preuves et suivi des corrections.
+              </p>
             </div>
           </div>
         </div>
@@ -456,30 +447,28 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
 
-            {/* Titre gauche */}
             <div className="lg:sticky lg:top-24">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
-                Ce que la directive interdit
+                Les principaux risques EmpCo à surveiller
               </p>
               <h2 className="text-4xl font-black text-gray-900 leading-tight mb-6">
-                6 règles. Vos clients en enfreignent probablement plusieurs.
+                6 familles de risques. Vos clients en utilisent peut-être déjà sans le savoir.
               </h2>
               <p className="text-gray-500 leading-relaxed">
-                La directive (UE) 2024/825 ajoute 4 interdictions absolues à l'Annexe I et renforce 2 exigences
-                existantes. "Éco-responsable", "durable", "carbon neutral" sans preuve sont désormais illégaux.
-                GreenAudit vérifie chacune de ces règles automatiquement.
+                Allégations génériques, promesses futures, labels, compensation carbone : GreenAudit vous aide à prioriser les points de vigilance.
+                La directive (UE) 2024/825 ajoute 4 familles de risques à l'Annexe I et renforce 2 exigences existantes.
+                GreenAudit vérifie chacune de ces dimensions automatiquement.
               </p>
             </div>
 
-            {/* Cards droite */}
             <div className="space-y-4">
               {RULES.map((rule) => (
                 <div key={rule.article} className="bg-white rounded-2xl p-5 border-l-4"
-                  style={{ borderLeftColor: rule.verdict === 'Interdit' ? '#dc2626' : '#d97706' }}>
+                  style={{ borderLeftColor: rule.verdict === 'Risque élevé' ? '#dc2626' : '#d97706' }}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-mono text-gray-400">{rule.article}</span>
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                      rule.verdict === 'Interdit' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                      rule.verdict === 'Risque élevé' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
                     }`}>
                       {rule.verdict}
                     </span>
@@ -493,25 +482,64 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ══════════════════════════════════════ CE QUE GREENAUDIT N'EST PAS ══ */}
+      <section className="py-24 border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
+              Positionnement
+            </p>
+            <h2 className="text-4xl font-black text-gray-900 leading-tight mb-6">
+              Ce que GreenAudit n'est pas
+            </h2>
+            <p className="text-gray-500 leading-relaxed max-w-2xl mx-auto">
+              GreenAudit ne remplace pas un avocat, une autorité administrative ou un audit juridique complet.
+              La plateforme fournit une analyse automatisée, structurée et documentée pour aider les professionnels
+              à identifier les risques, prioriser les corrections et constituer un dossier de preuves.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {[
+              {
+                title: 'Pas une certification officielle',
+                desc: 'GreenAudit ne délivre pas de label de conformité. Les résultats sont des éléments d\'analyse, pas une attestation réglementaire.',
+              },
+              {
+                title: 'Pas un avis juridique',
+                desc: 'Les rapports servent de base d\'analyse et de documentation. Ils ne remplacent pas le conseil d\'un avocat spécialisé.',
+              },
+              {
+                title: 'Un outil pour professionnels',
+                desc: 'Le jugement final reste entre les mains du cabinet, du conseil ou de l\'équipe conformité. GreenAudit structure et accélère le travail d\'analyse.',
+              },
+            ].map((card) => (
+              <div key={card.title} className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                <p className="text-sm font-bold text-gray-900 mb-2">{card.title}</p>
+                <p className="text-sm text-gray-500 leading-relaxed">{card.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ════════════════════════════════════════ COMMENT ÇA MARCHE ══ */}
-      <section className="py-24">
+      <section className="py-24 bg-[#eaf4ee]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
               Simple à utiliser
             </p>
             <h2 className="text-4xl font-black text-gray-900 leading-tight">
-              De zéro à rapport factu­rable en 3 étapes
+              De la détection au rapport client en 3 étapes
             </h2>
           </div>
 
-          {/* Flow visuel */}
           <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-16 justify-center">
             {['Saisie', 'Analyse', 'Rapport PDF'].map((label, i) => (
               <div key={label} className="flex items-center gap-4">
                 <div className={`rounded-xl px-5 py-2.5 text-sm font-semibold ${
                   i === 2 ? 'bg-[#1a5c3a] text-white' :
-                  i === 1 ? 'bg-[#eaf4ee] text-[#1a5c3a] border border-[#1a5c3a]' :
+                  i === 1 ? 'bg-white text-[#1a5c3a] border border-[#1a5c3a]' :
                   'bg-gray-100 text-gray-600 border border-gray-200'
                 }`}>
                   {label}
@@ -524,7 +552,7 @@ export default function Landing() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {STEPS.map((s) => (
               <div key={s.step}>
-                <p className="text-6xl font-black text-gray-100 mb-4">{s.step}</p>
+                <p className="text-6xl font-black text-gray-200 mb-4">{s.step}</p>
                 <h3 className="text-lg font-bold text-gray-900 mb-3">{s.title}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">{s.desc}</p>
               </div>
@@ -538,7 +566,6 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
 
-            {/* Titre gauche */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a] mb-4">
                 Questions fréquentes
@@ -548,7 +575,6 @@ export default function Landing() {
               </h2>
             </div>
 
-            {/* Accordion droite */}
             <div>
               {FAQ.map((item) => (
                 <FaqItem key={item.q} q={item.q} a={item.a} />
@@ -572,20 +598,19 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
 
             {/* Starter */}
-            <div className="rounded-2xl border border-gray-200 p-8 flex flex-col">
+            <div className="rounded-2xl border border-gray-200 p-7 flex flex-col">
               <div className="mb-6">
                 <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Starter</p>
-                <div className="text-4xl font-black text-gray-900 mb-1">Gratuit</div>
-                <p className="text-sm text-gray-400">1 audit unique — sans CB</p>
+                <div className="text-3xl font-black text-gray-900 mb-1">Gratuit</div>
+                <p className="text-sm text-gray-400">1 audit test — sans CB</p>
               </div>
-              <ul className="space-y-3 mb-8 flex-1">
+              <ul className="space-y-2.5 mb-8 flex-1">
                 {[
-                  '1 audit one-shot (non récurrent)',
-                  '3 pages scannées maximum',
-                  'Score global + verdicts par allégation',
+                  '1 audit one-shot',
+                  'Score global + verdicts',
                   'Rapport PDF GreenAudit',
                   'Analyse des 6 critères EmpCo',
                 ].map(f => (
@@ -595,9 +620,9 @@ export default function Landing() {
                 ))}
                 {[
                   'White-label',
-                  'Recommandations de correction',
+                  'Recommandations',
                   'Dossier de preuves',
-                  'Monitoring continu',
+                  'Monitoring',
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-gray-400">
                     <span className="mt-0.5">–</span>{f}
@@ -608,31 +633,68 @@ export default function Landing() {
                 onClick={() => navigate('/login')}
                 className="w-full rounded-full py-3 text-sm font-semibold border border-gray-300 text-gray-700 hover:border-gray-400 transition-colors"
               >
-                Scanner un site gratuitement
+                Scanner gratuitement
               </button>
             </div>
 
-            {/* Pro — mis en avant */}
-            <div className="rounded-2xl border-2 border-[#1a5c3a] p-8 flex flex-col relative shadow-lg">
+            {/* Partner */}
+            <div className="rounded-2xl border border-gray-200 p-7 flex flex-col">
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Partner</p>
+                <div className="text-3xl font-black text-gray-900 mb-1">990 €<span className="text-base font-normal text-gray-400">/mois</span></div>
+                <p className="text-sm text-gray-400">5 audits/mois · Pour lancer l'offre EmpCo</p>
+              </div>
+              <ul className="space-y-2.5 mb-8 flex-1">
+                {[
+                  '5 audits complets par mois',
+                  'Rapport PDF complet',
+                  'White-label (logo + couleurs)',
+                  'Recommandations de correction',
+                  'Dossier de preuves',
+                  "Jusqu'à 3 utilisateurs",
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                    <span className="text-[#1a5c3a] font-bold mt-0.5">✓</span>{f}
+                  </li>
+                ))}
+                {[
+                  'Monitoring continu',
+                  'Suivi des corrections',
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-400">
+                    <span className="mt-0.5">–</span>{f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => navigate('/contact')}
+                className="w-full rounded-full py-3 text-sm font-semibold border border-[#1a5c3a] text-[#1a5c3a] hover:bg-[#eaf4ee] transition-colors"
+              >
+                Nous contacter
+              </button>
+            </div>
+
+            {/* Pro Partner — mis en avant */}
+            <div className="rounded-2xl border-2 border-[#1a5c3a] p-7 flex flex-col relative shadow-lg">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span className="bg-[#1a5c3a] text-white text-xs font-semibold px-4 py-1 rounded-full">Le plus choisi</span>
               </div>
               <div className="mb-6">
-                <p className="text-sm font-semibold text-[#1a5c3a] uppercase tracking-widest mb-2">Pro</p>
-                <div className="text-4xl font-black text-gray-900 mb-1">2 990 €<span className="text-lg font-normal text-gray-400">/mois</span></div>
+                <p className="text-sm font-semibold text-[#1a5c3a] uppercase tracking-widest mb-2">Pro Partner</p>
+                <div className="text-3xl font-black text-gray-900 mb-1">2 990 €<span className="text-base font-normal text-gray-400">/mois</span></div>
                 <p className="text-sm text-gray-400">15 audits/mois · Engagement 12 mois</p>
               </div>
-              <ul className="space-y-3 mb-8 flex-1">
+              <ul className="space-y-2.5 mb-8 flex-1">
                 {[
                   '15 audits complets par mois',
                   'Pages illimitées par audit',
                   'Rapport PDF complet',
-                  'White-label (logo + couleurs + coordonnées)',
-                  'Corrections suggérées conformes EmpCo',
-                  'Dossier de preuves (ZIP DGCCRF)',
+                  'White-label complet',
+                  'Corrections suggérées EmpCo',
+                  'Dossier de preuves (SHA-256)',
                   'Monitoring continu du site',
-                  'Suivi des corrections par allégation',
-                  'Jusqu\'à 10 utilisateurs',
+                  'Suivi des corrections',
+                  "Jusqu'à 10 utilisateurs",
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
                     <span className="text-[#1a5c3a] font-bold mt-0.5">✓</span>{f}
@@ -644,25 +706,26 @@ export default function Landing() {
                 disabled={checkoutLoading}
                 className="w-full rounded-full py-3 text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {checkoutLoading ? 'Redirection...' : 'Souscrire au plan Pro'}
+                {checkoutLoading ? 'Redirection...' : 'Souscrire au plan Pro Partner'}
               </button>
             </div>
 
             {/* Enterprise */}
-            <div className="rounded-2xl border border-gray-200 p-8 flex flex-col bg-gray-50">
+            <div className="rounded-2xl border border-gray-200 p-7 flex flex-col bg-gray-50">
               <div className="mb-6">
                 <p className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-2">Enterprise</p>
-                <div className="text-4xl font-black text-gray-900 mb-1">Sur devis</div>
+                <div className="text-3xl font-black text-gray-900 mb-1">Sur devis</div>
                 <p className="text-sm text-gray-400">À partir de 50 000 €/an</p>
               </div>
-              <ul className="space-y-3 mb-8 flex-1">
+              <ul className="space-y-2.5 mb-8 flex-1">
                 {[
-                  'Audits illimités',
+                  'Audits sur mesure ou volume élevé',
+                  'Multi-tenant avancé',
                   'Utilisateurs illimités',
-                  'White-label (logo + couleurs + coordonnées)',
-                  'Toutes les features du plan Pro',
-                  'Support premium',
-                  'Facturation sur mesure',
+                  'White-label complet',
+                  'Support premium dédié',
+                  'Onboarding partenaire',
+                  'Facturation et conditions personnalisées',
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
                     <span className="text-[#1a5c3a] font-bold mt-0.5">✓</span>{f}
@@ -683,9 +746,12 @@ export default function Landing() {
           <div className="mt-16 max-w-2xl mx-auto bg-[#eaf4ee] rounded-2xl p-8 text-center">
             <p className="text-sm font-semibold uppercase tracking-widest text-[#1a5c3a] mb-3">Économie partenaire</p>
             <p className="text-gray-700 text-sm leading-relaxed">
-              Scénario : 10 audits/mois revendus à 2 000 € chacun.<br/>
-              <span className="font-bold text-gray-900">240 000 € de revenu annuel</span> — coût GreenAudit : 35 880 €.<br/>
-              Marge partenaire : <span className="font-bold text-[#1a5c3a]">85% — ROI ×6,7</span>.
+              Exemple indicatif : 10 audits/mois revendus 2 000 € chacun.<br/>
+              <span className="font-bold text-gray-900">Revenu annuel potentiel : 240 000 €</span> — Coût GreenAudit Pro Partner : 35 880 €/an.<br/>
+              Marge brute logicielle estimée : <span className="font-bold text-[#1a5c3a]">environ 85 %</span>, hors temps de conseil, acquisition client et accompagnement.
+            </p>
+            <p className="mt-3 text-xs text-gray-400 italic">
+              Exemple non garanti, dépendant du positionnement, du portefeuille client, du périmètre d'audit et de l'accompagnement vendu.
             </p>
           </div>
         </div>
@@ -695,41 +761,39 @@ export default function Landing() {
       <section className="bg-[#eaf4ee] py-24">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
-          {/* Visuel gauche — bloc urgence */}
           <div className="bg-white rounded-3xl p-10 shadow-sm">
             <div className="text-center space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a]">Deadline réglementaire</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a]">Échéance réglementaire</p>
               <p className="text-5xl font-black text-gray-900">27 sept.</p>
               <p className="text-5xl font-black text-gray-900">2026</p>
               <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                Mise en application de la directive EmpCo. Sanctions pour toute allégation environnementale non conforme.
+                À partir de cette échéance, les entreprises devront être prêtes à justifier, contextualiser et documenter leurs allégations environnementales selon les mesures de transposition applicables.
                 Chaque semaine perdue réduit votre avance.
               </p>
             </div>
           </div>
 
-          {/* Texte droite */}
           <div>
             <h2 className="text-4xl font-black text-gray-900 leading-tight mb-4">
               Ceux qui commencent maintenant auront 12 mois d'avance sur leurs concurrents
             </h2>
             <p className="text-gray-500 leading-relaxed mb-8">
-              Vos clients ne sont probablement pas conformes. Ils ne le savent pas encore.
+              Beaucoup d'entreprises utilisent déjà des formulations environnementales qui méritent d'être revues, précisées ou documentées.
               Positionnez-vous comme l'expert EmpCo de référence avant septembre 2026.
-              Premier rapport en moins d'une heure, configuration en 10 minutes.
+              Première analyse structurée en moins d'une heure, configuration en 10 minutes.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/login')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
               >
-                Lancer un audit gratuit →
+                Lancer un audit test →
               </button>
               <button
                 onClick={() => navigate('/contact')}
                 className="px-6 py-3 rounded-full text-sm font-semibold text-[#1a5c3a] border-2 border-[#1a5c3a] hover:bg-white transition-colors"
               >
-                Voir une démo →
+                Voir une démo partenaire →
               </button>
             </div>
             <p className="mt-4 text-xs text-gray-400">
@@ -751,9 +815,9 @@ export default function Landing() {
               <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-5">Logiciel</p>
               <ul className="space-y-3 text-sm text-gray-300">
                 <li><a href="#fonctionnalites" className="hover:text-white transition-colors">Fonctionnalités</a></li>
-                <li><a href="#regles" className="hover:text-white transition-colors">Règles EmpCo</a></li>
+                <li><a href="#regles" className="hover:text-white transition-colors">Risques EmpCo</a></li>
                 <li><a href="#partenaires" className="hover:text-white transition-colors">White-label</a></li>
-                <li><button onClick={() => navigate('/contact')} className="hover:text-white transition-colors">Tarifs</button></li>
+                <li><button onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">Tarifs</button></li>
               </ul>
             </div>
 
@@ -761,7 +825,7 @@ export default function Landing() {
               <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-5">Réglementation</p>
               <ul className="space-y-3 text-sm text-gray-300">
                 <li><span>Directive (UE) 2024/825</span></li>
-                <li><span>Annexe I — 6 interdictions</span></li>
+                <li><span>Annexe I — 6 familles de risques</span></li>
                 <li><span>Dir. 2005/29/CE modifiée</span></li>
                 <li><span>Guide ADEME 2025</span></li>
               </ul>
@@ -788,14 +852,13 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Copyright bar */}
         <div className="border-t border-gray-800">
           <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <img src="/logo.png" alt="GreenAudit" className="h-24 w-auto object-contain" />
             </div>
             <p className="text-xs text-gray-500 text-center">
-              Copyright © 2026 GreenAudit · Conformité Directive (UE) 2024/825 · Transposition avant le 27 septembre 2026
+              Copyright © 2026 GreenAudit · Pré-audit et documentation des allégations environnementales · Directive (UE) 2024/825 · Application prévue à partir du 27 septembre 2026
             </p>
             <div className="flex gap-4 text-xs text-gray-500">
               <button onClick={() => navigate('/mentions-legales')} className="hover:text-white transition-colors">Mentions légales</button>
