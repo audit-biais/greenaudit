@@ -1414,16 +1414,36 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
     return elements
 
 
+_GOUVERNANCE_TEXT = (
+    "Au-delà des corrections immédiates et de la constitution du dossier documentaire, "
+    "nous recommandons les actions de gouvernance suivantes :"
+)
+_GOUVERNANCE_BULLETS = [
+    "Mettre en place une procédure interne de validation des contenus environnementaux "
+    "avant publication, impliquant les équipes marketing, communication et RSE.",
+    "Conserver les preuves dans un dossier documentaire horodaté, organisé par allégation "
+    "et accessible en cas de contrôle.",
+    "Effectuer une revue semestrielle des communications environnementales pour anticiper "
+    "l'évolution de la directive et de la jurisprudence DGCCRF.",
+    "Former les équipes marketing et communication aux exigences de la directive 2024/825 "
+    "et aux interdictions absolues de l'annexe I.",
+    "Désigner un référent conformité environnementale au sein de l'organisation, point de "
+    "contact unique pour les questions liées aux allégations.",
+]
+
+
 def _correction_plan_elements(claims: list, styles: dict) -> list:
-    """Plan de correction structuré en 3 niveaux selon le régime juridique."""
+    """
+    Plan de correction en 3 niveaux :
+    - Niveau 1 : tableau des allégations liste_noire (pratiques interdites Annexe I)
+    - Niveau 2 : tableau des allégations cas_par_cas, 1 ligne par claim, critères fusionnés
+    - Niveau 3 : bloc texte générique gouvernance (statique, identique pour tous les rapports)
+    """
     elements = []
 
-    DOCUMENTATION_CRITERIA = {"specificity", "justification", "compensation", "labels"}
-    GOVERNANCE_CRITERIA     = {"future_commitment", "proportionality"}
-
-    niveau1: list = []  # liste_noire — corrections immédiates
-    niveau2: list = []  # cas_par_cas — documentation
-    niveau3: list = []  # cas_par_cas — gouvernance
+    niveau1: list = []  # (claim_short, article_label, action)
+    # niveau2 : dict claim_text → {"criteres": [str], "actions": [str]}
+    niveau2_map: dict = {}
 
     for claim in claims:
         if getattr(claim, "is_false_positive", False):
@@ -1443,22 +1463,31 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
             action = first_nc.recommendation if first_nc else "Supprimer ou reformuler l'allégation"
             niveau1.append((claim_short, article_label, action))
         else:
+            # Tous les critères non-conformes/risque absorbés dans niveau 2
             for r in claim.results:
                 if r.verdict not in ("non_conforme", "risque") or not r.recommendation:
                     continue
-                entry = (
-                    claim_short,
-                    CRITERION_LABELS.get(r.criterion, r.criterion),
-                    r.recommendation,
-                )
-                if r.criterion in GOVERNANCE_CRITERIA:
-                    niveau3.append(entry)
-                else:
-                    niveau2.append(entry)
+                if claim_short not in niveau2_map:
+                    niveau2_map[claim_short] = {"criteres": [], "actions": []}
+                crit_label = CRITERION_LABELS.get(r.criterion, r.criterion)
+                if crit_label not in niveau2_map[claim_short]["criteres"]:
+                    niveau2_map[claim_short]["criteres"].append(crit_label)
+                if r.recommendation not in niveau2_map[claim_short]["actions"]:
+                    niveau2_map[claim_short]["actions"].append(r.recommendation)
+
+    # Aplatir niveau2_map en liste de lignes fusionnées
+    niveau2 = [
+        (
+            claim_short,
+            ", ".join(v["criteres"]),
+            " ; ".join(v["actions"]),
+        )
+        for claim_short, v in niveau2_map.items()
+    ]
 
     title = Paragraph("4. Plan de correction priorisé", styles["h1"])
 
-    if not niveau1 and not niveau2 and not niveau3:
+    if not niveau1 and not niveau2:
         elements.append(KeepTogether([
             title, Paragraph("Aucune action corrective nécessaire.", styles["body"])
         ]))
@@ -1469,7 +1498,7 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
 
     page_width = A4[0] - 40 * mm
 
-    def _render_niveau(num: str, description: str, color_hex: str, rows: list, col2_header: str):
+    def _render_niveau_table(num: str, description: str, color_hex: str, rows: list, col2_header: str):
         niveau_elements = []
         label_style = ParagraphStyle(
             f"niveau_lbl_{num}", parent=styles["body"],
@@ -1515,20 +1544,39 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
         return niveau_elements
 
     if niveau1:
-        elements.extend(_render_niveau(
+        elements.extend(_render_niveau_table(
             "1", "Corrections immédiates — Pratiques interdites Annexe I",
             _C_CRITIQUE, niveau1, "Article EmpCo",
         ))
     if niveau2:
-        elements.extend(_render_niveau(
+        elements.extend(_render_niveau_table(
             "2", "Documentation — Dossier de conformité à compléter",
-            _C_RISQUE, niveau2, "Critère",
+            _C_RISQUE, niveau2, "Critères concernés",
         ))
-    if niveau3:
-        elements.extend(_render_niveau(
-            "3", "Gouvernance — Suivi et périmètre",
-            _C_STEEL, niveau3, "Critère",
-        ))
+
+    # Niveau 3 — bloc texte générique gouvernance (statique)
+    gov_label_style = ParagraphStyle(
+        "niveau_lbl_3", parent=styles["body"],
+        fontSize=9, fontName="Helvetica-Bold",
+        textColor=colors.HexColor(_C_STEEL),
+    )
+    gov_body_style = ParagraphStyle(
+        "gov_body", parent=styles["small"],
+        fontSize=8, leading=12, textColor=colors.HexColor(_C_TEXT),
+    )
+    gov_bullet_style = ParagraphStyle(
+        "gov_bullet", parent=styles["small"],
+        fontSize=8, leading=12, textColor=colors.HexColor(_C_TEXT),
+        leftIndent=10, firstLineIndent=-10,
+    )
+    elements.append(Paragraph("NIVEAU 3 — Gouvernance — Procédures internes et suivi", gov_label_style))
+    elements.append(Spacer(1, 2 * mm))
+    elements.append(Paragraph(_rl_escape(_GOUVERNANCE_TEXT), gov_body_style))
+    elements.append(Spacer(1, 2 * mm))
+    for bullet in _GOUVERNANCE_BULLETS:
+        elements.append(Paragraph(f"– {_rl_escape(bullet)}", gov_bullet_style))
+        elements.append(Spacer(1, 1 * mm))
+    elements.append(Spacer(1, 3 * mm))
 
     elements.append(Paragraph(
         "<b>Date limite de mise en conformité directive EmpCo : 27 septembre 2026</b>",
