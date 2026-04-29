@@ -133,13 +133,21 @@ async def classify_claim_regime(
         }
 
     Logique (premier match gagne) :
-    1. Label auto-décerné                    → annexe_I_2bis   / liste_noire
+    1. Label auto-décerné                    → annexe_I_2bis    / liste_noire
     2. Neutralité carbone par compensation   → annexe_I_4quater / liste_noire
-    3. Terme générique sans qualification    → annexe_I_4bis   / liste_noire
-    4. Allégation entreprise sur aspect part → annexe_I_4ter   / liste_noire
-    5. Engagement futur                      → article_6_1d    / cas_par_cas
-    6. Exigence légale présentée distinc.    → annexe_I_10bis  / liste_noire
+    3. Terme générique sans qualification    → annexe_I_4bis    / liste_noire
+    4. Engagement futur                      → article_6_1d     / cas_par_cas  ← priorité sur 4ter
+    5. Allégation entreprise sur aspect part → annexe_I_4ter    / liste_noire
+    6. Exigence légale présentée distinc.    → annexe_I_10bis   / liste_noire
     7. Défaut                                → article_6_general / cas_par_cas
+
+    Justification ordre 4 avant 5 :
+    La blacklist (3) est prioritaire car les termes génériques sont interdits
+    "en toutes circonstances" (même dans un engagement futur — "écologiques
+    d'ici 2030" reste annexe_I_4bis). En revanche, la proportionnalité (4ter)
+    est une heuristique contextuelle qui ne doit pas écraser un engagement
+    futur explicite : "réduction des produits phytosanitaires de 25%" contient
+    "produits" qui matche PARTIAL_SCOPE_PATTERNS, mais c'est bien un article_6_1d.
     """
     text = claim_text.lower().strip()
     text_normalized = _normalize(text)
@@ -170,21 +178,24 @@ async def classify_claim_regime(
             "rationale": f"Terme générique '{blacklist_term}' sans qualification mesurable — Annexe I, point 4bis",
         }
 
-    # ── Règle 4 : proportionnalité (Annexe I, point 4ter) ────────────────────
-    if claim_metadata.get("scope") == "entreprise" and _has_partial_scope_mention(text):
-        return {
-            "regulatory_basis": "annexe_I_4ter",
-            "regime": "liste_noire",
-            "rationale": "Allégation 'entreprise' portant sur un aspect partiel — Annexe I, point 4ter",
-        }
-
-    # ── Règle 5 : engagement futur (Art. 6, §2, point d) ─────────────────────
-    # Déclenché par metadata OU par détection lexicale (fallback scan mode)
+    # ── Règle 4 : engagement futur (Art. 6, §2, point d) ─────────────────────
+    # Remonté AVANT proportionnalité : un engagement futur explicite prime sur
+    # l'heuristique contextuelle 4ter (ex: "produits phytosanitaires" matchait
+    # PARTIAL_SCOPE_PATTERNS alors que la phrase est clairement un article_6_1d).
+    # Déclenché par metadata OU par détection lexicale (fallback scan mode).
     if claim_metadata.get("is_future_commitment") or _is_future_commitment_lexical(text):
         return {
             "regulatory_basis": "article_6_1d",
             "regime": "cas_par_cas",
             "rationale": "Engagement futur à évaluer selon Art. 6.2(d)",
+        }
+
+    # ── Règle 5 : proportionnalité (Annexe I, point 4ter) ────────────────────
+    if claim_metadata.get("scope") == "entreprise" and _has_partial_scope_mention(text):
+        return {
+            "regulatory_basis": "annexe_I_4ter",
+            "regime": "liste_noire",
+            "rationale": "Allégation 'entreprise' portant sur un aspect partiel — Annexe I, point 4ter",
         }
 
     # ── Règle 6 : exigence légale présentée comme distinctive (Annexe I, 10bis)
