@@ -7,6 +7,7 @@ import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
@@ -53,8 +54,9 @@ async def _fetch_sitemap_urls(base_url: str) -> List[str]:
     Essaie sitemap.xml puis sitemap_index.xml. Filtre par mots-clés RSE.
     Retourne au max 10 URLs pour ne pas surcharger Firecrawl.
     """
-    base = base_url.rstrip("/")
-    candidates = [f"{base}/sitemap.xml", f"{base}/sitemap_index.xml"]
+    parsed = urlparse(base_url)
+    root_url = f"{parsed.scheme}://{parsed.netloc}"
+    candidates = [f"{root_url}/sitemap.xml", f"{root_url}/sitemap_index.xml"]
     rse_urls: List[str] = []
 
     async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
@@ -93,9 +95,6 @@ async def _scrape_firecrawl(url: str) -> str:
 
         app = FirecrawlApp(api_key=settings.FIRECRAWL_API_KEY)
 
-        # Conseil 1 — Récupérer les URLs RSE depuis le sitemap
-        sitemap_urls = await _fetch_sitemap_urls(url)
-
         def _scrape_pages(target_url: str, limit: int, depth: int):
             return app.crawl_url(
                 target_url,
@@ -123,8 +122,10 @@ async def _scrape_firecrawl(url: str) -> str:
                 return meta.get("url", "")
             return getattr(p, "url", "") or ""
 
-        # Crawl principal depuis la homepage
+        # Conseil 1 — Crawl principal + fetch sitemap en parallèle (pas de latence ajoutée)
+        sitemap_task = asyncio.create_task(_fetch_sitemap_urls(url))
         result = await asyncio.to_thread(_scrape_pages, url, 15, 2)
+        sitemap_urls = await sitemap_task
         pages = _extract_pages(result)
 
         # Conseil 1 — Scraper en plus les pages RSE du sitemap non couvertes par le crawl
