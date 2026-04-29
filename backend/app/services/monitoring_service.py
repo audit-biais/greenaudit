@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from uuid import UUID
@@ -38,44 +39,130 @@ async def scrape_website(url: str) -> str:
     return await _scrape_jina(url)
 
 
+_RSE_KEYWORDS = re.compile(
+    r"rse|durabilit|engagement|sustainab|environnement|climat|impact|"
+    r"ecolog|responsab|green|vert|carbone|carbon|biodiversit|recyclage|"
+    r"empreinte|transition|net.?zero|neutralit",
+    re.IGNORECASE,
+)
+
+
+async def _fetch_sitemap_urls(base_url: str) -> List[str]:
+    """
+    Récupère les URLs RSE depuis le sitemap XML du site.
+    Essaie sitemap.xml puis sitemap_index.xml. Filtre par mots-clés RSE.
+    Retourne au max 10 URLs pour ne pas surcharger Firecrawl.
+    """
+    base = base_url.rstrip("/")
+    candidates = [f"{base}/sitemap.xml", f"{base}/sitemap_index.xml"]
+    rse_urls: List[str] = []
+
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        for sitemap_url in candidates:
+            try:
+                resp = await client.get(sitemap_url)
+                if resp.status_code != 200:
+                    continue
+                root = ET.fromstring(resp.text)
+                # Gère les namespaces XML (xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+                ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+                locs = [el.text for el in root.findall(".//sm:loc", ns) if el.text]
+                if not locs:
+                    # Fallback sans namespace
+                    locs = [el.text for el in root.findall(".//loc") if el.text]
+
+                rse_urls = [u for u in locs if _RSE_KEYWORDS.search(u)]
+                logger.info(
+                    f"Sitemap {sitemap_url} : {len(locs)} URLs, {len(rse_urls)} RSE"
+                )
+                if rse_urls:
+                    break
+            except Exception as exc:
+                logger.debug(f"Sitemap inaccessible ({sitemap_url}): {exc}")
+
+    return rse_urls[:10]
+
+
 async def _scrape_firecrawl(url: str) -> str:
-    """Crawl récursif via Firecrawl — trouve automatiquement les pages RSE."""
+    """
+    Crawl récursif via Firecrawl avec priorité aux pages RSE du sitemap.
+    Chaque page est annotée avec son URL pour donner du contexte à Claude.
+    """
     try:
         from firecrawl import FirecrawlApp
 
         app = FirecrawlApp(api_key=settings.FIRECRAWL_API_KEY)
 
-        result = await asyncio.to_thread(
-            app.crawl_url,
-            url,
-            {
-                "limit": 15,
-                "maxDepth": 2,
-                "scrapeOptions": {"formats": ["markdown"]},
-            },
-        )
+        # Conseil 1 — Récupérer les URLs RSE depuis le sitemap
+        sitemap_urls = await _fetch_sitemap_urls(url)
 
-        # Firecrawl peut retourner un dict OU un objet selon la version du SDK
-        if isinstance(result, dict):
-            pages = result.get("data", [])
-        elif hasattr(result, "data"):
-            pages = result.data or []
-        else:
-            pages = []
+        def _scrape_pages(target_url: str, limit: int, depth: int):
+            return app.crawl_url(
+                target_url,
+                {"limit": limit, "maxDepth": depth, "scrapeOptions": {"formats": ["markdown"]}},
+            )
 
-        def get_markdown(p):
+        def _extract_pages(result) -> list:
+            if isinstance(result, dict):
+                return result.get("data", [])
+            elif hasattr(result, "data"):
+                return result.data or []
+            return []
+
+        def get_markdown(p) -> str:
             if isinstance(p, dict):
-                return p.get("markdown", "")
+                return p.get("markdown", "") or ""
             return getattr(p, "markdown", "") or ""
 
-        collected = "\n\n".join(get_markdown(p) for p in pages if get_markdown(p))
+        def get_url(p) -> str:
+            if isinstance(p, dict):
+                meta = p.get("metadata", {}) or {}
+                return meta.get("url", "") or p.get("url", "") or ""
+            meta = getattr(p, "metadata", None)
+            if isinstance(meta, dict):
+                return meta.get("url", "")
+            return getattr(p, "url", "") or ""
 
-        if not collected.strip():
+        # Crawl principal depuis la homepage
+        result = await asyncio.to_thread(_scrape_pages, url, 15, 2)
+        pages = _extract_pages(result)
+
+        # Conseil 1 — Scraper en plus les pages RSE du sitemap non couvertes par le crawl
+        crawled_urls = {get_url(p) for p in pages}
+        extra_urls = [u for u in sitemap_urls if u not in crawled_urls]
+
+        for extra_url in extra_urls[:5]:
+            try:
+                extra_result = await asyncio.to_thread(_scrape_pages, extra_url, 1, 0)
+                extra_pages = _extract_pages(extra_result)
+                pages.extend(extra_pages)
+                logger.info(f"Sitemap extra : page ajoutée — {extra_url}")
+            except Exception as exc:
+                logger.debug(f"Sitemap extra scrape failed ({extra_url}): {exc}")
+
+        if not pages:
             logger.warning(f"Firecrawl : aucun contenu pour {url}, fallback Jina")
             return await _scrape_jina(url)
 
-        logger.info(f"Firecrawl : {len(pages)} page(s) scrapée(s) pour {url}")
-        return collected[:15000]
+        # Conseil 2 — Annoter chaque page avec son URL pour le contexte Claude
+        sections = []
+        for p in pages:
+            md = get_markdown(p)
+            if not md.strip():
+                continue
+            page_url = get_url(p) or url
+            sections.append(f"=== PAGE: {page_url} ===\n{md}")
+
+        collected = "\n\n".join(sections)
+
+        if not collected.strip():
+            logger.warning(f"Firecrawl : markdown vide pour {url}, fallback Jina")
+            return await _scrape_jina(url)
+
+        logger.info(
+            f"Firecrawl : {len(pages)} page(s) dont {len(extra_urls[:5])} depuis sitemap — {url}"
+        )
+        return collected[:20000]
 
     except Exception as exc:
         logger.error(f"Erreur Firecrawl pour {url}: {exc} — fallback Jina")
