@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import smtplib
+from concurrent.futures import ThreadPoolExecutor
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -21,18 +23,21 @@ from app.services.demo_audit import create_demo_audit
 logger = logging.getLogger(__name__)
 
 
-def _send_welcome_email(to_email: str, company_name: str) -> None:
+_email_executor = ThreadPoolExecutor(max_workers=2)
+
+
+def _send_welcome_email_sync(to_email: str) -> None:
     smtp_user = settings.SMTP_USER
     smtp_password = settings.SMTP_PASSWORD
     if not smtp_user or not smtp_password:
+        logger.warning("SMTP non configuré — email de bienvenue non envoyé")
         return
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = smtp_user
-        msg["To"] = to_email
-        msg["Subject"] = "Bienvenue sur GreenAudit — votre premier audit vous attend"
-
-        body = f"""Bonjour,
+    msg = MIMEMultipart("alternative")
+    msg["From"] = f"GreenAudit <{smtp_user}>"
+    msg["To"] = to_email
+    msg["Subject"] = "Bienvenue sur GreenAudit — votre premier audit vous attend"
+    body = """\
+Bonjour,
 
 Votre compte GreenAudit est actif. Voici comment démarrer en 3 étapes :
 
@@ -46,16 +51,24 @@ Une question ? Répondez directement à cet email ou contactez-nous sur https://
 
 L'équipe GreenAudit
 """
-        msg.attach(MIMEText(body, "plain", "utf-8"))
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+    with smtplib.SMTP("smtp.zoho.eu", 587, timeout=15) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+    logger.info(f"Email de bienvenue envoyé à {to_email}")
 
-        with smtplib.SMTP("smtp.zoho.eu", 587, timeout=10) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.send_message(msg)
 
-        logger.info(f"Email de bienvenue envoyé à {to_email}")
+async def _send_welcome_email(to_email: str) -> None:
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(
+            _email_executor,
+            _send_welcome_email_sync,
+            to_email,
+        )
     except Exception as e:
-        logger.error(f"Erreur email bienvenue: {e}")
+        logger.error(f"Erreur email bienvenue ({to_email}): {e}")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -116,7 +129,7 @@ async def signup(
     await db.refresh(new_user)
 
     await create_demo_audit(org.id, db)
-    _send_welcome_email(data.email, data.company_name)
+    asyncio.create_task(_send_welcome_email(data.email))
 
     return await _user_to_response(new_user, db)
 
