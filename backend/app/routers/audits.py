@@ -426,6 +426,17 @@ async def scan_website_endpoint(
     # Analyser (scan = pas d'écolabel dans vault, country par défaut "fr")
     all_verdicts: List[str] = []
     for claim in audit.claims:
+        metadata = {
+            "has_label": claim.has_label,
+            "label_is_certified": claim.label_is_certified,
+            "scope": claim.scope,
+            "is_future_commitment": claim.is_future_commitment,
+            "has_proof": claim.has_proof,
+            "proof_type": claim.proof_type,
+        }
+        classification = await classify_claim_regime(claim.claim_text, metadata)
+        claim.regulatory_basis = classification["regulatory_basis"]
+        claim.regime = classification["regime"]
         results, overall_verdict = analyze_claim(claim, has_ecolabel_evidence=False, country="fr", scan_mode=True)
         claim.overall_verdict = overall_verdict
         if not claim.is_false_positive:
