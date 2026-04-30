@@ -45,7 +45,7 @@ class TestAuditsCRUD:
 
     async def test_no_auth(self, client: AsyncClient):
         resp = await client.get("/api/audits")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestAnalyze:

@@ -5,6 +5,7 @@ import UpgradeModal from './UpgradeModal';
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard' },
   { path: '/scan', label: 'Analyse' },
+  { path: '/faq', label: 'Aide' },
   { path: '/settings', label: 'Paramètres' },
 ];
 

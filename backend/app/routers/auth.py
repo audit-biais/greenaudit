@@ -1,3 +1,8 @@
+import logging
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
@@ -11,6 +16,45 @@ from app.limiter import limiter
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.user import OrgInfo, TokenResponse, UserResponse, UserSignup
+
+logger = logging.getLogger(__name__)
+
+
+def _send_welcome_email(to_email: str, company_name: str) -> None:
+    smtp_user = settings.SMTP_USER
+    smtp_password = settings.SMTP_PASSWORD
+    if not smtp_user or not smtp_password:
+        return
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = smtp_user
+        msg["To"] = to_email
+        msg["Subject"] = "Bienvenue sur GreenAudit — votre premier audit vous attend"
+
+        body = f"""Bonjour,
+
+Votre compte GreenAudit est actif. Voici comment démarrer en 3 étapes :
+
+1. Connectez-vous sur https://www.green-audit.fr
+2. Cliquez sur "Analyse" pour scanner un site web ou "Nouvel audit" pour saisir des allégations manuellement
+3. Téléchargez le rapport PDF de conformité EmpCo
+
+Votre plan Starter inclut 1 audit complet. Pour des audits illimités, passez au plan Pro depuis Paramètres > Abonnement.
+
+Une question ? Répondez directement à cet email ou contactez-nous sur https://www.green-audit.fr/contact
+
+L'équipe GreenAudit
+"""
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        with smtplib.SMTP("smtp.zoho.eu", 587, timeout=10) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+
+        logger.info(f"Email de bienvenue envoyé à {to_email}")
+    except Exception as e:
+        logger.error(f"Erreur email bienvenue: {e}")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -69,6 +113,8 @@ async def signup(
     new_user.organization_id = org.id
     await db.commit()
     await db.refresh(new_user)
+
+    _send_welcome_email(data.email, data.company_name)
 
     return await _user_to_response(new_user, db)
 

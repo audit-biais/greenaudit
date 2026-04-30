@@ -195,3 +195,48 @@ async def test_rule1_takes_priority_over_rule3() -> None:
         _meta(has_label=True, label_is_certified=False),
     )
     assert result["regulatory_basis"] == "annexe_I_2bis"
+
+
+# ── Priorité : engagement futur gagne sur proportionnalité (fix 2026-04-29) ──
+
+async def test_future_commitment_wins_over_proportionality() -> None:
+    """
+    'produits phytosanitaires' matche PARTIAL_SCOPE_PATTERNS mais la phrase
+    est un engagement futur explicite → article_6_1d, PAS annexe_I_4ter.
+    """
+    result = await classify_claim_regime(
+        "nous nous engageons à atteindre une réduction des produits phytosanitaires de 25%",
+        _meta(scope="entreprise"),
+    )
+    assert result["regulatory_basis"] == "article_6_1d"
+    assert result["regime"] == "cas_par_cas"
+
+
+async def test_viser_a_wins_over_proportionality() -> None:
+    """Pattern 'nous visons à' → engagement futur même si critère eau présent."""
+    result = await classify_claim_regime(
+        "nous visons à rationnaliser notre consommation d'eau et d'énergie",
+        _meta(scope="entreprise"),
+    )
+    assert result["regulatory_basis"] == "article_6_1d"
+    assert result["regime"] == "cas_par_cas"
+
+
+async def test_blacklist_wins_over_future_commitment() -> None:
+    """Terme générique blacklisté + engagement futur → blacklist gagne (règle 3 avant règle 4)."""
+    result = await classify_claim_regime(
+        "nous nous engageons à devenir écologiques d'ici 2030",
+        _meta(scope="entreprise"),
+    )
+    assert result["regulatory_basis"] == "annexe_I_4bis"
+    assert result["regime"] == "liste_noire"
+
+
+async def test_future_commitment_lexical_no_blacklist() -> None:
+    """'nous visons à réduire notre empreinte' sans terme blacklisté → article_6_1d."""
+    result = await classify_claim_regime(
+        "nous visons à réduire notre empreinte",
+        _meta(scope="entreprise"),
+    )
+    assert result["regulatory_basis"] == "article_6_1d"
+    assert result["regime"] == "cas_par_cas"

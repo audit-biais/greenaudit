@@ -314,7 +314,7 @@ class TestAnalyzeClaim:
             proof_type="certification_tierce",
         )
         results, verdict = analyze_claim(claim)
-        assert len(results) == 7
+        assert len(results) == 8
         assert verdict == "conforme"
 
     def test_non_conforme_claim(self):
@@ -362,10 +362,10 @@ class TestAnalyzeClaim:
         """Chaque claim produit exactement 7 résultats."""
         claim = _make_claim(claim_text="Test quelconque")
         results, _ = analyze_claim(claim)
-        assert len(results) == 7
+        assert len(results) == 8
         criteria = {r.criterion for r in results}
         assert criteria == {
             "specificity", "compensation", "labels",
             "proportionality", "future_commitment", "justification",
-            "legal_requirement",
+            "legal_requirement", "agec_france",
         }

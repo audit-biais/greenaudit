@@ -364,7 +364,11 @@ async def scan_website_endpoint(
     if not page_text.strip():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Impossible de récupérer le contenu du site. Vérifiez l'URL.",
+            detail=(
+                "Impossible de récupérer le contenu du site. "
+                "Vérifiez que l'URL est publique et accessible sans connexion. "
+                "Essayez avec la page RSE ou développement durable du site (ex: https://exemple.fr/rse)."
+            ),
         )
 
     claims_text = await extract_claims_with_claude(
@@ -376,7 +380,10 @@ async def scan_website_endpoint(
     if not claims_text:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Aucune allégation environnementale détectée sur ce site.",
+            detail=(
+                "Aucune allégation environnementale détectée sur ce site. "
+                "Essayez avec une URL plus spécifique : page RSE, développement durable, engagements ou impact."
+            ),
         )
 
     # Créer l'audit
