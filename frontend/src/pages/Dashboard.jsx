@@ -155,7 +155,14 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-gray-900 truncate">{audit.company_name}</h3>
+                      <h3 className="text-base font-bold text-gray-900 truncate">
+                        {audit.company_name.replace(' [DÉMO]', '')}
+                      </h3>
+                      {audit.company_name.includes('[DÉMO]') && (
+                        <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100">
+                          Démo
+                        </span>
+                      )}
                       {unreadCount > 0 && (
                         <span className="shrink-0 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-red-600 text-white text-xs font-bold">
                           {unreadCount}

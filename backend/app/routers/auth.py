@@ -16,6 +16,7 @@ from app.limiter import limiter
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.user import OrgInfo, TokenResponse, UserResponse, UserSignup
+from app.services.demo_audit import create_demo_audit
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,7 @@ async def signup(
     await db.commit()
     await db.refresh(new_user)
 
+    await create_demo_audit(org.id, db)
     _send_welcome_email(data.email, data.company_name)
 
     return await _user_to_response(new_user, db)
