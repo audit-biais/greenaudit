@@ -84,6 +84,11 @@ class ClaimResponse(BaseModel):
     corrected_at: Optional[datetime] = None
     is_false_positive: bool = False
     false_positive_reason: Optional[str] = None
+
+    regulatory_basis: Optional[str] = None
+    regime: Optional[str] = None
+    status: str = "À traiter"
+
     created_at: datetime
 
     results: List[ClaimResultInClaimResponse] = []
