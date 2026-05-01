@@ -33,7 +33,7 @@ def _send_welcome_email_sync(to_email: str) -> None:
         logger.warning("SMTP non configuré — email de bienvenue non envoyé")
         return
     msg = MIMEMultipart("alternative")
-    msg["From"] = f"GreenAudit <{smtp_user}>"
+    msg["From"] = "GreenAudit <contact@green-audit.fr>"
     msg["To"] = to_email
     msg["Subject"] = "Bienvenue sur GreenAudit — votre premier audit vous attend"
     body = """\
