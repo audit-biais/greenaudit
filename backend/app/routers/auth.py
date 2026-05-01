@@ -1,9 +1,7 @@
 import asyncio
 import logging
-import smtplib
-from concurrent.futures import ThreadPoolExecutor
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+
+import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -23,50 +21,36 @@ from app.services.demo_audit import create_demo_audit
 logger = logging.getLogger(__name__)
 
 
-_email_executor = ThreadPoolExecutor(max_workers=2)
-
-
-def _send_welcome_email_sync(to_email: str) -> None:
-    smtp_user = settings.SMTP_USER
-    smtp_password = settings.SMTP_PASSWORD
-    if not smtp_user or not smtp_password:
-        logger.warning("SMTP non configuré — email de bienvenue non envoyé")
-        return
-    msg = MIMEMultipart("alternative")
-    msg["From"] = "GreenAudit <contact@green-audit.fr>"
-    msg["To"] = to_email
-    msg["Subject"] = "Bienvenue sur GreenAudit — votre premier audit vous attend"
-    body = """\
-Bonjour,
-
-Votre compte GreenAudit est actif. Voici comment démarrer en 3 étapes :
-
-1. Connectez-vous sur https://www.green-audit.fr
-2. Cliquez sur "Analyse" pour scanner un site web ou "Nouvel audit" pour saisir des allégations manuellement
-3. Téléchargez le rapport PDF de conformité EmpCo
-
-Votre plan Starter inclut 1 audit complet. Pour des audits illimités, passez au plan Pro depuis Paramètres > Abonnement.
-
-Une question ? Répondez directement à cet email ou contactez-nous sur https://www.green-audit.fr/contact
-
-L'équipe GreenAudit
-"""
-    msg.attach(MIMEText(body, "plain", "utf-8"))
-    with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=15) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_password)
-        server.send_message(msg)
-    logger.info(f"Email de bienvenue envoyé à {to_email}")
-
-
 async def _send_welcome_email(to_email: str) -> None:
-    loop = asyncio.get_event_loop()
+    api_key = settings.BREVO_API_KEY
+    if not api_key:
+        logger.warning("BREVO_API_KEY non configuré — email de bienvenue non envoyé")
+        return
     try:
-        await loop.run_in_executor(
-            _email_executor,
-            _send_welcome_email_sync,
-            to_email,
-        )
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={"api-key": api_key, "Content-Type": "application/json"},
+                json={
+                    "sender": {"name": "GreenAudit", "email": "contact@green-audit.fr"},
+                    "to": [{"email": to_email}],
+                    "subject": "Bienvenue sur GreenAudit — votre premier audit vous attend",
+                    "textContent": (
+                        "Bonjour,\n\n"
+                        "Votre compte GreenAudit est actif. Voici comment démarrer en 3 étapes :\n\n"
+                        "1. Connectez-vous sur https://www.green-audit.fr\n"
+                        "2. Cliquez sur \"Analyse\" pour scanner un site web ou \"Nouvel audit\" pour saisir des allégations manuellement\n"
+                        "3. Téléchargez le rapport PDF de conformité EmpCo\n\n"
+                        "Votre plan Starter inclut 1 audit complet. Pour des audits illimités, passez au plan Pro depuis Paramètres > Abonnement.\n\n"
+                        "Une question ? Répondez directement à cet email ou contactez-nous sur https://www.green-audit.fr/contact\n\n"
+                        "L'équipe GreenAudit"
+                    ),
+                },
+            )
+        if resp.status_code == 201:
+            logger.info(f"Email de bienvenue envoyé à {to_email}")
+        else:
+            logger.error(f"Erreur Brevo API ({resp.status_code}): {resp.text}")
     except Exception as e:
         logger.error(f"Erreur email bienvenue ({to_email}): {e}")
 
@@ -129,6 +113,7 @@ async def signup(
     await db.refresh(new_user)
 
     await create_demo_audit(org.id, db)
+    await db.refresh(new_user)
     asyncio.create_task(_send_welcome_email(data.email))
 
     return await _user_to_response(new_user, db)

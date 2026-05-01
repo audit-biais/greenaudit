@@ -47,9 +47,12 @@ class Settings(BaseSettings):
     # Super admin (email qui déclenche l'activation automatique du flag is_superadmin)
     SUPERADMIN_EMAIL: Optional[str] = None
 
-    # SMTP (formulaire de contact)
+    # SMTP (formulaire de contact + accès client)
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
+
+    # Brevo API (email transactionnel)
+    BREVO_API_KEY: Optional[str] = None
 
     @field_validator("SECRET_KEY")
     @classmethod
