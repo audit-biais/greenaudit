@@ -35,15 +35,34 @@ async def _send_welcome_email(to_email: str) -> None:
                     "sender": {"name": "GreenAudit", "email": "contact@green-audit.fr"},
                     "to": [{"email": to_email}],
                     "subject": "Bienvenue sur GreenAudit — votre premier audit vous attend",
-                    "textContent": (
-                        "Bonjour,\n\n"
-                        "Votre compte GreenAudit est actif. Voici comment démarrer en 3 étapes :\n\n"
-                        "1. Connectez-vous sur https://www.green-audit.fr\n"
-                        "2. Cliquez sur \"Analyse\" pour scanner un site web ou \"Nouvel audit\" pour saisir des allégations manuellement\n"
-                        "3. Téléchargez le rapport PDF de conformité EmpCo\n\n"
-                        "Votre plan Starter inclut 1 audit complet. Pour des audits illimités, passez au plan Pro depuis Paramètres > Abonnement.\n\n"
-                        "Une question ? Répondez directement à cet email ou contactez-nous sur https://www.green-audit.fr/contact\n\n"
-                        "L'équipe GreenAudit"
+                    "htmlContent": (
+                        "<div style='font-family:Arial,sans-serif;font-size:15px;color:#222;max-width:600px'>"
+                        "<p>Bonjour,</p>"
+                        "<p>Votre compte GreenAudit est actif. Voici comment démarrer en 3 étapes&nbsp;:</p>"
+                        "<ol>"
+                        "<li>Connectez-vous sur <a href='https://www.green-audit.fr' style='color:#1a5c3a'>www.green-audit.fr</a></li>"
+                        "<li>Cliquez sur <strong>Analyse</strong> pour scanner un site web ou <strong>Nouvel audit</strong> pour saisir des allégations manuellement</li>"
+                        "<li>Téléchargez le rapport PDF de conformité EmpCo</li>"
+                        "</ol>"
+                        "<p>Votre plan Starter inclut 1 audit complet. Pour des audits illimités, passez au plan Pro depuis <em>Paramètres &gt; Abonnement</em>.</p>"
+                        "<p>Une question&nbsp;? Répondez directement à cet email ou contactez-nous sur <a href='https://www.green-audit.fr/contact' style='color:#1a5c3a'>green-audit.fr/contact</a></p>"
+                        "<br>"
+                        "<table cellpadding='0' cellspacing='0' style='border-collapse:collapse;width:520px;font-family:Arial,sans-serif'>"
+                        "<tr>"
+                        "<td style='width:200px;background:#fff;padding:16px;text-align:center;vertical-align:middle'>"
+                        "<img src='https://www.green-audit.fr/logo.png' alt='GreenAudit' style='height:80px;width:auto'>"
+                        "</td>"
+                        "<td style='background:linear-gradient(135deg,#1a7a5e,#0f4d3a);padding:20px 24px;vertical-align:middle;border-radius:0 8px 8px 0'>"
+                        "<p style='margin:0 0 2px;font-size:18px;font-weight:bold;color:#fff;border-left:3px solid #fff;padding-left:10px'>L&rsquo;équipe GreenAudit</p>"
+                        "<p style='margin:0 0 14px;font-size:13px;color:#cde8df;padding-left:13px'>Conformité Directive Empco</p>"
+                        "<p style='margin:4px 0;font-size:13px;color:#fff'>&#128222;&nbsp; 06 79 78 02 39</p>"
+                        "<p style='margin:4px 0;font-size:13px;color:#fff'>&#9993;&nbsp; <a href='mailto:contact@green-audit.fr' style='color:#fff'>contact@green-audit.fr</a></p>"
+                        "<p style='margin:4px 0;font-size:13px;color:#fff'>&#128205;&nbsp; 6 Rue d&rsquo;Armaillé &middot; 75017 PARIS</p>"
+                        "<p style='margin:4px 0;font-size:13px;color:#fff'>&#127760;&nbsp; <a href='https://www.green-audit.fr' style='color:#fff'>www.green-audit.fr</a></p>"
+                        "</td>"
+                        "</tr>"
+                        "</table>"
+                        "</div>"
                     ),
                 },
             )
