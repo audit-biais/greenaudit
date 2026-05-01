@@ -52,7 +52,7 @@ Une question ? Répondez directement à cet email ou contactez-nous sur https://
 L'équipe GreenAudit
 """
     msg.attach(MIMEText(body, "plain", "utf-8"))
-    with smtplib.SMTP("smtp.zoho.eu", 587, timeout=15) as server:
+    with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=15) as server:
         server.starttls()
         server.login(smtp_user, smtp_password)
         server.send_message(msg)
