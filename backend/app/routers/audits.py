@@ -343,7 +343,7 @@ class ScanRequest(BaseModel):
 async def scan_website_endpoint(
     request: Request,
     data: ScanRequest,
-    user: User = Depends(require_pro),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AuditResultsResponse:
     """
