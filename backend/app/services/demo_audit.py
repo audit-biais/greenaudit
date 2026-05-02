@@ -249,8 +249,9 @@ async def create_demo_audit(organization_id: uuid.UUID, db: AsyncSession) -> Non
         await db.flush()
 
         for claim_data in _DEMO_CLAIMS:
-            results_data = claim_data.pop("results")
-            claim = Claim(audit_id=audit.id, **claim_data)
+            results_data = claim_data["results"]
+            claim_fields = {k: v for k, v in claim_data.items() if k != "results"}
+            claim = Claim(audit_id=audit.id, **claim_fields)
             db.add(claim)
             await db.flush()
 
