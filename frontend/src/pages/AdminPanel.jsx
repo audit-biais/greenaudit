@@ -4,14 +4,18 @@ import api from '../api/client'
 
 const PLAN_LABELS = {
   free: 'Gratuit',
+  starter: 'Starter',
   essentiel: 'Essentiel',
+  partner: 'Partner',
   pro: 'Pro',
   enterprise: 'Entreprise',
 }
 
 const PLAN_COLORS = {
   free: 'bg-gray-100 text-gray-600',
+  starter: 'bg-gray-100 text-gray-600',
   essentiel: 'bg-blue-100 text-blue-700',
+  partner: 'bg-blue-100 text-blue-700',
   pro: 'bg-green-100 text-green-700',
   enterprise: 'bg-purple-100 text-purple-700',
 }
@@ -140,8 +144,8 @@ export default function AdminPanel() {
                         value={org.plan}
                         onChange={(e) => handleSetPlan(org.org_id, e.target.value)}
                       >
-                        <option value="free">Gratuit</option>
-                        <option value="essentiel">Essentiel</option>
+                        <option value="starter">Starter</option>
+                        <option value="partner">Partner</option>
                         <option value="pro">Pro</option>
                         <option value="enterprise">Entreprise</option>
                       </select>
