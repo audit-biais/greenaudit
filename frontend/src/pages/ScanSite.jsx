@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { useAuth } from '../api/auth';
 
 const SECTORS = [
   { value: 'e-commerce', label: 'E-commerce' },
@@ -33,6 +34,39 @@ const VERDICT_LABELS = {
 
 export default function ScanSite() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isPro = ['pro', 'enterprise'].includes(user?.subscription_plan);
+
+  if (!isPro) {
+    return (
+      <div className="max-w-xl mx-auto text-center py-20">
+        <div className="bg-white rounded-2xl border border-gray-100 p-10 shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-[#eaf4ee] flex items-center justify-center mx-auto mb-5">
+            <svg className="h-7 w-7 text-[#1a5c3a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Fonctionnalité Pro</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            Le scan automatique de site est réservé au plan Pro. Passez au Pro pour analyser n'importe quel site en 60 secondes.
+          </p>
+          <button
+            onClick={() => navigate('/settings#abonnement')}
+            className="px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] transition-colors"
+          >
+            Passer au plan Pro
+          </button>
+          <button
+            onClick={() => navigate('/audits/new')}
+            className="block w-full mt-3 text-sm text-gray-400 hover:text-gray-600"
+          >
+            Continuer avec l'audit manuel →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const [url, setUrl] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [sector, setSector] = useState('autre');
