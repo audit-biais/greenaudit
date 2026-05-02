@@ -235,10 +235,6 @@ export default function ClaimForm() {
       setError("Ajoutez au moins une allegation avant de lancer l'analyse.");
       return;
     }
-    if (!isPro) {
-      navigate('/settings');
-      return;
-    }
     setAnalyzing(true);
     setError(null);
     try {
@@ -356,27 +352,20 @@ export default function ClaimForm() {
             <button
               onClick={handleAnalyze}
               disabled={analyzing || claims.length === 0}
-              className={`inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isPro ? 'bg-[#2E7D32] hover:bg-[#1B5E20]' : 'bg-gray-500 hover:bg-gray-600'}`}
+              className="inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-[#2E7D32] hover:bg-[#1B5E20]"
             >
-              {!isPro && (
-                <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              )}
               {analyzing ? (
                 <>
                   <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   Analyse en cours...
                 </>
-              ) : isPro ? (
+              ) : (
                 <>
                   <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                   Lancer l'analyse
                 </>
-              ) : (
-                'Passer au plan Pro pour analyser'
               )}
             </button>
           </div>
