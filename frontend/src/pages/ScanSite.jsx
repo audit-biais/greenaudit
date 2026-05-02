@@ -44,6 +44,18 @@ export default function ScanSite() {
   const [error, setError] = useState('');
   const [results, setResults] = useState(null);
   const [step, setStep] = useState('form'); // form, scanning, results
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+
+  const handleUpgradePartner = async () => {
+    setUpgradeLoading(true);
+    try {
+      const res = await api.post('/payment/create-checkout-partner');
+      window.location.href = res.data.checkout_url;
+    } catch {
+      alert('Erreur lors de la redirection. Réessayez.');
+      setUpgradeLoading(false);
+    }
+  };
 
   const handleScan = async (e) => {
     e.preventDefault();
@@ -105,10 +117,11 @@ export default function ScanSite() {
               </button>
             ) : (
               <button
-                onClick={() => navigate('/settings#abonnement')}
-                className="px-4 py-2 text-sm bg-[#1a5c3a] text-white rounded-lg hover:bg-[#15803d]"
+                onClick={handleUpgradePartner}
+                disabled={upgradeLoading}
+                className="px-4 py-2 text-sm bg-[#1a5c3a] text-white rounded-lg hover:bg-[#15803d] disabled:opacity-50"
               >
-                Obtenir le rapport complet →
+                {upgradeLoading ? 'Redirection...' : 'Obtenir le rapport complet →'}
               </button>
             )}
           </div>
