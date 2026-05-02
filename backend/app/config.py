@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: Optional[str] = None
     STRIPE_WEBHOOK_SECRET: Optional[str] = None
     STRIPE_PRO_PRICE_ID: Optional[str] = None  # Price ID du plan Pro 2990€/mois
+    STRIPE_PARTNER_PRICE_ID: Optional[str] = None  # Price ID du plan Partner 990€/mois
     FRONTEND_URL: str = "https://green-audit.fr"
 
     # Claude API (monitoring continu)

@@ -8,6 +8,7 @@ const MEMBER_LIMITS = { pro: 10, enterprise: null };
 const PLAN_LABELS = {
   starter: 'Starter',
   free: 'Starter',
+  partner: 'Partner',
   pro: 'Pro',
   enterprise: 'Enterprise',
 };
@@ -15,6 +16,7 @@ const PLAN_LABELS = {
 const PLAN_COLORS = {
   starter: 'bg-gray-100 text-gray-600',
   free: 'bg-gray-100 text-gray-600',
+  partner: 'bg-blue-50 text-blue-700',
   pro: 'bg-[#eaf4ee] text-[#1a5c3a]',
   enterprise: 'bg-purple-100 text-purple-700',
 };
@@ -185,7 +187,7 @@ export default function Settings() {
         </form>
       </div>
 
-      {/* Section Branding — Pro/Enterprise uniquement */}
+      {/* Section Branding — Partner/Pro/Enterprise uniquement */}
       {['starter', 'free'].includes(user?.subscription_plan) ? (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-50 bg-gray-50">
@@ -279,8 +281,8 @@ export default function Settings() {
       </div>
       )}
 
-      {/* ── Équipe — Pro/Enterprise uniquement ── */}
-      {['pro', 'enterprise'].includes(user?.subscription_plan) && user?.role === 'admin' && (
+      {/* ── Équipe — Partner/Pro/Enterprise uniquement ── */}
+      {['partner', 'pro', 'enterprise'].includes(user?.subscription_plan) && user?.role === 'admin' && (
         <TeamSection user={user} />
       )}
 
@@ -531,12 +533,14 @@ function TeamSection({ user }) {
 }
 
 function SubscriptionSection({ user, checkoutLoading, setCheckoutLoading, portalLoading, setPortalLoading }) {
+  const [partnerLoading, setPartnerLoading] = useState(false);
   const plan = user?.subscription_plan || 'starter';
   const auditsUsed = user?.audits_this_month ?? 0;
   const auditsLimit = user?.audits_limit ?? 1;
   const isPro = plan === 'pro';
+  const isPartner = plan === 'partner';
   const isEnterprise = plan === 'enterprise';
-  const isStarter = !isPro && !isEnterprise;
+  const isStarter = !isPro && !isPartner && !isEnterprise;
 
   const handleUpgrade = async () => {
     setCheckoutLoading(true);
@@ -546,6 +550,17 @@ function SubscriptionSection({ user, checkoutLoading, setCheckoutLoading, portal
     } catch (err) {
       alert('Erreur lors de la création du checkout. Réessayez.');
       setCheckoutLoading(false);
+    }
+  };
+
+  const handleUpgradePartner = async () => {
+    setPartnerLoading(true);
+    try {
+      const res = await api.post('/payment/create-checkout-partner');
+      window.location.href = res.data.checkout_url;
+    } catch (err) {
+      alert('Erreur lors de la création du checkout. Réessayez.');
+      setPartnerLoading(false);
     }
   };
 
@@ -572,7 +587,7 @@ function SubscriptionSection({ user, checkoutLoading, setCheckoutLoading, portal
             {PLAN_LABELS[plan] || 'Starter'}
           </span>
         </div>
-        {(isPro) && (
+        {(isPro || isPartner) && (
           <div className="text-right">
             <p className="text-sm text-gray-500 mb-1">Audits ce mois</p>
             <p className="text-sm font-semibold text-gray-900">{auditsUsed} / {auditsLimit}</p>
@@ -586,8 +601,8 @@ function SubscriptionSection({ user, checkoutLoading, setCheckoutLoading, portal
         )}
       </div>
 
-      {/* Barre de progression pour Pro */}
-      {isPro && (
+      {/* Barre de progression pour Pro et Partner */}
+      {(isPro || isPartner) && (
         <div className="mb-5">
           <div className="w-full bg-gray-100 rounded-full h-1.5">
             <div
@@ -601,31 +616,65 @@ function SubscriptionSection({ user, checkoutLoading, setCheckoutLoading, portal
               <a href="/contact" className="underline font-semibold hover:text-orange-700">
                 contactez-nous
               </a>{' '}
-              pour ajouter des audits (400€/audit).
+              pour ajouter des audits.
             </p>
           )}
         </div>
       )}
 
-      {/* Starter → upgrade */}
+      {/* Starter → upgrade (deux options) */}
       {isStarter && (
-        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 mb-4">
-          <p className="text-sm text-gray-600 mb-3">
-            Votre audit d'essai est inclus. Passez au plan Pro pour accéder à l'analyse complète,
-            les rapports PDF, l'Evidence Vault et le monitoring continu.
-          </p>
-          <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-2xl font-bold text-gray-900">2 990€</span>
-            <span className="text-sm text-gray-500">/mois · 12 mois</span>
+        <div className="space-y-3">
+          <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Plan Partner</p>
+                <p className="text-xs text-blue-700 mt-0.5">5 audits/mois · Analyse complète · PDF · Evidence Vault</p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-xl font-bold text-blue-900">990€</span>
+                <span className="text-xs text-blue-600">/mois</span>
+              </div>
+            </div>
+            <button
+              onClick={handleUpgradePartner}
+              disabled={partnerLoading}
+              className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+            >
+              {partnerLoading ? 'Redirection...' : 'Choisir Partner'}
+            </button>
           </div>
-          <button
-            onClick={handleUpgrade}
-            disabled={checkoutLoading}
-            className="w-full py-2.5 rounded-xl bg-[#1a5c3a] text-white text-sm font-semibold hover:bg-[#154d30] transition disabled:opacity-60"
-          >
-            {checkoutLoading ? 'Redirection...' : 'Passer au plan Pro'}
-          </button>
+          <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Plan Pro</p>
+                <p className="text-xs text-gray-500 mt-0.5">15 audits/mois · Monitoring continu · Équipe jusqu'à 10</p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-xl font-bold text-gray-900">2 990€</span>
+                <span className="text-xs text-gray-500">/mois</span>
+              </div>
+            </div>
+            <button
+              onClick={handleUpgrade}
+              disabled={checkoutLoading}
+              className="w-full py-2.5 rounded-xl bg-[#1a5c3a] text-white text-sm font-semibold hover:bg-[#154d30] transition disabled:opacity-60"
+            >
+              {checkoutLoading ? 'Redirection...' : 'Choisir Pro'}
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Partner → gérer abonnement */}
+      {isPartner && (
+        <button
+          onClick={handlePortal}
+          disabled={portalLoading}
+          className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition disabled:opacity-60"
+        >
+          {portalLoading ? 'Ouverture...' : 'Gérer mon abonnement (factures, résiliation)'}
+        </button>
       )}
 
       {/* Pro → gérer abonnement */}

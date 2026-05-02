@@ -98,7 +98,7 @@ async def require_pro(
         select(Organization).where(Organization.id == current_user.organization_id)
     )
     org = result.scalar_one_or_none()
-    if not org or org.subscription_plan not in ("pro", "enterprise"):
+    if not org or org.subscription_plan not in ("partner", "pro", "enterprise"):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="upgrade_required",
@@ -139,6 +139,20 @@ async def check_audit_limit(
 
     # Enterprise : illimité
     if plan == "enterprise":
+        return current_user
+
+    # Partner : 5 audits/mois avec reset mensuel
+    if plan == "partner":
+        current_month = datetime.utcnow().strftime("%Y-%m")
+        if org.audits_reset_month != current_month:
+            org.audits_this_month = 0
+            org.audits_reset_month = current_month
+            await db.commit()
+        if org.audits_this_month >= 5:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Limite de 5 audits/mois atteinte. Contactez-nous pour en ajouter.",
+            )
         return current_user
 
     # Pro : 15 audits/mois avec reset mensuel

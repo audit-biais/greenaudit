@@ -35,7 +35,7 @@ const VERDICT_LABELS = {
 export default function ScanSite() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isPro = ['pro', 'enterprise'].includes(user?.subscription_plan);
+  const isPro = ['partner', 'pro', 'enterprise'].includes(user?.subscription_plan);
 
   const [url, setUrl] = useState('');
   const [companyName, setCompanyName] = useState('');

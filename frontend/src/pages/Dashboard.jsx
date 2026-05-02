@@ -34,7 +34,7 @@ function scoreColor(score) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isPro = ['pro', 'enterprise'].includes(user?.subscription_plan);
+  const isPro = ['partner', 'pro', 'enterprise'].includes(user?.subscription_plan);
   const [audits, setAudits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

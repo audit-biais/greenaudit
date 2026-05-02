@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 PLAN_LIMITS = {
     "starter": 1,
     "essentiel": 10,
+    "partner": 5,
     "pro": 9999,
     "enterprise": 9999,
 }

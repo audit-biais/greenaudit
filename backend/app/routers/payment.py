@@ -60,7 +60,7 @@ async def create_checkout(
         line_items=[{"price": settings.STRIPE_PRO_PRICE_ID, "quantity": 1}],
         success_url=f"{settings.FRONTEND_URL}/payment/success",
         cancel_url=f"{settings.FRONTEND_URL}/settings",
-        metadata={"organization_id": str(org.id)},
+        metadata={"organization_id": str(org.id), "plan": "pro"},
         subscription_data={"metadata": {"organization_id": str(org.id)}},
     )
 
@@ -73,6 +73,58 @@ async def create_checkout(
         session = stripe.checkout.Session.create(**params)
     except stripe.InvalidRequestError as e:
         # Customer ID vient du mode test, invalide en live → on le supprime et on réessaie
+        if "No such customer" in str(e) and org.stripe_customer_id:
+            org.stripe_customer_id = None
+            await db.commit()
+            params.pop("customer", None)
+            params["customer_email"] = user.email
+            session = stripe.checkout.Session.create(**params)
+        else:
+            raise
+
+    return {"checkout_url": session.url}
+
+
+@router.post("/create-checkout-partner")
+async def create_checkout_partner(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Crée une session Stripe Checkout pour le plan Partner (990€/mois)."""
+    if not user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vous devez appartenir à une organisation",
+        )
+    if not settings.STRIPE_PARTNER_PRICE_ID:
+        raise HTTPException(status_code=503, detail="Plan Partner non configuré")
+
+    _init_stripe()
+    org = await _get_org(user, db)
+
+    if org.subscription_plan in ("pro", "enterprise"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vous êtes déjà sur un plan supérieur",
+        )
+
+    params: dict = dict(
+        mode="subscription",
+        line_items=[{"price": settings.STRIPE_PARTNER_PRICE_ID, "quantity": 1}],
+        success_url=f"{settings.FRONTEND_URL}/payment/success",
+        cancel_url=f"{settings.FRONTEND_URL}/settings",
+        metadata={"organization_id": str(org.id), "plan": "partner"},
+        subscription_data={"metadata": {"organization_id": str(org.id)}},
+    )
+
+    if org.stripe_customer_id:
+        params["customer"] = org.stripe_customer_id
+    else:
+        params["customer_email"] = user.email
+
+    try:
+        session = stripe.checkout.Session.create(**params)
+    except stripe.InvalidRequestError as e:
         if "No such customer" in str(e) and org.stripe_customer_id:
             org.stripe_customer_id = None
             await db.commit()
@@ -120,9 +172,14 @@ async def stripe_webhook(
             )
             org = result.scalar_one_or_none()
             if org:
-                org.subscription_plan = "pro"
+                plan = raw_metadata.get("plan", "pro") if isinstance(raw_metadata, dict) else (getattr(raw_metadata, "plan", None) or "pro")
+                if plan == "partner":
+                    org.subscription_plan = "partner"
+                    org.audits_limit = 5
+                else:
+                    org.subscription_plan = "pro"
+                    org.audits_limit = 15
                 org.subscription_status = "active"
-                org.audits_limit = 15
                 org.audits_this_month = 0
                 org.audits_reset_month = datetime.utcnow().strftime("%Y-%m")
                 org.stripe_customer_id = getattr(session_obj, "customer", None)

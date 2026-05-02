@@ -57,7 +57,7 @@ function VerdictBadge({ verdict }) {
 export default function AuditResults() {
   const { auditId } = useParams();
   const { user } = useAuth();
-  const isPro = ['pro', 'enterprise'].includes(user?.subscription_plan);
+  const isPro = ['partner', 'pro', 'enterprise'].includes(user?.subscription_plan);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);

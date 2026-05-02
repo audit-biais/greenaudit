@@ -70,7 +70,7 @@ export default function ClaimForm() {
   const { auditId: audit_id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isPro = ['pro', 'enterprise'].includes(user?.subscription_plan);
+  const isPro = ['partner', 'pro', 'enterprise'].includes(user?.subscription_plan);
 
   // Audit info
   const [audit, setAudit] = useState(null);
