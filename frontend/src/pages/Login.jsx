@@ -16,7 +16,9 @@ export default function Login() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const checkoutAfterLogin = new URLSearchParams(location.search).get('checkout') === '1';
+  const checkoutParam = new URLSearchParams(location.search).get('checkout');
+  const checkoutAfterLogin = checkoutParam === '1';
+  const partnerCheckoutAfterLogin = checkoutParam === 'partner';
 
   const resetForm = () => {
     setEmail(''); setPassword(''); setCompanyName('');
@@ -38,7 +40,15 @@ export default function Login() {
       } else {
         await login(email, password);
       }
-      if (checkoutAfterLogin) {
+      if (partnerCheckoutAfterLogin) {
+        try {
+          const res = await api.post('/payment/create-checkout-partner');
+          window.location.href = res.data.checkout_url;
+          return;
+        } catch {
+          // déjà abonné ou erreur Stripe → dashboard
+        }
+      } else if (checkoutAfterLogin) {
         try {
           const res = await api.post('/payment/create-checkout');
           window.location.href = res.data.checkout_url;

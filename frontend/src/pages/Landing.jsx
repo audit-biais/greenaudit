@@ -233,6 +233,7 @@ export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [partnerCheckoutLoading, setPartnerCheckoutLoading] = useState(false);
 
   const handleProCheckout = async () => {
     if (!user) { navigate('/login?checkout=1'); return; }
@@ -243,6 +244,18 @@ export default function Landing() {
     } catch {
       alert('Erreur lors de la redirection vers le paiement. Réessayez.');
       setCheckoutLoading(false);
+    }
+  };
+
+  const handlePartnerCheckout = async () => {
+    if (!user) { navigate('/login?checkout=partner'); return; }
+    setPartnerCheckoutLoading(true);
+    try {
+      const res = await api.post('/payment/create-checkout-partner');
+      window.location.href = res.data.checkout_url;
+    } catch {
+      alert('Erreur lors de la redirection vers le paiement. Réessayez.');
+      setPartnerCheckoutLoading(false);
     }
   };
 
@@ -667,10 +680,11 @@ export default function Landing() {
                 ))}
               </ul>
               <button
-                onClick={() => navigate('/contact')}
-                className="w-full rounded-full py-3 text-sm font-semibold border border-[#1a5c3a] text-[#1a5c3a] hover:bg-[#eaf4ee] transition-colors"
+                onClick={handlePartnerCheckout}
+                disabled={partnerCheckoutLoading}
+                className="w-full rounded-full py-3 text-sm font-semibold border border-[#1a5c3a] text-[#1a5c3a] hover:bg-[#eaf4ee] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Nous contacter
+                {partnerCheckoutLoading ? 'Redirection...' : 'Souscrire au plan Partner'}
               </button>
             </div>
 
