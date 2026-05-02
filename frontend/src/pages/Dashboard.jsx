@@ -148,7 +148,7 @@ export default function Dashboard() {
             return (
               <div
                 key={audit.id}
-                onClick={() => navigate(`/audits/${audit.id}`)}
+                onClick={() => navigate(audit.status === 'completed' ? `/audits/${audit.id}/results` : `/audits/${audit.id}`)}
                 className="bg-white rounded-2xl border border-gray-100 p-6 cursor-pointer hover:border-gray-200 hover:shadow-sm transition-all flex flex-col"
               >
                 {/* Top */}

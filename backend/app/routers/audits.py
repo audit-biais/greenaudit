@@ -171,7 +171,7 @@ async def delete_audit(
 async def analyze_audit(
     request: Request,
     audit_id: UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_pro),
     db: AsyncSession = Depends(get_db),
 ) -> AuditResultsResponse:
     """
