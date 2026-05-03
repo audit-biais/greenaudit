@@ -73,6 +73,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.execute(sa.text(
             "ALTER TABLE claims ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'À traiter'"
         ))
+        await conn.execute(sa.text(
+            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS source_url VARCHAR(500)"
+        ))
         # Table coffre-fort client
         await conn.execute(sa.text("""
             CREATE TABLE IF NOT EXISTS client_accesses (
