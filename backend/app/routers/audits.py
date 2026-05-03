@@ -1,6 +1,14 @@
+import asyncio
+import re
+import asyncio
+import re
 from datetime import datetime, timezone
 from typing import Dict, List
 from uuid import UUID
+
+_PAGE_MARKER_RE = re.compile(r"=== PAGE: (https?://\S+) ===")
+
+_PAGE_MARKER_RE = re.compile(r"=== PAGE: (https?://\S+) ===")
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
@@ -391,12 +399,37 @@ async def scan_website_endpoint(
             ),
         )
 
-    claims_items = await extract_claims_with_claude(
-        page_text,
-        [],
-        audited_company_name=data.company_name,
-        audited_website_url=data.url,
-    )
+    # Traitement par section — source_url assignée directement depuis le marqueur
+    _parts = _PAGE_MARKER_RE.split(page_text)
+    if len(_parts) >= 3:
+        _sections = [
+            (_parts[i], _parts[i + 1].strip())
+            for i in range(1, len(_parts) - 1, 2)
+            if _parts[i + 1].strip()
+        ]
+        _results = await asyncio.gather(*[
+            extract_claims_with_claude(
+                _text, [],
+                audited_company_name=data.company_name,
+                audited_website_url=data.url,
+            )
+            for _, _text in _sections
+        ])
+        _seen: set = set()
+        claims_items: list = []
+        for (_url, _), _items in zip(_sections, _results):
+            for _item in _items:
+                _ct = _item["claim_text"]
+                if _ct not in _seen:
+                    _seen.add(_ct)
+                    claims_items.append({"claim_text": _ct, "source_url": _url})
+    else:
+        claims_items = await extract_claims_with_claude(
+            page_text, [],
+            audited_company_name=data.company_name,
+            audited_website_url=data.url,
+        )
+
     if not claims_items:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
