@@ -361,6 +361,30 @@ def filter_false_positives(claims: List[str], company_name: str = "") -> List[st
     return filtered
 
 
+_PAGE_MARKER_RE = re.compile(r"=== PAGE: (https?://\S+) ===")
+
+
+def _find_source_url(claim_text: str, scraped_text: str) -> Optional[str]:
+    """
+    Cherche dans quelle section Firecrawl (=== PAGE: url ===) se trouve l'allégation.
+    Compare les 5 premiers mots de l'allégation au contenu de chaque section.
+    Retourne None si aucun marqueur de page ou si introuvable (Jina fallback).
+    """
+    parts = _PAGE_MARKER_RE.split(scraped_text)
+    # parts[0]=avant premier marqueur, puis alternance url / contenu
+    if len(parts) < 3:
+        return None
+    needle = " ".join(claim_text.lower().split()[:6])
+    if not needle:
+        return None
+    for i in range(1, len(parts) - 1, 2):
+        page_url = parts[i]
+        content = parts[i + 1].lower()
+        if needle in content:
+            return page_url
+    return None
+
+
 async def extract_claims_with_claude(
     text: str,
     existing_claims: List[str],
@@ -480,9 +504,7 @@ Texte du site :
 {text}
 
 Retourne UNIQUEMENT les nouvelles allégations environnementales au format JSON :
-{{"claims": [{{"claim_text": "allégation 1", "source_url": "https://exemple.fr/rse"}}, ...]}}
-
-source_url est l'URL de la page (marqueur === PAGE: url ===) où se trouve l'allégation. Si aucun marqueur de page n'est présent dans le texte, source_url est null.
+{{"claims": ["allégation 1", "allégation 2"]}}
 
 Si aucune allégation environnementale, retourne : {{"claims": []}}
 Réponds UNIQUEMENT avec le JSON, sans texte autour."""
@@ -503,21 +525,12 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour."""
                 response_text = response_text[4:]
 
         data = json.loads(response_text)
-        raw_items = data.get("claims", [])
-        raw_dicts = []
-        for item in raw_items:
-            if isinstance(item, str):
-                raw_dicts.append({"claim_text": item, "source_url": None})
-            else:
-                raw_dicts.append({
-                    "claim_text": str(item.get("claim_text", "")),
-                    "source_url": item.get("source_url"),
-                })
-        filtered_set = set(filter_false_positives(
-            [d["claim_text"] for d in raw_dicts],
-            company_name=audited_company_name,
-        ))
-        return [d for d in raw_dicts if d["claim_text"] in filtered_set]
+        raw_claims = [str(c) for c in data.get("claims", [])]
+        filtered = filter_false_positives(raw_claims, company_name=audited_company_name)
+        return [
+            {"claim_text": c, "source_url": _find_source_url(c, text)}
+            for c in filtered
+        ]
 
     except Exception as exc:
         logger.error(f"Erreur Claude API lors de l'extraction: {exc}")
