@@ -72,9 +72,13 @@ export default function ScanSite() {
       setResults(data);
       setStep('results');
     } catch (err) {
-      const detail = err.response?.data?.detail || 'Erreur lors du scan';
-      setError(detail);
-      setStep('form');
+      if (err.response?.status === 402) {
+        setStep('limit');
+      } else {
+        const detail = err.response?.data?.detail || 'Erreur lors du scan';
+        setError(detail);
+        setStep('form');
+      }
     } finally {
       setLoading(false);
     }
@@ -91,6 +95,35 @@ export default function ScanSite() {
             Extraction des allégations environnementales et analyse de conformité EmpCo.
             Cela peut prendre 30 à 60 secondes.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'limit') {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-xl shadow p-12 text-center">
+          <div className="text-4xl mb-4">🔒</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Limite de 3 scans atteinte</h2>
+          <p className="text-gray-500 mb-6">
+            Le plan Starter inclut 3 scans gratuits. Passez au plan Partner pour des scans illimités et l'accès à l'analyse complète avec rapport PDF.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={handleUpgradePartner}
+              disabled={upgradeLoading}
+              className="px-6 py-3 bg-[#1a5c3a] text-white font-semibold rounded-full hover:bg-[#14472d] disabled:opacity-50 transition-colors"
+            >
+              {upgradeLoading ? 'Redirection...' : 'Passer au plan Partner — 990€/mois'}
+            </button>
+            <button
+              onClick={() => setStep('form')}
+              className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-full hover:bg-gray-50 transition-colors"
+            >
+              Retour
+            </button>
+          </div>
         </div>
       </div>
     );

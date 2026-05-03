@@ -360,6 +360,26 @@ async def scan_website_endpoint(
             detail="Vous devez appartenir à une organisation pour lancer un scan",
         )
 
+    # Limite Starter : 3 scans maximum (hors audit démo)
+    if not user.is_superadmin:
+        org_check = await db.execute(
+            select(Organization).where(Organization.id == user.organization_id)
+        )
+        org_for_limit = org_check.scalar_one_or_none()
+        if org_for_limit and org_for_limit.subscription_plan not in ("partner", "pro", "enterprise"):
+            scan_count_result = await db.execute(
+                select(Audit).where(
+                    Audit.organization_id == user.organization_id,
+                    ~Audit.company_name.contains("[DÉMO]"),
+                )
+            )
+            scan_count = len(scan_count_result.scalars().all())
+            if scan_count >= 3:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="upgrade_required",
+                )
+
     page_text = await scrape_website(data.url)
     if not page_text.strip():
         raise HTTPException(
