@@ -150,6 +150,7 @@ export default function ScanSite() {
               <div className="text-sm font-medium capitalize">Risque {results.risk_level}</div>
             </div>
           </div>
+          <p className="mt-3 text-xs opacity-60 italic">Score provisoire — sera recalculé après analyse complète des preuves et labels.</p>
           <div className="flex gap-6 mt-4 text-sm">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-green-500 inline-block" />
