@@ -29,6 +29,7 @@ class ClaimWithResultsResponse(BaseModel):
     scope: str
     product_name: Optional[str] = None
     overall_verdict: Optional[str] = None
+    source_url: Optional[str] = None
     results: List[ClaimResultResponse] = []
 
     model_config = {"from_attributes": True}
