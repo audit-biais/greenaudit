@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../api/auth';
@@ -43,8 +43,19 @@ export default function ScanSite() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState(null);
-  const [step, setStep] = useState('form'); // form, scanning, results
+  const [step, setStep] = useState('form'); // form, scanning, results, limit
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [scansUsed, setScansUsed] = useState(null);
+
+  const SCAN_LIMIT = 5;
+
+  useEffect(() => {
+    if (isPro) return;
+    api.get('/audits').then((res) => {
+      const count = res.data.filter((a) => !a.company_name.includes('[DÉMO]')).length;
+      setScansUsed(count);
+    }).catch(() => {});
+  }, [isPro]);
 
   const handleUpgradePartner = async () => {
     setUpgradeLoading(true);
@@ -71,6 +82,7 @@ export default function ScanSite() {
       });
       setResults(data);
       setStep('results');
+      if (!isPro) setScansUsed((prev) => (prev ?? 0) + 1);
     } catch (err) {
       if (err.response?.status === 402) {
         setStep('limit');
@@ -288,6 +300,26 @@ export default function ScanSite() {
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {!isPro && scansUsed !== null && (
+          <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-500">Scans utilisés</span>
+              <span className={`text-xs font-semibold ${scansUsed >= SCAN_LIMIT ? 'text-red-600' : scansUsed >= SCAN_LIMIT - 1 ? 'text-orange-600' : 'text-gray-700'}`}>
+                {scansUsed} / {SCAN_LIMIT}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1.5">
+              <div
+                className={`h-1.5 rounded-full transition-all ${scansUsed >= SCAN_LIMIT ? 'bg-red-500' : scansUsed >= SCAN_LIMIT - 1 ? 'bg-orange-500' : 'bg-[#1a5c3a]'}`}
+                style={{ width: `${Math.min((scansUsed / SCAN_LIMIT) * 100, 100)}%` }}
+              />
+            </div>
+            {scansUsed >= SCAN_LIMIT - 1 && scansUsed < SCAN_LIMIT && (
+              <p className="text-xs text-orange-600 mt-1.5">Dernier scan gratuit — passez au plan Partner pour continuer.</p>
+            )}
           </div>
         )}
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../api/auth';
+import OnboardingModal from '../components/OnboardingModal';
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -40,8 +41,13 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [unreadAlerts, setUnreadAlerts] = useState({});
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  useEffect(() => { fetchAudits(); }, []);
+  useEffect(() => {
+    fetchAudits();
+    const seen = localStorage.getItem('greenaudit_onboarding_done');
+    if (!seen) setShowOnboarding(true);
+  }, []);
 
   async function fetchAudits() {
     try {
@@ -73,6 +79,11 @@ export default function Dashboard() {
     }
   }
 
+  const handleCloseOnboarding = () => {
+    localStorage.setItem('greenaudit_onboarding_done', '1');
+    setShowOnboarding(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -83,6 +94,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
