@@ -519,6 +519,11 @@ Une allégation doit être une PHRASE ou EXPRESSION avec au minimum un verbe ou 
 EXEMPLES VALIDES : "bon pour la planète", "éco-responsable", "40% de matières recyclées", "neutre en carbone depuis 2022", "fabriqué de façon durable", "zéro déchet d'ici 2025", "vêtements éco-responsables"
 EXEMPLES INVALIDES : "BIO", "HVE", "6 500 BIO", "ANTI-GASPI", "Boutique bio", "Primeur local pour plus de fraîcheur", "Nutriscore A", "sans sucre ajouté", "qualité artisanale", "frais, local, fait sur place", "made in France", "produits locaux cuisinés du jour", "du champ à l'assiette", "à moins de 50km de vos bureaux", "traiteur engagé", "alimentation saine et éthique", "respectant votre bien-être", "1% reversé à 1% for the Planet", "nous soutenons l'association X", "Nike conçoit ses kits avec du polyester recyclé", "les efforts des marques sont de vraies avancées", "Move to Zero", "le recyclage réduit la pollution liée au polyester", "éviter que des bouteilles terminent dans les océans", "création de réservoirs de biocarburants", "construction d'une nouvelle usine", "installation de panneaux solaires" (sans affirmation de bénéfice), "le recyclage évite la pollution", "en le recyclant nul besoin de le produire", "la production de polyester est réduite en le recyclant"
 
+RÈGLE VERBATIM — OBLIGATOIRE :
+Copie chaque allégation EXACTEMENT telle qu'elle apparaît dans le texte de la page — mêmes mots, même ordre.
+Si le passage est trop long (plus de 120 caractères), garde le début exact et coupe avec "…".
+N'invente pas, ne reformule pas, ne résume pas.
+
 Allégations déjà connues (ne pas les répéter) :
 {existing_str}
 
