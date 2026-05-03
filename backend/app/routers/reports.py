@@ -63,14 +63,29 @@ async def _load_completed_audit(
     return audit
 
 
+async def _check_pdf_access(audit: Audit, user: User, db: AsyncSession) -> None:
+    """Autorise l'accès PDF si Pro/Partner/Enterprise ou si c'est l'audit démo."""
+    if user.is_superadmin:
+        return
+    if "[DÉMO]" in (audit.company_name or ""):
+        return
+    result = await db.execute(
+        select(Organization).where(Organization.id == user.organization_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org or org.subscription_plan not in ("partner", "pro", "enterprise"):
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="upgrade_required")
+
+
 @router.post("/{audit_id}/report", status_code=status.HTTP_201_CREATED)
 async def generate_report(
     audit_id: UUID,
-    user: User = Depends(require_pro),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Générer le rapport PDF pour un audit analysé."""
     audit = await _load_completed_audit(audit_id, user, db)
+    await _check_pdf_access(audit, user, db)
 
     # Supprimer l'ancien PDF s'il existe (le nonce dans le nom change à chaque regénération)
     if audit.pdf_url:
@@ -98,7 +113,7 @@ async def generate_report(
 @router.get("/{audit_id}/report/download")
 async def download_report(
     audit_id: UUID,
-    user: User = Depends(require_pro),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FileResponse:
     """Télécharger le rapport PDF d'un audit."""
@@ -112,6 +127,8 @@ async def download_report(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Audit introuvable",
         )
+    await _check_pdf_access(audit, user, db)
+
     if not audit.pdf_url:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
