@@ -369,11 +369,21 @@ def filter_false_positives(claims: List[str], company_name: str = "") -> List[st
 _PAGE_MARKER_RE = re.compile(r"=== PAGE: (https?://\S+) ===")
 
 
+_FR_STOPWORDS = {
+    "le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "en",
+    "sur", "par", "pour", "avec", "sans", "dans", "au", "aux", "ce", "cet",
+    "cette", "ces", "il", "elle", "ils", "elles", "nous", "vous", "se", "si",
+    "ne", "pas", "plus", "que", "qui", "quoi", "dont", "où", "est", "sont",
+    "a", "ont", "être", "avoir", "mais", "donc", "or", "ni", "car", "à",
+}
+
+
 def _find_source_url(claim_text: str, scraped_text: str) -> Optional[str]:
     """
     Cherche dans quelle section (=== PAGE: url ===) se trouve l'allégation.
-    Fonctionne pour Firecrawl et Jina (les deux ajoutent désormais des marqueurs).
-    Stratégie : essaie la claim complète, puis des fenêtres glissantes de 4 mots.
+    Passe 1 — exact : fenêtres glissantes de 4+ mots sur le texte normalisé.
+    Passe 2 — mots-clés : section qui contient le plus de mots significatifs
+               de l'allégation (fallback pour badges, textes fragmentés, paraphrases).
     """
     parts = _PAGE_MARKER_RE.split(scraped_text)
     if len(parts) < 3:
@@ -388,12 +398,12 @@ def _find_source_url(claim_text: str, scraped_text: str) -> Optional[str]:
         return None
 
     words = claim_n.split()
-    # Aiguilles par ordre décroissant de fiabilité
+
+    # ── Passe 1 : correspondance exacte (sous-chaînes) ──────────────────────
     needles: list = [claim_n]
     for size in (8, 6, 5):
         if len(words) > size:
             needles.append(" ".join(words[:size]))
-    # Fenêtres glissantes de 4 mots (couvre les paraphrases partielles)
     for j in range(len(words) - 3):
         needles.append(" ".join(words[j : j + 4]))
 
@@ -404,7 +414,24 @@ def _find_source_url(claim_text: str, scraped_text: str) -> Optional[str]:
             if len(needle) >= 10 and needle in content:
                 return page_url
 
-    return None
+    # ── Passe 2 : score par mots-clés (fallback badges / paraphrases) ───────
+    keywords = [w for w in words if w not in _FR_STOPWORDS and len(w) >= 4]
+    if len(keywords) < 2:
+        return None
+
+    best_url: Optional[str] = None
+    best_score = 0
+    threshold = max(2, len(keywords) // 2)  # au moins la moitié des mots-clés
+
+    for i in range(1, len(parts) - 1, 2):
+        page_url = parts[i]
+        content = _norm(parts[i + 1])
+        score = sum(1 for kw in keywords if kw in content)
+        if score > best_score:
+            best_score = score
+            best_url = page_url
+
+    return best_url if best_score >= threshold else None
 
 
 async def extract_claims_with_claude(
