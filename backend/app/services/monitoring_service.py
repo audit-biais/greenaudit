@@ -171,13 +171,14 @@ async def _scrape_firecrawl(url: str) -> str:
 
 
 async def _scrape_jina(url: str) -> str:
-    """Fallback Jina Reader — 6 chemins codés en dur."""
+    """Fallback Jina Reader — 6 chemins codés en dur, avec marqueurs PAGE."""
     _RSE_PATHS = [
         "", "/rse", "/developpement-durable",
         "/engagement", "/sustainability", "/environnement",
     ]
     base_url = url.rstrip("/")
-    collected_text = ""
+    sections: list = []
+    total = 0
 
     async with httpx.AsyncClient(
         timeout=20.0,
@@ -185,19 +186,23 @@ async def _scrape_jina(url: str) -> str:
         headers={"Accept": "text/plain", "X-Return-Format": "text"},
     ) as client:
         for path in _RSE_PATHS:
-            target = f"https://r.jina.ai/{base_url}{path}"
+            page_url = f"{base_url}{path}" if path else base_url
+            target = f"https://r.jina.ai/{page_url}"
             try:
                 response = await client.get(target)
                 if response.status_code != 200:
                     continue
-                collected_text += response.text + "\n"
-                if len(collected_text) >= 8000:
+                text = response.text.strip()
+                if text:
+                    sections.append(f"=== PAGE: {page_url} ===\n{text}")
+                    total += len(text)
+                if total >= 8000:
                     break
             except Exception as exc:
-                logger.debug(f"Jina impossible pour {base_url}{path}: {exc}")
+                logger.debug(f"Jina impossible pour {page_url}: {exc}")
                 continue
 
-    return collected_text[:8000]
+    return "\n\n".join(sections)[:8000]
 
 
 # ---------------------------------------------------------------------------
@@ -366,22 +371,39 @@ _PAGE_MARKER_RE = re.compile(r"=== PAGE: (https?://\S+) ===")
 
 def _find_source_url(claim_text: str, scraped_text: str) -> Optional[str]:
     """
-    Cherche dans quelle section Firecrawl (=== PAGE: url ===) se trouve l'allégation.
-    Compare les 5 premiers mots de l'allégation au contenu de chaque section.
-    Retourne None si aucun marqueur de page ou si introuvable (Jina fallback).
+    Cherche dans quelle section (=== PAGE: url ===) se trouve l'allégation.
+    Fonctionne pour Firecrawl et Jina (les deux ajoutent désormais des marqueurs).
+    Stratégie : essaie la claim complète, puis des fenêtres glissantes de 4 mots.
     """
     parts = _PAGE_MARKER_RE.split(scraped_text)
-    # parts[0]=avant premier marqueur, puis alternance url / contenu
     if len(parts) < 3:
         return None
-    needle = " ".join(claim_text.lower().split()[:6])
-    if not needle:
+
+    def _norm(s: str) -> str:
+        s = s.lower().strip("«»\"'\u2018\u2019\u201c\u201d")
+        return re.sub(r"[\s\u00a0]+", " ", s).strip()
+
+    claim_n = _norm(claim_text)
+    if not claim_n:
         return None
+
+    words = claim_n.split()
+    # Aiguilles par ordre décroissant de fiabilité
+    needles: list = [claim_n]
+    for size in (8, 6, 5):
+        if len(words) > size:
+            needles.append(" ".join(words[:size]))
+    # Fenêtres glissantes de 4 mots (couvre les paraphrases partielles)
+    for j in range(len(words) - 3):
+        needles.append(" ".join(words[j : j + 4]))
+
     for i in range(1, len(parts) - 1, 2):
         page_url = parts[i]
-        content = parts[i + 1].lower()
-        if needle in content:
-            return page_url
+        content = _norm(parts[i + 1])
+        for needle in needles:
+            if len(needle) >= 10 and needle in content:
+                return page_url
+
     return None
 
 
