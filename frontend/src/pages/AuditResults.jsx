@@ -734,8 +734,20 @@ export default function AuditResults() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-xs text-gray-400">{claim.support_type} · {claim.scope}</span>
+                {claim.source_url && (
+                  <a
+                    href={claim.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs text-blue-500 hover:text-blue-700 hover:underline truncate max-w-xs"
+                    title={claim.source_url}
+                  >
+                    {(() => { try { return new URL(claim.source_url).pathname || '/'; } catch { return claim.source_url; } })()}
+                  </a>
+                )}
 
                 {/* Bouton Faux positif */}
                 <div className="relative">
