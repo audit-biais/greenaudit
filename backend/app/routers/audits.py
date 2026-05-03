@@ -391,13 +391,13 @@ async def scan_website_endpoint(
             ),
         )
 
-    claims_text = await extract_claims_with_claude(
+    claims_items = await extract_claims_with_claude(
         page_text,
         [],
         audited_company_name=data.company_name,
         audited_website_url=data.url,
     )
-    if not claims_text:
+    if not claims_items:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=(
@@ -426,10 +426,11 @@ async def scan_website_endpoint(
         org.audits_this_month = (org.audits_this_month or 0) + 1
 
     # Créer les claims (mode simplifié — scope web, pas de preuve déclarée)
-    for claim_text in claims_text:
+    for item in claims_items:
         claim = Claim(
             audit_id=audit.id,
-            claim_text=claim_text,
+            claim_text=item["claim_text"],
+            source_url=item.get("source_url"),
             support_type="web",
             scope="entreprise",
             has_proof=False,

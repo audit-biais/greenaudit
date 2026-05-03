@@ -366,7 +366,7 @@ async def extract_claims_with_claude(
     existing_claims: List[str],
     audited_company_name: str = "",
     audited_website_url: str = "",
-) -> List[str]:
+) -> list:
     """
     Utilise Claude Haiku pour extraire les nouvelles allégations environnementales.
     Retourne uniquement les claims absentes de existing_claims.
@@ -480,7 +480,9 @@ Texte du site :
 {text}
 
 Retourne UNIQUEMENT les nouvelles allégations environnementales au format JSON :
-{{"claims": ["allégation 1", "allégation 2"]}}
+{{"claims": [{{"claim_text": "allégation 1", "source_url": "https://exemple.fr/rse"}}, ...]}}
+
+source_url est l'URL de la page (marqueur === PAGE: url ===) où se trouve l'allégation. Si aucun marqueur de page n'est présent dans le texte, source_url est null.
 
 Si aucune allégation environnementale, retourne : {{"claims": []}}
 Réponds UNIQUEMENT avec le JSON, sans texte autour."""
@@ -501,8 +503,21 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour."""
                 response_text = response_text[4:]
 
         data = json.loads(response_text)
-        raw_claims = [str(c) for c in data.get("claims", [])]
-        return filter_false_positives(raw_claims, company_name=audited_company_name)
+        raw_items = data.get("claims", [])
+        raw_dicts = []
+        for item in raw_items:
+            if isinstance(item, str):
+                raw_dicts.append({"claim_text": item, "source_url": None})
+            else:
+                raw_dicts.append({
+                    "claim_text": str(item.get("claim_text", "")),
+                    "source_url": item.get("source_url"),
+                })
+        filtered_set = set(filter_false_positives(
+            [d["claim_text"] for d in raw_dicts],
+            company_name=audited_company_name,
+        ))
+        return [d for d in raw_dicts if d["claim_text"] in filtered_set]
 
     except Exception as exc:
         logger.error(f"Erreur Claude API lors de l'extraction: {exc}")
@@ -548,10 +563,10 @@ async def run_monitoring_check(config_id: UUID, db: AsyncSession) -> int:
     )
 
     alerts_created = 0
-    for claim_text in new_claims:
+    for item in new_claims:
         alert = MonitoringAlert(
             monitoring_config_id=config.id,
-            claim_text=claim_text,
+            claim_text=item["claim_text"],
             source_url=audit.website_url,
         )
         db.add(alert)

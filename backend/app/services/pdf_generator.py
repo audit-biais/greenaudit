@@ -57,6 +57,7 @@ import logging
 import math
 import os
 import tempfile
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 from datetime import datetime
@@ -1169,6 +1170,13 @@ def _claims_detail_elements(claims: list, styles: dict, is_starter: bool = False
         claim_elements.append(Paragraph(
             f"Support : {support} | Portée : {scope}", styles["small"],
         ))
+        _src_url = getattr(claim, "source_url", None)
+        if _src_url:
+            _display = (_src_url[:77] + "…") if len(_src_url) > 80 else _src_url
+            claim_elements.append(Paragraph(
+                f'Page source : <link href="{_src_url}">{_rl_escape(_display)}</link>',
+                styles["small"],
+            ))
         claim_elements.append(Spacer(1, 2 * mm))
 
         # Barre de progression
@@ -1461,7 +1469,13 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
                 (r for r in claim.results if r.verdict in ("non_conforme", "risque")), None
             )
             action = first_nc.recommendation if first_nc else "Supprimer ou reformuler l'allégation"
-            niveau1.append((claim_short, article_label, action))
+            _src = getattr(claim, "source_url", None)
+            if _src:
+                _path = urlparse(_src).path
+                source_path = _path if _path and _path != "/" else "/"
+            else:
+                source_path = "—"
+            niveau1.append((claim_short, source_path, article_label, action))
         else:
             # Tous les critères non-conformes/risque absorbés dans niveau 2
             for r in claim.results:
@@ -1507,20 +1521,28 @@ def _correction_plan_elements(claims: list, styles: dict) -> list:
         )
         niveau_elements.append(Paragraph(f"NIVEAU {num} — {description}", label_style))
         niveau_elements.append(Spacer(1, 1 * mm))
-        data = [[
-            Paragraph("<b>Allégation</b>",        styles["small"]),
-            Paragraph(f"<b>{col2_header}</b>",    styles["small"]),
-            Paragraph("<b>Action corrective</b>", styles["small"]),
-        ]]
+        is_4col = bool(rows) and len(rows[0]) == 4
+        if is_4col:
+            header_row = [
+                Paragraph("<b>Allégation</b>",        styles["small"]),
+                Paragraph("<b>Page</b>",               styles["small"]),
+                Paragraph(f"<b>{col2_header}</b>",    styles["small"]),
+                Paragraph("<b>Action corrective</b>", styles["small"]),
+            ]
+            col_widths = [page_width * 0.27, page_width * 0.18, page_width * 0.20, page_width * 0.35]
+        else:
+            header_row = [
+                Paragraph("<b>Allégation</b>",        styles["small"]),
+                Paragraph(f"<b>{col2_header}</b>",    styles["small"]),
+                Paragraph("<b>Action corrective</b>", styles["small"]),
+            ]
+            col_widths = [page_width * 0.30, page_width * 0.22, page_width * 0.48]
+        data = [header_row]
         for row in rows:
-            data.append([
-                Paragraph(row[0], styles["small"]),
-                Paragraph(row[1], styles["small"]),
-                Paragraph(row[2], styles["small"]),
-            ])
+            data.append([Paragraph(str(cell), styles["small"]) for cell in row])
         t = Table(
             data,
-            colWidths=[page_width * 0.30, page_width * 0.22, page_width * 0.48],
+            colWidths=col_widths,
             repeatRows=1,
         )
         ts = TableStyle([

@@ -88,6 +88,7 @@ class ClaimResponse(BaseModel):
     regulatory_basis: Optional[str] = None
     regime: Optional[str] = None
     status: str = "À traiter"
+    source_url: Optional[str] = None
 
     created_at: datetime
 

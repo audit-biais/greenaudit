@@ -74,6 +74,9 @@ class Claim(Base):
         String(20), nullable=False, server_default="À traiter"
     )
 
+    # Page source du scan (URL de la page où l'allégation a été trouvée)
+    source_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
