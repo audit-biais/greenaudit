@@ -374,7 +374,7 @@ async def scan_website_endpoint(
                 )
             )
             scan_count = len(scan_count_result.scalars().all())
-            if scan_count >= 3:
+            if scan_count >= 5:
                 raise HTTPException(
                     status_code=status.HTTP_402_PAYMENT_REQUIRED,
                     detail="upgrade_required",

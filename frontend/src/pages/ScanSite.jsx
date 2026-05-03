@@ -105,9 +105,9 @@ export default function ScanSite() {
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-xl shadow p-12 text-center">
           <div className="text-4xl mb-4">🔒</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Limite de 3 scans atteinte</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Limite de 5 scans atteinte</h2>
           <p className="text-gray-500 mb-6">
-            Le plan Starter inclut 3 scans gratuits. Passez au plan Partner pour des scans illimités et l'accès à l'analyse complète avec rapport PDF.
+            Le plan Starter inclut 5 scans gratuits. Passez au plan Partner pour des scans illimités et l'accès à l'analyse complète avec rapport PDF.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
