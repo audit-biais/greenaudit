@@ -32,6 +32,78 @@ const VERDICT_LABELS = {
   non_conforme: 'Non conforme',
 };
 
+function ScanError({ error, url, onTryUrl }) {
+  const getSuggestedUrls = () => {
+    try {
+      const base = new URL(url).origin;
+      return [
+        { label: 'Page RSE', url: `${base}/rse` },
+        { label: 'Développement durable', url: `${base}/developpement-durable` },
+        { label: 'Nos engagements', url: `${base}/engagements` },
+        { label: 'Impact & environnement', url: `${base}/impact` },
+      ];
+    } catch {
+      return [];
+    }
+  };
+
+  if (error === 'inaccessible') {
+    const suggestions = getSuggestedUrls();
+    return (
+      <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg text-sm space-y-3">
+        <p className="font-semibold text-orange-800">Site inaccessible ou sans contenu lisible</p>
+        <p className="text-orange-700">Le site bloque peut-être les robots, ou la page d'accueil ne contient pas d'allégations environnementales. Essayez une page spécifique :</p>
+        {suggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <button
+                key={s.url}
+                type="button"
+                onClick={() => onTryUrl(s.url)}
+                className="px-3 py-1 text-xs font-medium rounded-full bg-white border border-orange-300 text-orange-700 hover:bg-orange-100 transition-colors"
+              >
+                {s.label} →
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-orange-500">Cliquez sur une suggestion pour pré-remplir l'URL, puis relancez.</p>
+      </div>
+    );
+  }
+
+  if (error === 'no_claims') {
+    const suggestions = getSuggestedUrls();
+    return (
+      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm space-y-3">
+        <p className="font-semibold text-yellow-800">Aucune allégation environnementale détectée</p>
+        <p className="text-yellow-700">La page scannée ne contient pas de formulations environnementales identifiables. Les allégations se trouvent souvent sur des pages dédiées :</p>
+        {suggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <button
+                key={s.url}
+                type="button"
+                onClick={() => onTryUrl(s.url)}
+                className="px-3 py-1 text-xs font-medium rounded-full bg-white border border-yellow-300 text-yellow-700 hover:bg-yellow-100 transition-colors"
+              >
+                {s.label} →
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-yellow-500">Cliquez sur une suggestion pour pré-remplir l'URL, puis relancez.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+      {error}
+    </div>
+  );
+}
+
 export default function ScanSite() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -87,8 +159,14 @@ export default function ScanSite() {
       if (err.response?.status === 402) {
         setStep('limit');
       } else {
-        const detail = err.response?.data?.detail || 'Erreur lors du scan';
-        setError(detail);
+        const detail = err.response?.data?.detail || '';
+        if (detail.includes('Impossible de récupérer')) {
+          setError('inaccessible');
+        } else if (detail.includes('Aucune allégation')) {
+          setError('no_claims');
+        } else {
+          setError(detail || 'Erreur lors du scan');
+        }
         setStep('form');
       }
     } finally {
@@ -297,11 +375,7 @@ export default function ScanSite() {
           </select>
         </div>
 
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <ScanError error={error} url={url} onTryUrl={(u) => setUrl(u)} />}
 
         {!isPro && scansUsed !== null && (
           <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
