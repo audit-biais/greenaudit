@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import subprocess
+import sys
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict
 
-import sqlalchemy as sa
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -13,86 +15,34 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.limiter import limiter
 from app.utils.security_headers import SecurityHeadersMiddleware
-from app.database import engine, Base
-from app.models import client_access as _  # noqa: F401 — register ClientAccess with SQLAlchemy
+from app.database import engine
 from app.routers import auth, audits, claims, reports
 from app.routers import monitoring, contact, organizations, admin, evidence, payment, members, share
 
 logger = logging.getLogger(__name__)
 
 
+async def _run_migrations() -> None:
+    """Lance alembic upgrade head dans un thread pour ne pas bloquer la boucle async."""
+    def _upgrade() -> None:
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Alembic migration failed:\n{result.stderr}")
+        if result.stdout:
+            logger.info("Alembic: %s", result.stdout.strip())
+
+    await asyncio.to_thread(_upgrade)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Crée les tables au démarrage et démarre le scheduler de monitoring."""
-    # Créer les tables (dev only — en prod, utiliser Alembic)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    # Migrations manuelles idempotentes (ADD COLUMN IF NOT EXISTS)
-    async with engine.begin() as conn:
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS country VARCHAR(5) NOT NULL DEFAULT 'fr'"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS rules_version VARCHAR(20)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE evidence_files ADD COLUMN IF NOT EXISTS document_type VARCHAR(50) NOT NULL DEFAULT 'autre'"
-        ))
-        # Renommer plan 'free' → 'starter' pour les orgs existantes
-        await conn.execute(sa.text(
-            "UPDATE organizations SET subscription_plan = 'starter' WHERE subscription_plan = 'free'"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS is_corrected BOOLEAN NOT NULL DEFAULT FALSE"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS corrected_at TIMESTAMPTZ"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS is_false_positive BOOLEAN NOT NULL DEFAULT FALSE"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS false_positive_reason VARCHAR(100)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS pdf_sha256 VARCHAR(64)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS share_token_expires_at TIMESTAMPTZ"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS regulatory_basis VARCHAR(50)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS regime VARCHAR(20)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'À traiter'"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS source_url VARCHAR(500)"
-        ))
-        # Table coffre-fort client
-        await conn.execute(sa.text("""
-            CREATE TABLE IF NOT EXISTS client_accesses (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                audit_id UUID NOT NULL UNIQUE REFERENCES audits(id) ON DELETE CASCADE,
-                token VARCHAR(200) NOT NULL UNIQUE,
-                client_email VARCHAR(255) NOT NULL,
-                validity_days INTEGER,
-                expires_at TIMESTAMPTZ,
-                is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                last_opened_at TIMESTAMPTZ,
-                pdf_downloaded_at TIMESTAMPTZ,
-                zip_downloaded_at TIMESTAMPTZ
-            )
-        """))
-    logger.info("Colonnes country + rules_version + document_type vérifiées/ajoutées")
+    """Lance les migrations Alembic au démarrage et démarre le scheduler de monitoring."""
+    await _run_migrations()
+    logger.info("Migrations Alembic appliquées")
 
     # Démarrer le scheduler APScheduler
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
