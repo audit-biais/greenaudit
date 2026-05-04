@@ -420,8 +420,9 @@ async def scan_website_endpoint(
         for (_url, _), _items in zip(_sections, _results):
             for _item in _items:
                 _ct = _item["claim_text"]
-                if _ct not in _seen:
-                    _seen.add(_ct)
+                _key = _ct.lower().strip().strip("«»\"'.,;:!?")
+                if _key not in _seen:
+                    _seen.add(_key)
                     claims_items.append({"claim_text": _ct, "source_url": _url})
     else:
         claims_items = await extract_claims_with_claude(
