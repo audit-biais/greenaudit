@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     # Brevo API (email transactionnel)
     BREVO_API_KEY: Optional[str] = None
 
+    # Sentry (monitoring d'erreurs — optionnel)
+    SENTRY_DSN: Optional[str] = None
+
     @field_validator("SECRET_KEY")
     @classmethod
     def secret_key_must_be_strong(cls, v: str) -> str:

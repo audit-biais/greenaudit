@@ -12,8 +12,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+import sentry_sdk
+
 from app.config import settings
 from app.limiter import limiter
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
 from app.utils.security_headers import SecurityHeadersMiddleware
 from app.database import engine
 from app.routers import auth, audits, claims, reports
