@@ -424,6 +424,16 @@ async def scan_website_endpoint(
                 if _key not in _seen:
                     _seen.add(_key)
                     claims_items.append({"claim_text": _ct, "source_url": _url})
+
+        # Supprimer les claims qui sont un préfixe d'une claim plus longue
+        _norm_keys = [c["claim_text"].lower().strip().strip("«»\"'.,;:!?") for c in claims_items]
+        claims_items = [
+            item for i, item in enumerate(claims_items)
+            if not any(
+                j != i and _norm_keys[j].startswith(_norm_keys[i]) and len(_norm_keys[i]) >= 30
+                for j in range(len(_norm_keys))
+            )
+        ]
     else:
         claims_items = await extract_claims_with_claude(
             page_text, [],
