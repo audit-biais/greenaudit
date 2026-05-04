@@ -103,7 +103,14 @@ async def create_claim(
         )
         claim.overall_verdict = overall_verdict
         for r in results:
-            db.add(ClaimResult(claim_id=claim.id, **r))
+            db.add(ClaimResult(
+                claim_id=claim.id,
+                criterion=r["criterion"],
+                verdict=r["verdict"],
+                explanation=r["explanation"],
+                recommendation=r.get("recommendation"),
+                regulation_reference=r.get("regulation_reference"),
+            ))
 
         # Recalculer le score global
         await db.flush()
