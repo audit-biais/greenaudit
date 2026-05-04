@@ -18,6 +18,9 @@ from app.models.claim_result import ClaimResult
 from app.models.evidence import EvidenceFile
 from app.models.user import User
 from app.schemas.claim import ClaimCreate, ClaimResponse, ClaimUpdate
+from app.services.analysis_engine import analyze_claim, RULES_VERSION
+from app.services.regulatory_classifier import classify_claim_regime
+from app.services.scoring import calculate_global_score, compute_verdict_counts
 from app.services.rewrite_engine import suggest_rewrite
 
 router = APIRouter(tags=["claims"])
@@ -76,14 +79,56 @@ async def create_claim(
     """Ajouter une claim à un audit."""
     audit = await _get_user_audit(audit_id, user, db)
 
-    if audit.status == "completed":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Impossible d'ajouter une claim à un audit terminé",
-        )
-
     claim = Claim(audit_id=audit.id, **data.model_dump())
     db.add(claim)
+    await db.flush()
+
+    # Si l'audit est déjà complété, analyser immédiatement la nouvelle claim
+    if audit.status == "completed":
+        meta = {
+            "support_type": claim.support_type,
+            "scope": claim.scope,
+            "has_proof": claim.has_proof,
+            "proof_type": claim.proof_type,
+        }
+        classification = await classify_claim_regime(claim.claim_text, meta)
+        claim.regulatory_basis = classification["regulatory_basis"]
+        claim.regime = classification["regime"]
+
+        results, overall_verdict = analyze_claim(
+            claim,
+            has_ecolabel_evidence=False,
+            country=getattr(audit, "country", "fr") or "fr",
+            scan_mode=True,
+        )
+        claim.overall_verdict = overall_verdict
+        for r in results:
+            db.add(ClaimResult(claim_id=claim.id, **r))
+
+        # Recalculer le score global
+        await db.flush()
+        all_res = await db.execute(
+            select(Claim).where(
+                Claim.audit_id == audit.id,
+                Claim.is_false_positive == False,
+            )
+        )
+        all_claims = list(all_res.scalars().all())
+        all_verdicts = [c.overall_verdict for c in all_claims if c.overall_verdict]
+        counts = compute_verdict_counts(all_verdicts)
+        score, risk_level = calculate_global_score(
+            conforming=counts["conforme"],
+            at_risk=counts["risque"],
+            non_conforming=counts["non_conforme"],
+        )
+        audit.global_score = score
+        audit.risk_level = risk_level
+        audit.total_claims = len(all_claims)
+        audit.conforming_claims = counts["conforme"]
+        audit.at_risk_claims = counts["risque"]
+        audit.non_conforming_claims = counts["non_conforme"]
+        audit.rules_version = RULES_VERSION
+
     await db.commit()
 
     result = await db.execute(

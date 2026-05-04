@@ -54,6 +54,74 @@ function VerdictBadge({ verdict }) {
   );
 }
 
+function AddClaimInline({ auditId, onAdded }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.post(`/audits/${auditId}/claims`, {
+        claim_text: text.trim(),
+        support_type: 'web',
+        scope: 'entreprise',
+        has_proof: false,
+        proof_type: 'aucune',
+        has_label: false,
+        is_future_commitment: false,
+        has_independent_verification: false,
+      });
+      setText('');
+      setOpen(false);
+      onAdded();
+    } catch {
+      setError("Erreur lors de l'ajout.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) return (
+    <button
+      onClick={() => setOpen(true)}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[#1a5c3a] bg-[#eaf4ee] hover:bg-[#d4ecdd] transition-colors"
+    >
+      <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+      </svg>
+      Ajouter une allégation
+    </button>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+        <h3 className="text-base font-bold text-gray-900 mb-1">Ajouter une allégation</h3>
+        <p className="text-xs text-gray-400 mb-4">Elle sera analysée automatiquement et le score recalculé.</p>
+        <textarea
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/20 resize-none"
+          rows={3}
+          placeholder="Texte exact de l'allégation…"
+          value={text}
+          onChange={e => setText(e.target.value)}
+          autoFocus
+        />
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <div className="flex gap-3 mt-4">
+          <button onClick={() => { setOpen(false); setText(''); }} className="flex-1 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">Annuler</button>
+          <button onClick={handleSubmit} disabled={saving || !text.trim()} className="flex-1 py-2 rounded-full text-sm font-semibold text-white bg-[#1a5c3a] hover:bg-[#14472d] disabled:opacity-50">
+            {saving ? 'Analyse…' : 'Ajouter et analyser'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AuditResults() {
   const { auditId } = useParams();
   const { user } = useAuth();
@@ -711,7 +779,10 @@ export default function AuditResults() {
 
       {/* Détail par claim */}
       <div className="space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a]">Détail des allégations</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#1a5c3a]">Détail des allégations</p>
+          <AddClaimInline auditId={auditId} onAdded={() => api.get(`/audits/${auditId}/results`).then(r => setResults(r.data))} />
+        </div>
         {results.claims.map((claim, idx) => {
           const isFP = falsePositives[claim.id]?.active;
           const fpReason = falsePositives[claim.id]?.reason;
