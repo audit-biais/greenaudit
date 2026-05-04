@@ -1,12 +1,8 @@
 import asyncio
 import re
-import asyncio
-import re
 from datetime import datetime, timezone
 from typing import Dict, List
 from uuid import UUID
-
-_PAGE_MARKER_RE = re.compile(r"=== PAGE: (https?://\S+) ===")
 
 _PAGE_MARKER_RE = re.compile(r"=== PAGE: (https?://\S+) ===")
 

@@ -214,3 +214,17 @@ async def claim_a(db_session: AsyncSession, audit_a: Audit) -> Claim:
     await db_session.commit()
     await db_session.refresh(c)
     return c
+
+
+# Aliases pour compatibilité avec les noms utilisés dans les tests d'intégration
+@pytest.fixture
+async def auth_headers(headers_a):
+    return headers_a
+
+@pytest.fixture
+async def audit(audit_a):
+    return audit_a
+
+@pytest.fixture
+async def claim(claim_a):
+    return claim_a

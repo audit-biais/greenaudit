@@ -23,7 +23,6 @@ from app.config import settings
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
-from app.config import settings
 from app.models.audit import Audit
 from app.models.claim import Claim
 from app.models.evidence import EvidenceFile  # noqa: F401 — needed for selectinload
@@ -250,7 +249,6 @@ async def create_client_access(
     now = datetime.now(timezone.utc)
     expires_at = None
     if data.validity_days:
-        from datetime import timedelta
         expires_at = now + timedelta(days=data.validity_days)
 
     # Supprimer l'accès existant s'il y en a un

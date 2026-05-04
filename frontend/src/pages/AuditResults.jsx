@@ -192,8 +192,8 @@ export default function AuditResults() {
     } catch (err) {
       try {
         const text = await err.response?.data?.text();
-        const json = JSON.parse(text);
-        setError(json.detail || 'Erreur lors du téléchargement du ZIP');
+        const json = JSON.parse(text ?? 'null');
+        setError(json?.detail || 'Erreur lors du téléchargement du ZIP');
       } catch {
         setError('Erreur lors du téléchargement du ZIP');
       }
