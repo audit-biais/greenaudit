@@ -51,7 +51,7 @@ export default function ClientView() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {
-      // silently ignore
+      alert('Impossible de télécharger le fichier. Réessayez.');
     } finally {
       setDownloading('');
     }

@@ -238,7 +238,10 @@ export default function AuditResults() {
     try {
       const res = await api.get(`/claims/${claimId}/evidence`);
       setEvidenceFiles((prev) => ({ ...prev, [claimId]: res.data }));
-    } catch { /* silent */ }
+    } catch {
+      setEvidenceFiles((prev) => ({ ...prev, [claimId]: prev[claimId] ?? [] }));
+      setError('Impossible de charger les pièces justificatives.');
+    }
   };
 
   const handleEvidenceToggle = (claimId) => {
@@ -289,7 +292,9 @@ export default function AuditResults() {
         ...prev,
         [claimId]: prev[claimId].filter((f) => f.id !== evidenceId),
       }));
-    } catch { /* silent */ }
+    } catch {
+      setError('Impossible de supprimer ce fichier.');
+    }
   };
 
   const formatSize = (bytes) => {
@@ -324,7 +329,9 @@ export default function AuditResults() {
       await api.delete(`/audits/${auditId}/client-access`);
       setExistingAccess((prev) => ({ ...prev, is_revoked: true }));
       setClientAccessOpen(false);
-    } catch { /* silent */ } finally {
+    } catch {
+      setMonitoringError("Impossible de révoquer l'accès. Réessayez.");
+    } finally {
       setRevokingAccess(false);
     }
   };
@@ -337,7 +344,9 @@ export default function AuditResults() {
         [claimId]: { active: res.data.is_false_positive, reason: res.data.false_positive_reason },
       }));
       setFalsePositiveOpen((prev) => ({ ...prev, [claimId]: false }));
-    } catch { /* silent */ }
+    } catch {
+      setMonitoringError('Impossible de marquer comme faux positif. Réessayez.');
+    }
   };
 
   const handleMarkRead = async (alertId) => {

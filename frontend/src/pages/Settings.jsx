@@ -369,7 +369,7 @@ function TeamSection({ user }) {
   useEffect(() => {
     api.get('/organizations/members')
       .then((res) => setMembers(res.data))
-      .catch(() => {})
+      .catch(() => setError("Impossible de charger les membres de l'équipe."))
       .finally(() => setLoading(false));
   }, []);
 
