@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     # JWT — obligatoire, pas de fallback silencieux
     SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
+
+    @field_validator("JWT_ALGORITHM")
+    @classmethod
+    def jwt_algorithm_must_be_safe(cls, v: str) -> str:
+        allowed = {"HS256", "HS384", "HS512", "RS256", "ES256"}
+        if v not in allowed:
+            raise ValueError(f"JWT_ALGORITHM invalide. Valeurs acceptées : {', '.join(sorted(allowed))}")
+        return v
     JWT_EXPIRATION_HOURS: int = 24
 
     # CORS — stocké comme string, parsé dans main.py
