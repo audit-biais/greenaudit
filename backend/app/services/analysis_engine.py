@@ -50,6 +50,12 @@ from app.utils.blacklist import (
     _normalize,
 )
 
+# Pré-compilation des patterns (évite re.compile() à chaque appel)
+_QUALIFICATION_RES = [re.compile(p, re.IGNORECASE) for p in QUALIFICATION_PATTERNS]
+_PARTIAL_SCOPE_RES = [re.compile(p, re.IGNORECASE) for p in PARTIAL_SCOPE_PATTERNS]
+_MINOR_COMPONENT_RES = [re.compile(p, re.IGNORECASE) for p in MINOR_COMPONENT_PATTERNS]
+_LEGAL_REQUIREMENT_RES = [re.compile(p, re.IGNORECASE) for p in LEGAL_REQUIREMENT_PATTERNS]
+
 
 def _text_lower(claim: Claim) -> str:
     return claim.claim_text.lower().strip()
@@ -57,10 +63,7 @@ def _text_lower(claim: Claim) -> str:
 
 def _has_qualification(text: str) -> bool:
     """Vérifie si le texte contient une qualification mesurable."""
-    for pattern in QUALIFICATION_PATTERNS:
-        if re.search(pattern, text, re.IGNORECASE):
-            return True
-    return False
+    return any(r.search(text) for r in _QUALIFICATION_RES)
 
 
 def _find_blacklist_match(text: str) -> Optional[str]:
@@ -94,16 +97,13 @@ def _find_carbon_neutral_match(text: str) -> Optional[str]:
 
 def _has_partial_scope_mention(text: str) -> bool:
     """Vérifie si le texte mentionne un aspect partiel (emballage, transport, etc.)."""
-    for pattern in PARTIAL_SCOPE_PATTERNS:
-        if re.search(pattern, text, re.IGNORECASE):
-            return True
-    return False
+    return any(r.search(text) for r in _PARTIAL_SCOPE_RES)
 
 
 def _find_minor_component(text: str) -> Optional[str]:
     """Retourne le premier composant mineur mentionné, ou None."""
-    for pattern in MINOR_COMPONENT_PATTERNS:
-        match = re.search(pattern, text, re.IGNORECASE)
+    for r in _MINOR_COMPONENT_RES:
+        match = r.search(text)
         if match:
             return match.group(0)
     return None
@@ -120,8 +120,8 @@ def _find_agec_forbidden(text: str) -> Optional[str]:
 
 def _find_legal_requirement_match(text: str) -> Optional[str]:
     """Retourne le premier pattern d'exigence légale trouvé, ou None."""
-    for pattern in LEGAL_REQUIREMENT_PATTERNS:
-        match = re.search(pattern, text, re.IGNORECASE)
+    for r in _LEGAL_REQUIREMENT_RES:
+        match = r.search(text)
         if match:
             return match.group(0)
     return None

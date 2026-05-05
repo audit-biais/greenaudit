@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../api/auth';
 import api from '../api/client';
@@ -51,6 +51,7 @@ export default function Settings() {
   const [primaryColor, setPrimaryColor] = useState('#1a5c3a');
   const [secondaryColor, setSecondaryColor] = useState('#2E7D32');
   const [logoFile, setLogoFile] = useState(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState(null);
   const [hasLogo, setHasLogo] = useState(false);
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingMessage, setBrandingMessage] = useState(null);
@@ -76,6 +77,13 @@ export default function Settings() {
       setSecondaryColor(user.organization?.brand_secondary_color || '#2E7D32');
     });
   }, [user]);
+
+  useEffect(() => {
+    if (!logoFile) { setLogoPreviewUrl(null); return; }
+    const url = URL.createObjectURL(logoFile);
+    setLogoPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [logoFile]);
 
   useEffect(() => {
     if (profileMessage) { const t = setTimeout(() => setProfileMessage(null), 4000); return () => clearTimeout(t); }
@@ -136,7 +144,6 @@ export default function Settings() {
     }
   };
 
-  const logoPreviewUrl = logoFile ? URL.createObjectURL(logoFile) : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

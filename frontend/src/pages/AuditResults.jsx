@@ -216,7 +216,7 @@ export default function AuditResults() {
   const handleDisableMonitoring = async () => {
     try {
       await api.delete(`/audits/${auditId}/monitoring`);
-      setMonitoring((prev) => ({ ...prev, is_active: false }));
+      setMonitoring(false);
     } catch (err) {
       setMonitoringError(err.response?.data?.detail || 'Erreur');
     }

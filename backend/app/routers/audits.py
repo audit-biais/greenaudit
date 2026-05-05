@@ -1,8 +1,11 @@
 import asyncio
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Dict, List
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 _PAGE_MARKER_RE = re.compile(r"=== PAGE: (https?://\S+) ===")
 
@@ -18,7 +21,7 @@ from app.models.claim import Claim
 from app.models.claim_result import ClaimResult
 from app.models.evidence import EvidenceFile
 from app.models.user import User
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.organization import Organization
 from app.models.client_access import ClientAccess
@@ -95,6 +98,8 @@ async def create_audit(
 
 @router.get("", response_model=List[AuditSummaryResponse])
 async def list_audits(
+    limit: int = 50,
+    offset: int = 0,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list:
@@ -105,6 +110,8 @@ async def list_audits(
         select(Audit)
         .where(Audit.organization_id == user.organization_id)
         .order_by(Audit.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     audits = list(audits_result.scalars().all())
 
@@ -220,7 +227,11 @@ async def analyze_audit(
             "has_proof": claim.has_proof,
             "proof_type": claim.proof_type,
         }
-        classification = await classify_claim_regime(claim.claim_text, metadata)
+        try:
+            classification = await classify_claim_regime(claim.claim_text, metadata)
+        except Exception as exc:
+            logger.warning("classify_claim_regime failed for claim %s: %s", claim.id, exc)
+            classification = {"regulatory_basis": "unknown", "regime": "cas_par_cas"}
         claim.regulatory_basis = classification["regulatory_basis"]
         claim.regime = classification["regime"]
 
@@ -337,9 +348,16 @@ async def get_audit_results(
 
 class ScanRequest(BaseModel):
     """Requête de scan d'un site web."""
-    url: str = Field(min_length=5, description="URL du site à analyser")
+    url: str = Field(min_length=5, max_length=2048, description="URL du site à analyser")
     company_name: str = Field(min_length=1, max_length=255)
     sector: str = Field(default="autre", max_length=100)
+
+    @field_validator("url")
+    @classmethod
+    def url_must_be_http(cls, v: str) -> str:
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("L'URL doit commencer par http:// ou https://")
+        return v
 
 
 @router.post("/scan", response_model=AuditResultsResponse)
@@ -491,7 +509,11 @@ async def scan_website_endpoint(
             "has_proof": claim.has_proof,
             "proof_type": claim.proof_type,
         }
-        classification = await classify_claim_regime(claim.claim_text, metadata)
+        try:
+            classification = await classify_claim_regime(claim.claim_text, metadata)
+        except Exception as exc:
+            logger.warning("classify_claim_regime failed for claim %s: %s", claim.id, exc)
+            classification = {"regulatory_basis": "unknown", "regime": "cas_par_cas"}
         claim.regulatory_basis = classification["regulatory_basis"]
         claim.regime = classification["regime"]
         results, overall_verdict = analyze_claim(claim, has_ecolabel_evidence=False, country="fr", scan_mode=True)
