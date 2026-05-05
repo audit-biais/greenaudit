@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -143,7 +143,7 @@ async def check_audit_limit(
 
     # Partner : 5 audits/mois avec reset mensuel
     if plan == "partner":
-        current_month = datetime.utcnow().strftime("%Y-%m")
+        current_month = datetime.now(timezone.utc).strftime("%Y-%m")
         if org.audits_reset_month != current_month:
             org.audits_this_month = 0
             org.audits_reset_month = current_month
@@ -157,7 +157,7 @@ async def check_audit_limit(
 
     # Pro : 15 audits/mois avec reset mensuel
     if plan == "pro":
-        current_month = datetime.utcnow().strftime("%Y-%m")
+        current_month = datetime.now(timezone.utc).strftime("%Y-%m")
         if org.audits_reset_month != current_month:
             org.audits_this_month = 0
             org.audits_reset_month = current_month

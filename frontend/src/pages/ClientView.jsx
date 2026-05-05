@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://greenaudit-production.up.railway.app/api';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const VERDICT_STYLES = {
   conforme: { bg: 'bg-green-50', text: 'text-green-700', label: 'Conforme', dot: 'bg-green-500' },
@@ -51,7 +51,7 @@ export default function ClientView() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {
-      // silently ignore
+      alert('Impossible de télécharger le fichier. Réessayez.');
     } finally {
       setDownloading('');
     }

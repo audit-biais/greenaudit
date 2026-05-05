@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 import stripe
-from datetime import datetime
+from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -154,8 +157,12 @@ async def stripe_webhook(
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
-    except Exception:
+    except stripe.error.SignatureVerificationError as e:
+        logger.warning("Signature Stripe invalide: %s", e)
         raise HTTPException(status_code=400, detail="Signature Stripe invalide")
+    except ValueError as e:
+        logger.error("Payload Stripe invalide: %s", e)
+        raise HTTPException(status_code=400, detail="Payload invalide")
 
     if event["type"] == "checkout.session.completed":
         session_obj = event["data"]["object"]
@@ -181,7 +188,7 @@ async def stripe_webhook(
                     org.audits_limit = 15
                 org.subscription_status = "active"
                 org.audits_this_month = 0
-                org.audits_reset_month = datetime.utcnow().strftime("%Y-%m")
+                org.audits_reset_month = datetime.now(timezone.utc).strftime("%Y-%m")
                 org.stripe_customer_id = getattr(session_obj, "customer", None)
                 org.stripe_subscription_id = getattr(session_obj, "subscription", None)
                 await db.commit()

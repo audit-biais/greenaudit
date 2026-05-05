@@ -4,6 +4,7 @@ import logging
 import secrets
 import smtplib
 from datetime import datetime, timedelta, timezone
+from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -23,7 +24,6 @@ from app.config import settings
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
-from app.config import settings
 from app.models.audit import Audit
 from app.models.claim import Claim
 from app.models.evidence import EvidenceFile  # noqa: F401 — needed for selectinload
@@ -250,7 +250,6 @@ async def create_client_access(
     now = datetime.now(timezone.utc)
     expires_at = None
     if data.validity_days:
-        from datetime import timedelta
         expires_at = now + timedelta(days=data.validity_days)
 
     # Supprimer l'accès existant s'il y en a un
@@ -288,10 +287,12 @@ async def create_client_access(
         f"Ce lien est valable {validity_str} et vous est réservé.\n\n"
         f"Cordialement,\n{cabinet_name}"
     )
-    body = data.custom_message or default_message
-    # Injecter le lien dans le message custom s'il n'y est pas déjà
-    if data.custom_message and client_url not in data.custom_message:
-        body = f"{data.custom_message}\n\n{client_url}"
+    if data.custom_message:
+        # Sanitisation anti-SMTP injection : strip les retours chariots
+        sanitized = data.custom_message.replace("\r", "").replace("\x00", "")[:2000]
+        body = sanitized if client_url in sanitized else f"{sanitized}\n\n{client_url}"
+    else:
+        body = default_message
 
     email_sent = False
     smtp_user = settings.SMTP_USER
@@ -301,7 +302,7 @@ async def create_client_access(
             msg = MIMEMultipart()
             msg["From"] = smtp_user
             msg["To"] = data.client_email
-            msg["Subject"] = f"Votre rapport d'audit anti-greenwashing — {audit.company_name}"
+            msg["Subject"] = Header(f"Votre rapport d'audit anti-greenwashing — {audit.company_name}", "utf-8")
             msg.attach(MIMEText(body, "plain", "utf-8"))
             with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=10) as server:
                 server.starttls()
