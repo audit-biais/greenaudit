@@ -28,8 +28,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Migrations manuelles idempotentes — SQLite ne supporte pas IF NOT EXISTS
-    # dans ALTER TABLE, on attrape l'erreur "duplicate column" silencieusement.
+    # Migrations manuelles idempotentes.
+    # Utilise SAVEPOINT pour que chaque ALTER soit isolé : une colonne déjà
+    # existante ne met pas la transaction PostgreSQL en état d'erreur.
+    # Fonctionne identiquement sur SQLite (qui supporte aussi les SAVEPOINTs).
     _ALTER_SQLS = [
         "ALTER TABLE audits ADD COLUMN country VARCHAR(5) NOT NULL DEFAULT 'fr'",
         "ALTER TABLE audits ADD COLUMN rules_version VARCHAR(20)",
@@ -51,16 +53,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         for sql in _ALTER_SQLS:
             try:
+                await conn.execute(sa.text("SAVEPOINT _sp"))
                 await conn.execute(sa.text(sql))
+                await conn.execute(sa.text("RELEASE SAVEPOINT _sp"))
             except Exception:
-                pass  # Colonne déjà existante
+                await conn.execute(sa.text("ROLLBACK TO SAVEPOINT _sp"))
         # Renommer plan 'free' → 'starter' pour les orgs existantes
         try:
+            await conn.execute(sa.text("SAVEPOINT _sp"))
             await conn.execute(sa.text(
                 "UPDATE organizations SET subscription_plan = 'starter' WHERE subscription_plan = 'free'"
             ))
+            await conn.execute(sa.text("RELEASE SAVEPOINT _sp"))
         except Exception:
-            pass
+            await conn.execute(sa.text("ROLLBACK TO SAVEPOINT _sp"))
         # Table coffre-fort client (fallback si create_all ne l'a pas créée)
         try:
             await conn.execute(sa.text("""
