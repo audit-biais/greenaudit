@@ -85,84 +85,91 @@ async def _fetch_sitemap_urls(base_url: str) -> List[str]:
     return rse_urls[:10]
 
 
+_FC_RSE_PATHS = [
+    "", "/rse", "/developpement-durable", "/engagement", "/engagements",
+    "/sustainability", "/environnement",
+    "/nos-engagements", "/responsabilite", "/responsabilite-societale",
+    "/impact", "/notre-impact", "/csr", "/esg",
+    "/developpement-responsable", "/engagements-environnementaux",
+]
+
+
 async def _scrape_firecrawl(url: str) -> str:
     """
-    Crawl récursif via Firecrawl avec priorité aux pages RSE du sitemap.
-    Chaque page est annotée avec son URL pour donner du contexte à Claude.
+    Scrape ciblé des pages RSE via Firecrawl (scrape() individuel par chemin,
+    parallélisé). Firecrawl gère le rendu JS, les cookies et les protections bot.
+    Fallback Jina si erreur ou clé manquante.
     """
     try:
         from firecrawl import FirecrawlApp
 
         app = FirecrawlApp(api_key=settings.FIRECRAWL_API_KEY)
 
-        def _scrape_pages(target_url: str, limit: int, depth: int):
-            return app.crawl_url(
+        def _do_scrape(target_url: str) -> str:
+            result = app.scrape(
                 target_url,
-                {"limit": limit, "maxDepth": depth, "scrapeOptions": {"formats": ["markdown"]}},
+                formats=["markdown"],
+                only_main_content=True,
+                timeout=15000,
             )
+            return getattr(result, "markdown", "") or ""
 
-        def _extract_pages(result) -> list:
-            if isinstance(result, dict):
-                return result.get("data", [])
-            elif hasattr(result, "data"):
-                return result.data or []
-            return []
+        base_url = url.rstrip("/")
 
-        def get_markdown(p) -> str:
-            if isinstance(p, dict):
-                return p.get("markdown", "") or ""
-            return getattr(p, "markdown", "") or ""
-
-        def get_url(p) -> str:
-            if isinstance(p, dict):
-                meta = p.get("metadata", {}) or {}
-                return meta.get("url", "") or p.get("url", "") or ""
-            meta = getattr(p, "metadata", None)
-            if isinstance(meta, dict):
-                return meta.get("url", "")
-            return getattr(p, "url", "") or ""
-
-        # Conseil 1 — Crawl principal + fetch sitemap en parallèle (pas de latence ajoutée)
+        # Sitemap RSE discovery en parallèle des scrapes
         sitemap_task = asyncio.create_task(_fetch_sitemap_urls(url))
-        result = await asyncio.to_thread(_scrape_pages, url, 15, 2)
-        sitemap_urls = await sitemap_task
-        pages = _extract_pages(result)
 
-        # Conseil 1 — Scraper en plus les pages RSE du sitemap non couvertes par le crawl
-        crawled_urls = {get_url(p) for p in pages}
-        extra_urls = [u for u in sitemap_urls if u not in crawled_urls]
+        # Scrape ciblé — 8 premiers chemins en parallèle
+        target_urls = [
+            f"{base_url}{p}" if p else base_url
+            for p in _FC_RSE_PATHS
+        ]
+        scrape_tasks = [
+            asyncio.to_thread(_do_scrape, target_url)
+            for target_url in target_urls
+        ]
+        results = await asyncio.gather(*scrape_tasks, return_exceptions=True)
 
-        for extra_url in extra_urls[:5]:
-            try:
-                extra_result = await asyncio.to_thread(_scrape_pages, extra_url, 1, 0)
-                extra_pages = _extract_pages(extra_result)
-                pages.extend(extra_pages)
-                logger.info(f"Sitemap extra : page ajoutée — {extra_url}")
-            except Exception as exc:
-                logger.debug(f"Sitemap extra scrape failed ({extra_url}): {exc}")
+        sections: list = []
+        total = 0
+        seen_urls: set = set()
 
-        if not pages:
-            logger.warning(f"Firecrawl : aucun contenu pour {url}, fallback Jina")
-            return await _scrape_jina(url)
-
-        # Conseil 2 — Annoter chaque page avec son URL pour le contexte Claude
-        sections = []
-        for p in pages:
-            md = get_markdown(p)
-            if not md.strip():
+        for target_url, md in zip(target_urls, results):
+            if isinstance(md, Exception):
+                logger.debug(f"Firecrawl scrape failed ({target_url}): {md}")
                 continue
-            page_url = get_url(p) or url
-            sections.append(f"=== PAGE: {page_url} ===\n{md}")
+            if not md or not md.strip():
+                continue
+            if _is_consent_or_bot_page(md):
+                logger.debug(f"Firecrawl skip consent/bot: {target_url}")
+                continue
+            sections.append(f"=== PAGE: {target_url} ===\n{md}")
+            seen_urls.add(target_url)
+            total += len(md)
+            if total >= 20000:
+                break
+
+        # Ajouter les URLs RSE du sitemap non couvertes
+        sitemap_urls = await sitemap_task
+        extra = [u for u in sitemap_urls if u not in seen_urls]
+        for extra_url in extra[:5]:
+            if total >= 20000:
+                break
+            try:
+                md = await asyncio.to_thread(_do_scrape, extra_url)
+                if md and md.strip() and not _is_consent_or_bot_page(md):
+                    sections.append(f"=== PAGE: {extra_url} ===\n{md}")
+                    total += len(md)
+                    logger.info(f"Firecrawl sitemap extra: {extra_url}")
+            except Exception as exc:
+                logger.debug(f"Firecrawl sitemap scrape failed ({extra_url}): {exc}")
+
+        if not sections:
+            logger.warning(f"Firecrawl: aucun contenu RSE accessible pour {url}, fallback Jina")
+            return await _scrape_jina(url)
 
         collected = "\n\n".join(sections)
-
-        if not collected.strip():
-            logger.warning(f"Firecrawl : markdown vide pour {url}, fallback Jina")
-            return await _scrape_jina(url)
-
-        logger.info(
-            f"Firecrawl : {len(pages)} page(s) dont {len(extra_urls[:5])} depuis sitemap — {url}"
-        )
+        logger.info(f"Firecrawl: {len(sections)} page(s) RSE — {url}")
         return collected[:20000]
 
     except Exception as exc:
@@ -170,15 +177,48 @@ async def _scrape_firecrawl(url: str) -> str:
         return await _scrape_jina(url)
 
 
+_CONSENT_OR_BOT_RE = re.compile(
+    r"continuer sans accepter|continuing without agreeing|"
+    r"avec votre consentement.{0,60}partenaire|with your agreement.{0,60}partner|"
+    r"performing security verification|security service to protect.{0,30}bot|"
+    r"this website uses a security service|cloudflare ray id",
+    re.IGNORECASE,
+)
+
+_NOT_FOUND_RE = re.compile(
+    r"(page.{0,20}introuvable|page.{0,20}not found|"
+    r"oups.{0,40}page|sorry.{0,30}page|"
+    r"cette page.{0,20}n.exist|this page.{0,20}doesn.t exist|"
+    r"erreur 404|error 404)",
+    re.IGNORECASE,
+)
+
+
+def _is_consent_or_bot_page(text: str) -> bool:
+    snippet = text[:1000]
+    if bool(_CONSENT_OR_BOT_RE.search(snippet)):
+        return True
+    # Contenus trop courts (navigation seule, redirect, texte vide)
+    if len(text.strip()) < 80:
+        return True
+    if bool(_NOT_FOUND_RE.search(snippet)):
+        return True
+    return False
+
+
 async def _scrape_jina(url: str) -> str:
-    """Fallback Jina Reader — 6 chemins codés en dur, avec marqueurs PAGE."""
+    """Fallback Jina Reader — chemins RSE étendus, skip des pages consent/bot."""
     _RSE_PATHS = [
-        "", "/rse", "/developpement-durable",
-        "/engagement", "/sustainability", "/environnement",
+        "", "/rse", "/developpement-durable", "/engagement", "/engagements",
+        "/sustainability", "/environnement",
+        "/nos-engagements", "/responsabilite", "/responsabilite-societale",
+        "/impact", "/notre-impact", "/csr", "/esg",
+        "/developpement-responsable", "/engagements-environnementaux",
     ]
     base_url = url.rstrip("/")
     sections: list = []
     total = 0
+    skipped_consent = 0
 
     async with httpx.AsyncClient(
         timeout=20.0,
@@ -193,14 +233,26 @@ async def _scrape_jina(url: str) -> str:
                 if response.status_code != 200:
                     continue
                 text = response.text.strip()
-                if text:
-                    sections.append(f"=== PAGE: {page_url} ===\n{text}")
-                    total += len(text)
+                if not text:
+                    continue
+                if _is_consent_or_bot_page(text):
+                    skipped_consent += 1
+                    logger.debug(f"Jina skip consent/bot page: {page_url}")
+                    continue
+                sections.append(f"=== PAGE: {page_url} ===\n{text}")
+                total += len(text)
                 if total >= 8000:
                     break
             except Exception as exc:
                 logger.debug(f"Jina impossible pour {page_url}: {exc}")
                 continue
+
+    if not sections and skipped_consent > 0:
+        logger.warning(
+            f"Jina: toutes les pages sont des consent/bot walls pour {url} "
+            f"({skipped_consent} page(s) ignorée(s)). "
+            "Conseil : utiliser l'URL directe de la page RSE du site."
+        )
 
     return "\n\n".join(sections)[:8000]
 
