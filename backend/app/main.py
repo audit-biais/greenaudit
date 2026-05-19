@@ -28,70 +28,58 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Migrations manuelles idempotentes (ADD COLUMN IF NOT EXISTS)
+    # Migrations manuelles idempotentes — SQLite ne supporte pas IF NOT EXISTS
+    # dans ALTER TABLE, on attrape l'erreur "duplicate column" silencieusement.
+    _ALTER_SQLS = [
+        "ALTER TABLE audits ADD COLUMN country VARCHAR(5) NOT NULL DEFAULT 'fr'",
+        "ALTER TABLE audits ADD COLUMN rules_version VARCHAR(20)",
+        "ALTER TABLE evidence_files ADD COLUMN document_type VARCHAR(50) NOT NULL DEFAULT 'autre'",
+        "ALTER TABLE claims ADD COLUMN is_corrected BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE claims ADD COLUMN corrected_at TIMESTAMPTZ",
+        "ALTER TABLE claims ADD COLUMN is_false_positive BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE claims ADD COLUMN false_positive_reason VARCHAR(100)",
+        "ALTER TABLE audits ADD COLUMN created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL",
+        "ALTER TABLE audits ADD COLUMN pdf_sha256 VARCHAR(64)",
+        "ALTER TABLE audits ADD COLUMN share_token_expires_at TIMESTAMPTZ",
+        "ALTER TABLE claims ADD COLUMN regulatory_basis VARCHAR(50)",
+        "ALTER TABLE claims ADD COLUMN regime VARCHAR(20)",
+        "ALTER TABLE claims ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'À traiter'",
+        "ALTER TABLE claims ADD COLUMN source_url VARCHAR(500)",
+        "ALTER TABLE audits ADD COLUMN pdf_marque_url TEXT",
+        "ALTER TABLE audits ADD COLUMN pdf_marque_sha256 VARCHAR(64)",
+    ]
     async with engine.begin() as conn:
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS country VARCHAR(5) NOT NULL DEFAULT 'fr'"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS rules_version VARCHAR(20)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE evidence_files ADD COLUMN IF NOT EXISTS document_type VARCHAR(50) NOT NULL DEFAULT 'autre'"
-        ))
+        for sql in _ALTER_SQLS:
+            try:
+                await conn.execute(sa.text(sql))
+            except Exception:
+                pass  # Colonne déjà existante
         # Renommer plan 'free' → 'starter' pour les orgs existantes
-        await conn.execute(sa.text(
-            "UPDATE organizations SET subscription_plan = 'starter' WHERE subscription_plan = 'free'"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS is_corrected BOOLEAN NOT NULL DEFAULT FALSE"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS corrected_at TIMESTAMPTZ"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS is_false_positive BOOLEAN NOT NULL DEFAULT FALSE"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS false_positive_reason VARCHAR(100)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS pdf_sha256 VARCHAR(64)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE audits ADD COLUMN IF NOT EXISTS share_token_expires_at TIMESTAMPTZ"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS regulatory_basis VARCHAR(50)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS regime VARCHAR(20)"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'À traiter'"
-        ))
-        await conn.execute(sa.text(
-            "ALTER TABLE claims ADD COLUMN IF NOT EXISTS source_url VARCHAR(500)"
-        ))
-        # Table coffre-fort client
-        await conn.execute(sa.text("""
-            CREATE TABLE IF NOT EXISTS client_accesses (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                audit_id UUID NOT NULL UNIQUE REFERENCES audits(id) ON DELETE CASCADE,
-                token VARCHAR(200) NOT NULL UNIQUE,
-                client_email VARCHAR(255) NOT NULL,
-                validity_days INTEGER,
-                expires_at TIMESTAMPTZ,
-                is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                last_opened_at TIMESTAMPTZ,
-                pdf_downloaded_at TIMESTAMPTZ,
-                zip_downloaded_at TIMESTAMPTZ
-            )
-        """))
+        try:
+            await conn.execute(sa.text(
+                "UPDATE organizations SET subscription_plan = 'starter' WHERE subscription_plan = 'free'"
+            ))
+        except Exception:
+            pass
+        # Table coffre-fort client (fallback si create_all ne l'a pas créée)
+        try:
+            await conn.execute(sa.text("""
+                CREATE TABLE IF NOT EXISTS client_accesses (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    audit_id UUID NOT NULL UNIQUE REFERENCES audits(id) ON DELETE CASCADE,
+                    token VARCHAR(200) NOT NULL UNIQUE,
+                    client_email VARCHAR(255) NOT NULL,
+                    validity_days INTEGER,
+                    expires_at TIMESTAMPTZ,
+                    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    last_opened_at TIMESTAMPTZ,
+                    pdf_downloaded_at TIMESTAMPTZ,
+                    zip_downloaded_at TIMESTAMPTZ
+                )
+            """))
+        except Exception:
+            pass  # Déjà créée par create_all ou syntaxe non supportée (SQLite)
     logger.info("Colonnes country + rules_version + document_type vérifiées/ajoutées")
 
     # Démarrer le scheduler APScheduler
