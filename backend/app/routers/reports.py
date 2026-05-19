@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_user, require_pro
+from app.auth.dependencies import get_current_user, get_superadmin_user, require_pro
 from app.config import settings
 from app.database import get_db
 
@@ -31,6 +31,7 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.claim_result import AuditResultsResponse
 from app.services.pdf_generator import generate_audit_pdf
+from app.services.pdf_generator_marque import generate_marque_pdf
 
 router = APIRouter(prefix="/api/audits", tags=["reports"])
 
@@ -189,6 +190,70 @@ async def shared_audit_results(
         global_score=float(audit.global_score) if audit.global_score is not None else None,
         risk_level=audit.risk_level,
         claims=audit.claims,
+    )
+
+
+@router.post("/{audit_id}/report-marque", status_code=status.HTTP_201_CREATED)
+async def generate_report_marque(
+    audit_id: UUID,
+    user: User = Depends(get_superadmin_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Générer le rapport commercial marque (4 pages, brandé GreenAudit)."""
+    audit = await _load_completed_audit(audit_id, user, db)
+    await _check_pdf_access(audit, user, db)
+
+    if audit.pdf_marque_url:
+        old_path = (Path(settings.PDF_STORAGE_PATH).resolve() / audit.pdf_marque_url).resolve()
+        if str(old_path).startswith(str(Path(settings.PDF_STORAGE_PATH).resolve())) and old_path.is_file():
+            old_path.unlink(missing_ok=True)
+
+    filename, sha256 = generate_marque_pdf(audit)
+
+    audit.pdf_marque_url    = filename
+    audit.pdf_marque_sha256 = sha256
+    await db.commit()
+
+    return {
+        "message": "Rapport marque généré avec succès",
+        "pdf_marque_url": filename,
+        "pdf_marque_sha256": sha256,
+    }
+
+
+@router.get("/{audit_id}/report-marque/download")
+async def download_report_marque(
+    audit_id: UUID,
+    user: User = Depends(get_superadmin_user),
+    db: AsyncSession = Depends(get_db),
+) -> FileResponse:
+    """Télécharger le rapport commercial marque d'un audit."""
+    result = await db.execute(
+        select(Audit).where(Audit.id == audit_id, Audit.organization_id == user.organization_id)
+    )
+    audit = result.scalar_one_or_none()
+    if audit is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit introuvable")
+    await _check_pdf_access(audit, user, db)
+
+    if not audit.pdf_marque_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Aucun rapport marque généré — appelez d'abord POST /report-marque",
+        )
+
+    storage  = Path(settings.PDF_STORAGE_PATH).resolve()
+    filepath = (storage / audit.pdf_marque_url).resolve()
+    if not str(filepath).startswith(str(storage)) or not filepath.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fichier PDF introuvable sur le serveur",
+        )
+
+    return FileResponse(
+        path=str(filepath),
+        media_type="application/pdf",
+        filename=f"diagnostic_greenaudit_{audit.company_name}.pdf",
     )
 
 

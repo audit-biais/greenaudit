@@ -59,9 +59,13 @@ class Audit(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
-    # Méta
+    # Méta — rapport cabinet (marque blanche)
     pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     pdf_sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+    # Rapport commercial marque (livrable payant, brandé GreenAudit)
+    pdf_marque_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    pdf_marque_sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     share_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
     share_token_expires_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

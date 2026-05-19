@@ -126,9 +126,11 @@ export default function AuditResults() {
   const { auditId } = useParams();
   const { user } = useAuth();
   const isPro = ['partner', 'pro', 'enterprise'].includes(user?.subscription_plan);
+  const isSuperadmin = user?.is_superadmin === true;
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [generatingMarque, setGeneratingMarque] = useState(false);
   const [reportInfo, setReportInfo] = useState(null);
   const [error, setError] = useState('');
   const [monitoring, setMonitoring] = useState(null);
@@ -213,6 +215,24 @@ export default function AuditResults() {
       setError(err.response?.data?.detail || 'Erreur lors de la génération');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleGenerateAndDownloadMarque = async () => {
+    setGeneratingMarque(true);
+    try {
+      await api.post(`/audits/${auditId}/report-marque`);
+      const res = await api.get(`/audits/${auditId}/report-marque/download`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `diagnostic_greenaudit_${results.company_name}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Erreur lors de la génération du rapport marque');
+    } finally {
+      setGeneratingMarque(false);
     }
   };
 
@@ -472,6 +492,16 @@ export default function AuditResults() {
           >
             Dossier preuves ZIP
           </button>
+          {isSuperadmin && (
+            <button
+              onClick={handleGenerateAndDownloadMarque}
+              disabled={generatingMarque}
+              title="Réservé superadmin — rapport diagnostic direct (non marque blanche)"
+              className="px-4 py-2.5 rounded-full text-sm font-semibold text-emerald-700 border-2 border-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+            >
+              {generatingMarque ? 'Génération…' : 'Rapport marque ↓'}
+            </button>
+          )}
           {reportInfo && (
             <button
               onClick={() => { setClientAccessOpen(true); setClientAccessResult(null); setClientEmail(existingAccess?.client_email || ''); }}
